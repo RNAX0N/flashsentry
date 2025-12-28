@@ -79,6 +79,11 @@ QString MountManager::udisksVersion() const
     return QString();
 }
 
+void MountManager::mount(const QString& deviceNode)
+{
+    mount(deviceNode, MountOptions{});
+}
+
 void MountManager::mount(const QString& deviceNode, const MountOptions& options)
 {
     auto fsInterface = createFilesystemInterface(deviceNode);
@@ -104,6 +109,11 @@ void MountManager::mount(const QString& deviceNode, const MountOptions& options)
     
     connect(watcher, &QDBusPendingCallWatcher::finished,
             this, &MountManager::onMountFinished);
+}
+
+void MountManager::unmount(const QString& deviceNode)
+{
+    unmount(deviceNode, UnmountOptions{});
 }
 
 void MountManager::unmount(const QString& deviceNode, const UnmountOptions& options)

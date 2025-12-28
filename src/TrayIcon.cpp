@@ -3,6 +3,7 @@
 
 #include <QApplication>
 #include <QPainter>
+#include <QPainterPath>
 #include <QBuffer>
 #include <QDebug>
 

@@ -49,23 +49,19 @@ public:
      */
     struct MountOptions {
         QString filesystem;          // Force specific filesystem type
-        bool readOnly{false};        // Mount read-only
-        bool noExec{true};           // Disable execution (security)
-        bool noSuid{true};           // Disable setuid bits (security)
-        bool sync{false};            // Synchronous I/O
+        bool readOnly = false;       // Mount read-only
+        bool noExec = true;          // Disable execution (security)
+        bool noSuid = true;          // Disable setuid bits (security)
+        bool sync = false;           // Synchronous I/O
         QStringList extraOptions;    // Additional mount options
-        
-        MountOptions() = default;
     };
 
     /**
      * @brief Unmount options
      */
     struct UnmountOptions {
-        bool force{false};           // Force unmount even if busy
-        bool lazy{false};            // Lazy unmount (detach from filesystem)
-        
-        UnmountOptions() = default;
+        bool force = false;          // Force unmount even if busy
+        bool lazy = false;           // Lazy unmount (detach from filesystem)
     };
 
     explicit MountManager(QObject* parent = nullptr);
@@ -90,14 +86,16 @@ public:
      * @param deviceNode Device node path (e.g., /dev/sdb1)
      * @param options Mount options
      */
-    void mount(const QString& deviceNode, const MountOptions& options = {});
+    void mount(const QString& deviceNode);
+    void mount(const QString& deviceNode, const MountOptions& options);
 
     /**
      * @brief Unmount a device asynchronously
      * @param deviceNode Device node path
      * @param options Unmount options
      */
-    void unmount(const QString& deviceNode, const UnmountOptions& options = {});
+    void unmount(const QString& deviceNode);
+    void unmount(const QString& deviceNode, const UnmountOptions& options);
 
     /**
      * @brief Power off a device (eject)

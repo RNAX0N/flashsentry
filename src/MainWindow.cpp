@@ -1058,10 +1058,8 @@ DeviceCard* MainWindow::addDeviceCard(const DeviceInfo& device)
     m_deviceListLayout->insertWidget(m_deviceListLayout->count() - 1, card);
     m_deviceCards[device.deviceNode] = card;
     
-    // Animate appearance
-    if (FSStyle.animationsEnabled()) {
-        FSStyle.applyFadeIn(card);
-    }
+    // Note: Don't use FSStyle.applyFadeIn(card) here as DeviceCard 
+    // already has its own graphics effect (m_glowEffect) which would be replaced
     
     return card;
 }

@@ -616,7 +616,7 @@ QString StyleManager::menuStyleSheet() const
         QMenu {
             background-color: %1;
             border: 1px solid %2;
-            border-radius: %6px;
+            border-radius: %5px;
             padding: 4px;
         }
         QMenu::item {
@@ -653,7 +653,6 @@ QString StyleManager::menuStyleSheet() const
     .arg(colorCss(ColorRole::Border))
     .arg(colorCss(ColorRole::TextPrimary))
     .arg(colorCss(ColorRole::SurfaceHover))
-    .arg(colorCss(ColorRole::AccentPrimary))
     .arg(m_borderRadius);
 }
 

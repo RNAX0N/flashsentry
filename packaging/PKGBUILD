@@ -4,7 +4,7 @@ pkgver=1.0.0
 pkgrel=1
 pkgdesc="USB Flash Drive Security Monitor - Track, verify, and protect your USB devices"
 arch=('x86_64' 'aarch64')
-url="https://github.com/flashsentry/flashsentry"
+url="https://github.com/RNAX0N/flashsentry"
 license=('MIT')
 depends=(
     'qt6-base'
@@ -28,7 +28,7 @@ conflicts=('flashsentry-git')
 backup=('etc/flashsentry/config.json')
 install=flashsentry.install
 source=(
-    "${pkgname}-${pkgver}.tar.gz::https://github.com/flashsentry/flashsentry/archive/v${pkgver}.tar.gz"
+    "${pkgname}-${pkgver}.tar.gz::https://github.com/RNAX0N/flashsentry/archive/v${pkgver}.tar.gz"
 )
 # For local builds, use:
 # source=("git+file://${PWD}/../")

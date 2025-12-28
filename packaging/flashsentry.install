@@ -1,0 +1,157 @@
+# FlashSentry post-install script for Arch Linux
+# This file is sourced by pacman during package installation/upgrade/removal
+
+# Colors for output
+_blue='\033[0;34m'
+_green='\033[0;32m'
+_yellow='\033[0;33m'
+_red='\033[0;31m'
+_reset='\033[0m'
+
+_info() {
+    printf "${_blue}==>${_reset} %s\n" "$1"
+}
+
+_success() {
+    printf "${_green}==>${_reset} %s\n" "$1"
+}
+
+_warning() {
+    printf "${_yellow}==> WARNING:${_reset} %s\n" "$1"
+}
+
+_error() {
+    printf "${_red}==> ERROR:${_reset} %s\n" "$1"
+}
+
+## Pre-installation hook
+pre_install() {
+    :
+}
+
+## Post-installation hook
+post_install() {
+    _info "FlashSentry installed successfully!"
+    echo ""
+
+    # Update icon cache
+    if command -v gtk-update-icon-cache &>/dev/null; then
+        _info "Updating icon cache..."
+        gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+    fi
+
+    # Update desktop database
+    if command -v update-desktop-database &>/dev/null; then
+        _info "Updating desktop database..."
+        update-desktop-database -q /usr/share/applications 2>/dev/null || true
+    fi
+
+    # Reload udev rules
+    if command -v udevadm &>/dev/null; then
+        _info "Reloading udev rules..."
+        udevadm control --reload-rules 2>/dev/null || true
+        udevadm trigger --subsystem-match=block --action=change 2>/dev/null || true
+    fi
+
+    # Inform about systemd user service
+    echo ""
+    _info "To start FlashSentry automatically at login:"
+    echo "    systemctl --user enable --now flashsentry.service"
+    echo ""
+
+    # Check for common issues
+    _info "Checking system configuration..."
+
+    # Check if user is in required groups
+    if ! groups | grep -qE '\b(disk|storage|plugdev)\b'; then
+        _warning "Your user may need to be in 'disk', 'storage', or 'plugdev' group"
+        _warning "for raw device access. Run: sudo usermod -aG disk,storage \$USER"
+    fi
+
+    # Check for udisks2
+    if ! systemctl is-active --quiet udisks2.service 2>/dev/null; then
+        _warning "udisks2 service is not running. FlashSentry uses it for mounting."
+        _warning "Start it with: sudo systemctl enable --now udisks2.service"
+    fi
+
+    # Check for polkit agent
+    if ! pgrep -x "polkit" &>/dev/null && ! pgrep -f "polkit-agent" &>/dev/null; then
+        _warning "No polkit authentication agent detected."
+        _warning "You may need one for privilege escalation (e.g., polkit-gnome, lxpolkit)."
+    fi
+
+    # Desktop environment auto-mount warning
+    echo ""
+    _info "IMPORTANT: For best results, disable your desktop environment's"
+    _info "auto-mount feature to let FlashSentry handle USB device mounting."
+    echo ""
+    _info "  GNOME:  gsettings set org.gnome.desktop.media-handling automount false"
+    _info "  KDE:    System Settings > Removable Storage > uncheck automount"
+    _info "  XFCE:   Settings > Removable Drives and Media > uncheck auto-mount"
+    echo ""
+
+    # Non-standard kernel notice
+    _info "If using a non-standard kernel (linux-zen, linux-lts, etc.):"
+    _info "  FlashSentry should work with any kernel that has udev support."
+    _info "  Ensure your kernel has CONFIG_BLK_DEV_BSG enabled for raw access."
+    echo ""
+
+    _success "Run 'flashsentry' or find it in your application menu to get started!"
+}
+
+## Pre-upgrade hook
+pre_upgrade() {
+    :
+}
+
+## Post-upgrade hook
+post_upgrade() {
+    post_install
+
+    _info "FlashSentry has been upgraded to version $1"
+
+    # Restart service if running
+    if systemctl --user is-active --quiet flashsentry.service 2>/dev/null; then
+        _info "Restarting FlashSentry service..."
+        systemctl --user restart flashsentry.service 2>/dev/null || true
+    fi
+}
+
+## Pre-removal hook
+pre_remove() {
+    # Stop the service if running
+    if systemctl --user is-active --quiet flashsentry.service 2>/dev/null; then
+        _info "Stopping FlashSentry service..."
+        systemctl --user stop flashsentry.service 2>/dev/null || true
+    fi
+
+    # Disable the service
+    if systemctl --user is-enabled --quiet flashsentry.service 2>/dev/null; then
+        _info "Disabling FlashSentry service..."
+        systemctl --user disable flashsentry.service 2>/dev/null || true
+    fi
+}
+
+## Post-removal hook
+post_remove() {
+    # Update icon cache
+    if command -v gtk-update-icon-cache &>/dev/null; then
+        gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+    fi
+
+    # Update desktop database
+    if command -v update-desktop-database &>/dev/null; then
+        update-desktop-database -q /usr/share/applications 2>/dev/null || true
+    fi
+
+    # Reload udev rules
+    if command -v udevadm &>/dev/null; then
+        udevadm control --reload-rules 2>/dev/null || true
+    fi
+
+    _info "FlashSentry has been removed."
+    _info "Your device database at ~/.config/flashsentry/ has been preserved."
+    _info "Remove it manually if you want to delete all data."
+}
+
+# vim:set ts=4 sw=4 et:

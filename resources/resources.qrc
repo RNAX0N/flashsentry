@@ -1,0 +1,21 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/icons">
+        <file>icons/flashsentry.svg</file>
+        <file>icons/usb-drive.svg</file>
+        <file>icons/shield-check.svg</file>
+        <file>icons/shield-alert.svg</file>
+        <file>icons/shield-question.svg</file>
+        <file>icons/hash.svg</file>
+        <file>icons/eject.svg</file>
+        <file>icons/mount.svg</file>
+        <file>icons/unmount.svg</file>
+        <file>icons/settings.svg</file>
+        <file>icons/refresh.svg</file>
+        <file>icons/folder-open.svg</file>
+    </qresource>
+    <qresource prefix="/styles">
+        <file>styles/dark.qss</file>
+        <file>styles/light.qss</file>
+    </qresource>
+</RCC>

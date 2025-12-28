@@ -1,0 +1,40 @@
+[Unit]
+Description=FlashSentry - USB Flash Drive Security Monitor
+Documentation=https://github.com/flashsentry/flashsentry
+After=graphical-session.target
+Wants=graphical-session.target
+PartOf=graphical-session.target
+
+# Requires D-Bus for UDisks2 communication
+Requires=dbus.socket
+After=dbus.socket
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/flashsentry --minimized
+ExecStop=/bin/kill -TERM $MAINPID
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+RestartPreventExitStatus=0
+
+# Environment
+Environment=QT_QPA_PLATFORMTHEME=qt6ct
+Environment=QT_AUTO_SCREEN_SCALE_FACTOR=1
+
+# Security hardening (user service, so limited options)
+NoNewPrivileges=false
+PrivateTmp=false
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=50%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=flashsentry
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,130 @@
+# Maintainer: FlashSentry Team <team@flashsentry.io>
+pkgname=flashsentry
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="USB Flash Drive Security Monitor - Track, verify, and protect your USB devices"
+arch=('x86_64' 'aarch64')
+url="https://github.com/flashsentry/flashsentry"
+license=('MIT')
+depends=(
+    'qt6-base'
+    'openssl'
+    'systemd-libs'  # For libudev
+    'udisks2'       # For mounting operations via D-Bus
+    'polkit'        # For privilege escalation
+)
+makedepends=(
+    'cmake'
+    'git'
+    'qt6-tools'     # For Qt6 build tools
+    'pkgconf'
+)
+optdepends=(
+    'libnotify: Desktop notifications support'
+    'qt6-wayland: Wayland support'
+)
+provides=('flashsentry')
+conflicts=('flashsentry-git')
+backup=('etc/flashsentry/config.json')
+install=flashsentry.install
+source=(
+    "${pkgname}-${pkgver}.tar.gz::https://github.com/flashsentry/flashsentry/archive/v${pkgver}.tar.gz"
+)
+# For local builds, use:
+# source=("git+file://${PWD}/../")
+sha256sums=('SKIP')
+
+# Uncomment for local development builds
+#pkgver() {
+#    cd "${srcdir}/${pkgname}"
+#    git describe --long --tags 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' || echo "1.0.0"
+#}
+
+prepare() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+
+    # Create build directory
+    mkdir -p build
+}
+
+build() {
+    cd "${srcdir}/${pkgname}-${pkgver}/build"
+
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -Wno-dev
+
+    cmake --build . --parallel
+}
+
+check() {
+    cd "${srcdir}/${pkgname}-${pkgver}/build"
+
+    # Run tests if available
+    if [ -f "CTestTestfile.cmake" ]; then
+        ctest --output-on-failure
+    fi
+}
+
+package() {
+    cd "${srcdir}/${pkgname}-${pkgver}/build"
+
+    # Install using CMake
+    DESTDIR="${pkgdir}" cmake --install .
+
+    # Install license
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/LICENSE" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+    # Install documentation
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/README.md" \
+        "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+
+    # Install default config
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/config.json.default" \
+        "${pkgdir}/etc/flashsentry/config.json" 2>/dev/null || true
+
+    # Install systemd user service
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.service" \
+        "${pkgdir}/usr/lib/systemd/user/flashsentry.service"
+
+    # Install desktop file
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.desktop" \
+        "${pkgdir}/usr/share/applications/flashsentry.desktop"
+
+    # Install polkit policy
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/org.flashsentry.policy" \
+        "${pkgdir}/usr/share/polkit-1/actions/org.flashsentry.policy"
+
+    # Install udev rules
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/99-flashsentry.rules" \
+        "${pkgdir}/usr/lib/udev/rules.d/99-flashsentry.rules"
+
+    # Install icons
+    for size in 16 32 48 64 128 256; do
+        if [ -f "${srcdir}/${pkgname}-${pkgver}/resources/icons/flashsentry-${size}.png" ]; then
+            install -Dm644 "${srcdir}/${pkgname}-${pkgver}/resources/icons/flashsentry-${size}.png" \
+                "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/flashsentry.png"
+        fi
+    done
+
+    # Install scalable icon
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/resources/icons/flashsentry.svg" \
+        "${pkgdir}/usr/share/icons/hicolor/scalable/apps/flashsentry.svg"
+
+    # Install bash completion if available
+    if [ -f "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.bash" ]; then
+        install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.bash" \
+            "${pkgdir}/usr/share/bash-completion/completions/flashsentry"
+    fi
+
+    # Install zsh completion if available
+    if [ -f "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.zsh" ]; then
+        install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.zsh" \
+            "${pkgdir}/usr/share/zsh/site-functions/_flashsentry"
+    fi
+}
+
+# vim:set ts=4 sw=4 et:

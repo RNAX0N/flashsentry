@@ -1,0 +1,120 @@
+# FlashSentry udev rules
+# Provides user-space access to USB storage devices for hash verification
+#
+# Install to: /usr/lib/udev/rules.d/99-flashsentry.rules
+# Reload with: sudo udevadm control --reload-rules && sudo udevadm trigger
+
+# =============================================================================
+# USB Mass Storage Device Rules
+# =============================================================================
+
+# Tag all USB storage devices for FlashSentry monitoring
+# This allows the application to receive udev events
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", TAG+="flashsentry"
+
+# Allow members of the 'storage' group to access USB block devices
+# This enables hash calculation without root privileges
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", MODE="0660", GROUP="storage"
+
+# Alternative: Allow members of 'disk' group (common on many systems)
+# Uncomment if your system uses 'disk' group instead of 'storage'
+#SUBSYSTEM=="block", ENV{ID_BUS}=="usb", MODE="0660", GROUP="disk"
+
+# Alternative: Allow members of 'plugdev' group (common on Debian-based systems)
+# Uncomment if needed for compatibility
+#SUBSYSTEM=="block", ENV{ID_BUS}=="usb", MODE="0660", GROUP="plugdev"
+
+# =============================================================================
+# USB Storage Partition Rules
+# =============================================================================
+
+# Tag USB partitions specifically
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", TAG+="flashsentry-partition"
+
+# Set environment variable to help identify USB storage
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", ENV{FLASHSENTRY_MANAGED}="1"
+
+# =============================================================================
+# USB Drive (Whole Disk) Rules
+# =============================================================================
+
+# Tag whole USB drives
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", TAG+="flashsentry-disk"
+
+# =============================================================================
+# Symlink Rules for Easier Device Identification
+# =============================================================================
+
+# Create persistent symlinks in /dev/flashsentry/ for managed devices
+# Format: /dev/flashsentry/<serial>-<partition>
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", \
+    ENV{ID_SERIAL_SHORT}!="", \
+    SYMLINK+="flashsentry/$env{ID_SERIAL_SHORT}-part%n"
+
+# Symlink for whole disks
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", \
+    ENV{ID_SERIAL_SHORT}!="", \
+    SYMLINK+="flashsentry/$env{ID_SERIAL_SHORT}"
+
+# =============================================================================
+# Power Management Rules
+# =============================================================================
+
+# Disable autosuspend for USB storage devices to prevent issues during hashing
+SUBSYSTEM=="usb", ATTR{idClass}=="08", ATTR{power/control}="on"
+SUBSYSTEM=="usb", ENV{ID_USB_DRIVER}=="usb-storage", ATTR{power/control}="on"
+SUBSYSTEM=="usb", ENV{ID_USB_DRIVER}=="uas", ATTR{power/control}="on"
+
+# =============================================================================
+# Security Rules
+# =============================================================================
+
+# Prevent execution from USB devices by default (can be overridden by mount options)
+# This is a defense-in-depth measure
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{UDISKS_MOUNT_OPTIONS_DEFAULTS}="noexec,nosuid,nodev"
+
+# =============================================================================
+# Notification Rules (for systems using systemd)
+# =============================================================================
+
+# Notify systemd when USB storage is connected/disconnected
+# This can trigger user services if configured
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", \
+    ACTION=="add", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}="flashsentry-device@%k.target"
+
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", \
+    ACTION=="remove", TAG+="systemd"
+
+# =============================================================================
+# Kernel Module Options
+# =============================================================================
+
+# Increase timeout for slow USB devices during hashing
+# (May help with older or lower-quality USB drives)
+ACTION=="add", SUBSYSTEM=="scsi", ATTR{timeout}="180"
+
+# =============================================================================
+# Debug Rules (commented out by default)
+# =============================================================================
+
+# Uncomment to log all USB storage events for debugging
+#SUBSYSTEM=="block", ENV{ID_BUS}=="usb", RUN+="/usr/bin/logger -t flashsentry 'Device event: %k action=%E{ACTION} serial=%E{ID_SERIAL_SHORT}'"
+
+# =============================================================================
+# Notes
+# =============================================================================
+#
+# After modifying this file:
+#   1. Reload udev rules: sudo udevadm control --reload-rules
+#   2. Trigger rules for existing devices: sudo udevadm trigger
+#
+# To test rules:
+#   udevadm test /sys/block/sdX
+#
+# To monitor events:
+#   udevadm monitor --property --udev --subsystem-match=block
+#
+# Group membership:
+#   Users need to be in 'storage' group (or 'disk'/'plugdev') to access devices:
+#   sudo usermod -aG storage $USER
+#   (Log out and back in for group change to take effect)

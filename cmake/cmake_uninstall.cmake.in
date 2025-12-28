@@ -1,0 +1,61 @@
+# CMake Uninstall Script
+# This script is configured by CMake and used to uninstall the project
+#
+# Usage: cmake -P cmake_uninstall.cmake
+
+if(NOT EXISTS "@CMAKE_BINARY_DIR@/install_manifest.txt")
+    message(FATAL_ERROR "Cannot find install manifest: @CMAKE_BINARY_DIR@/install_manifest.txt")
+endif()
+
+file(READ "@CMAKE_BINARY_DIR@/install_manifest.txt" files)
+string(REGEX REPLACE "\n" ";" files "${files}")
+
+foreach(file ${files})
+    message(STATUS "Uninstalling: $ENV{DESTDIR}${file}")
+    if(IS_SYMLINK "$ENV{DESTDIR}${file}" OR EXISTS "$ENV{DESTDIR}${file}")
+        exec_program(
+            "@CMAKE_COMMAND@" ARGS "-E remove \"$ENV{DESTDIR}${file}\""
+            OUTPUT_VARIABLE rm_out
+            RETURN_VALUE rm_retval
+        )
+        if(NOT "${rm_retval}" STREQUAL 0)
+            message(FATAL_ERROR "Problem when removing $ENV{DESTDIR}${file}")
+        endif()
+    else()
+        message(STATUS "File $ENV{DESTDIR}${file} does not exist.")
+    endif()
+endforeach()
+
+# Remove empty directories that were created during install
+# This list should match the directories created in CMakeLists.txt install commands
+set(DIRS_TO_CHECK
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_DATADIR@/applications"
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_DATADIR@/icons/hicolor/scalable/apps"
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_DATADIR@/icons/hicolor/256x256/apps"
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_DATADIR@/icons/hicolor/128x128/apps"
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_DATADIR@/icons/hicolor/64x64/apps"
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_DATADIR@/icons/hicolor/48x48/apps"
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_DATADIR@/icons/hicolor/32x32/apps"
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_DATADIR@/icons/hicolor/16x16/apps"
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_DATADIR@/polkit-1/actions"
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LIBDIR@/udev/rules.d"
+    "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_LIBDIR@/systemd/user"
+)
+
+foreach(dir ${DIRS_TO_CHECK})
+    if(IS_DIRECTORY "$ENV{DESTDIR}${dir}")
+        # Check if directory is empty
+        file(GLOB dir_contents "$ENV{DESTDIR}${dir}/*")
+        list(LENGTH dir_contents num_files)
+        if(num_files EQUAL 0)
+            message(STATUS "Removing empty directory: $ENV{DESTDIR}${dir}")
+            exec_program(
+                "@CMAKE_COMMAND@" ARGS "-E remove_directory \"$ENV{DESTDIR}${dir}\""
+                OUTPUT_VARIABLE rm_out
+                RETURN_VALUE rm_retval
+            )
+        endif()
+    endif()
+endforeach()
+
+message(STATUS "Uninstall complete.")

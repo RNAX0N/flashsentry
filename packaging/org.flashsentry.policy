@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+
+<!--
+  FlashSentry Polkit Policy
+
+  This policy allows FlashSentry to perform privileged operations
+  such as reading raw block devices for hashing without requiring
+  the application to run as root.
+-->
+
+<policyconfig>
+
+  <vendor>FlashSentry</vendor>
+  <vendor_url>https://github.com/flashsentry/flashsentry</vendor_url>
+  <icon_name>flashsentry</icon_name>
+
+  <!-- Action for reading raw block devices (for hashing) -->
+  <action id="org.flashsentry.read-raw-device">
+    <description>Read raw USB block device</description>
+    <description xml:lang="de">Rohes USB-Blockgerät lesen</description>
+    <description xml:lang="es">Leer dispositivo de bloque USB sin procesar</description>
+    <description xml:lang="fr">Lire le périphérique bloc USB brut</description>
+    <message>Authentication is required to read the raw USB device for hash verification.</message>
+    <message xml:lang="de">Authentifizierung ist erforderlich, um das USB-Gerät für die Hash-Verifizierung zu lesen.</message>
+    <message xml:lang="es">Se requiere autenticación para leer el dispositivo USB para la verificación de hash.</message>
+    <message xml:lang="fr">L'authentification est requise pour lire le périphérique USB pour la vérification du hachage.</message>
+    <icon_name>drive-removable-media</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/flashsentry</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <!-- Action for mounting USB devices -->
+  <action id="org.flashsentry.mount-device">
+    <description>Mount USB storage device</description>
+    <description xml:lang="de">USB-Speichergerät einhängen</description>
+    <description xml:lang="es">Montar dispositivo de almacenamiento USB</description>
+    <description xml:lang="fr">Monter le périphérique de stockage USB</description>
+    <message>Authentication is required to mount the USB device.</message>
+    <message xml:lang="de">Authentifizierung ist erforderlich, um das USB-Gerät einzuhängen.</message>
+    <message xml:lang="es">Se requiere autenticación para montar el dispositivo USB.</message>
+    <message xml:lang="fr">L'authentification est requise pour monter le périphérique USB.</message>
+    <icon_name>drive-removable-media</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+  </action>
+
+  <!-- Action for unmounting USB devices -->
+  <action id="org.flashsentry.unmount-device">
+    <description>Unmount USB storage device</description>
+    <description xml:lang="de">USB-Speichergerät aushängen</description>
+    <description xml:lang="es">Desmontar dispositivo de almacenamiento USB</description>
+    <description xml:lang="fr">Démonter le périphérique de stockage USB</description>
+    <message>Authentication is required to unmount the USB device.</message>
+    <message xml:lang="de">Authentifizierung ist erforderlich, um das USB-Gerät auszuhängen.</message>
+    <message xml:lang="es">Se requiere autenticación para desmontar el dispositivo USB.</message>
+    <message xml:lang="fr">L'authentification est requise pour démonter le périphérique USB.</message>
+    <icon_name>drive-removable-media</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+  </action>
+
+  <!-- Action for ejecting/powering off USB devices -->
+  <action id="org.flashsentry.eject-device">
+    <description>Eject USB storage device</description>
+    <description xml:lang="de">USB-Speichergerät auswerfen</description>
+    <description xml:lang="es">Expulsar dispositivo de almacenamiento USB</description>
+    <description xml:lang="fr">Éjecter le périphérique de stockage USB</description>
+    <message>Authentication is required to safely eject the USB device.</message>
+    <message xml:lang="de">Authentifizierung ist erforderlich, um das USB-Gerät sicher auszuwerfen.</message>
+    <message xml:lang="es">Se requiere autenticación para expulsar de forma segura el dispositivo USB.</message>
+    <message xml:lang="fr">L'authentification est requise pour éjecter le périphérique USB en toute sécurité.</message>
+    <icon_name>media-eject</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+  </action>
+
+  <!-- Action for modifying FlashSentry settings -->
+  <action id="org.flashsentry.modify-settings">
+    <description>Modify FlashSentry security settings</description>
+    <description xml:lang="de">FlashSentry-Sicherheitseinstellungen ändern</description>
+    <description xml:lang="es">Modificar la configuración de seguridad de FlashSentry</description>
+    <description xml:lang="fr">Modifier les paramètres de sécurité de FlashSentry</description>
+    <message>Authentication is required to modify FlashSentry security settings.</message>
+    <message xml:lang="de">Authentifizierung ist erforderlich, um die FlashSentry-Sicherheitseinstellungen zu ändern.</message>
+    <message xml:lang="es">Se requiere autenticación para modificar la configuración de seguridad de FlashSentry.</message>
+    <message xml:lang="fr">L'authentification est requise pour modifier les paramètres de sécurité de FlashSentry.</message>
+    <icon_name>preferences-system</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <!-- Action for clearing/resetting the device database -->
+  <action id="org.flashsentry.clear-database">
+    <description>Clear FlashSentry device database</description>
+    <description xml:lang="de">FlashSentry-Gerätedatenbank löschen</description>
+    <description xml:lang="es">Borrar base de datos de dispositivos de FlashSentry</description>
+    <description xml:lang="fr">Effacer la base de données des périphériques FlashSentry</description>
+    <message>Authentication is required to clear the device whitelist database. This action cannot be undone.</message>
+    <message xml:lang="de">Authentifizierung ist erforderlich, um die Geräte-Whitelist-Datenbank zu löschen. Diese Aktion kann nicht rückgängig gemacht werden.</message>
+    <message xml:lang="es">Se requiere autenticación para borrar la base de datos de lista blanca de dispositivos. Esta acción no se puede deshacer.</message>
+    <message xml:lang="fr">L'authentification est requise pour effacer la base de données de la liste blanche des périphériques. Cette action ne peut pas être annulée.</message>
+    <icon_name>edit-delete</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+  </action>
+
+</policyconfig>

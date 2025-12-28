@@ -1,0 +1,35 @@
+[Desktop Entry]
+Type=Application
+Name=FlashSentry
+GenericName=USB Security Monitor
+Comment=Monitor and verify USB flash drives through cryptographic hashing
+Exec=flashsentry %U
+Icon=flashsentry
+Terminal=false
+Categories=System;Security;Utility;
+Keywords=USB;flash;drive;security;hash;verify;monitor;whitelist;
+StartupNotify=true
+StartupWMClass=FlashSentry
+
+# Actions for right-click menu
+Actions=minimized;settings;
+
+[Desktop Action minimized]
+Name=Start Minimized
+Exec=flashsentry --minimized
+
+[Desktop Action settings]
+Name=Open Settings
+Exec=flashsentry --settings
+
+# Translations
+Name[de]=FlashSentry
+Comment[de]=USB-Flash-Laufwerke überwachen und verifizieren
+Name[es]=FlashSentry
+Comment[es]=Monitorear y verificar unidades flash USB
+Name[fr]=FlashSentry
+Comment[fr]=Surveiller et vérifier les clés USB
+Name[ja]=FlashSentry
+Comment[ja]=USBフラッシュドライブの監視と検証
+Name[zh_CN]=FlashSentry
+Comment[zh_CN]=监控和验证USB闪存驱动器

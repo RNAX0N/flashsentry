@@ -6,6 +6,7 @@
 #include <QMutex>
 #include <QHash>
 #include <QElapsedTimer>
+#include <QTimer>
 #include <atomic>
 #include <memory>
 
@@ -177,7 +178,7 @@ private:
     /**
      * @brief Generate unique job ID
      */
-    QString generateJobId() const;
+    QString generateJobId();
 
     /**
      * @brief Handle job completion
@@ -194,10 +195,10 @@ private:
     QHash<QString, std::shared_ptr<JobState>> m_jobs;
 
     // Job ID counter
-    std::atomic<uint64_t> m_jobCounter{0};
+    mutable std::atomic<uint64_t> m_jobCounter{0};
 
     // Progress update timer
-    class QTimer* m_progressTimer = nullptr;
+    QTimer* m_progressTimer = nullptr;
 
     // Configuration
     int m_maxConcurrent = 2;

@@ -7,6 +7,8 @@
 
 #include <QDebug>
 #include <QMutexLocker>
+#include <QFile>
+#include <QIODevice>
 
 namespace FlashSentry {
 

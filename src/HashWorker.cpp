@@ -2,6 +2,7 @@
 
 #include <QTimer>
 #include <QUuid>
+#include <QDateTime>
 #include <QDebug>
 #include <QtConcurrent>
 
@@ -149,7 +150,7 @@ HashWorker::Algorithm HashWorker::algorithmFromName(const QString& name)
     return Algorithm::SHA256;  // Default
 }
 
-QString HashWorker::generateJobId() const
+QString HashWorker::generateJobId()
 {
     return QString("hash_%1_%2")
         .arg(QDateTime::currentMSecsSinceEpoch())

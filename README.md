@@ -1,5 +1,7 @@
 # FlashSentry
 
+**Disclaimer: FlashSentry is a work in progress, and the result of a test between 3 LLM's asked to vibe-code a working application given certain prompts with very little intervention. Claude Code produced by far the best result, and this is it. It does work, only on Arch, but the functionality is limited and it needs some work to really be something worthwhile. I'll get around to it and it won't take long but I'm working on other things right now. Gemini produced an app that was technically what I asked for, but really the bare-minimum, and needed a bit of work just to get it functioning. The third LLM didn't produce anything functional without lots of intervention. Gemini I do think has value at this stage but needs very specific direction, which can be a good thing to ensure you are getting exactly what you want. But the results of the test are that CC will be much more efficient as you can trust it to follow specific directions while doing a lot more at once. If I had made it myself for my purposes, it would have been a CLI application, but I wanted to see how they could do with QT6 and CC surprised me..**
+
 <p align="center">
   <img src="resources/icons/flashsentry.svg" alt="FlashSentry Logo" width="128" height="128">
 </p>

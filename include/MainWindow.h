@@ -15,6 +15,7 @@
 #include <QSettings>
 #include <memory>
 #include <QHash>
+#include <QSet>
 
 #include "Types.h"
 #include "DeviceMonitor.h"
@@ -205,6 +206,14 @@ private:
      */
     void handleNewDevice(const DeviceInfo& device);
 
+    void handleNewDevicePartition(const DeviceInfo& device);
+
+    QString driveKey(const DeviceInfo& device) const;
+
+    bool isDriveKnown(const DeviceInfo& device) const;
+
+    void whitelistDrivePartitions(const DeviceInfo& device);
+
     /**
      * @brief Handle known device (verify hash)
      */
@@ -241,10 +250,15 @@ private:
      */
     bool showNewDeviceDialog(const DeviceInfo& device);
 
-    /**
-     * @brief Show the modified device alert
-     */
-    void showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected, const QString& actual);
+    bool showNewDriveDialog(const DeviceInfo& device);
+
+    void acceptFingerprintAndMount(const DeviceInfo& device, const QString& actualHash,
+                                   const QString& algorithm);
+
+    bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
+                                 const QString& actual, bool manualMountRequest);
+
+    void offerUnmountWithoutHash(const QString& deviceNode, const QString& error);
 
     // Backend components
     std::unique_ptr<DeviceMonitor> m_deviceMonitor;
@@ -298,6 +312,9 @@ private:
     };
 
     QHash<QString, PendingHashAction> m_pendingHashActions;
+    QHash<QString, QString> m_lastVerificationHashes;
+    QSet<QString> m_drivePromptInProgress;
+    QSet<QString> m_rejectedDrives;
 
     // State
     bool m_isClosing = false;

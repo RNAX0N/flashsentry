@@ -187,6 +187,7 @@ struct AppSettings {
     // Security
     bool requireConfirmationForNew = true;
     bool requireConfirmationForModified = true;
+    bool promptPerPartition = false;
     bool blockModifiedDevices = false;
     int defaultTrustLevel = 0;
     
@@ -214,6 +215,7 @@ struct AppSettings {
         obj["auto_hash_on_eject"] = autoHashOnEject;
         obj["require_confirmation_new"] = requireConfirmationForNew;
         obj["require_confirmation_modified"] = requireConfirmationForModified;
+        obj["prompt_per_partition"] = promptPerPartition;
         obj["block_modified_devices"] = blockModifiedDevices;
         obj["default_trust_level"] = defaultTrustLevel;
         obj["hash_algorithm"] = hashAlgorithm;
@@ -237,6 +239,7 @@ struct AppSettings {
         settings.autoHashOnEject = obj["auto_hash_on_eject"].toBool(true);
         settings.requireConfirmationForNew = obj["require_confirmation_new"].toBool(true);
         settings.requireConfirmationForModified = obj["require_confirmation_modified"].toBool(true);
+        settings.promptPerPartition = obj["prompt_per_partition"].toBool(false);
         settings.blockModifiedDevices = obj["block_modified_devices"].toBool(false);
         settings.defaultTrustLevel = obj["default_trust_level"].toInt(0);
         settings.hashAlgorithm = obj["hash_algorithm"].toString("SHA256");

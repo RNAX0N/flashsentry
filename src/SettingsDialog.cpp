@@ -40,6 +40,7 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     m_autoHashOnEjectCheck->setChecked(settings.autoHashOnEject);
     m_confirmNewDeviceCheck->setChecked(settings.requireConfirmationForNew);
     m_confirmModifiedCheck->setChecked(settings.requireConfirmationForModified);
+    m_promptPerPartitionCheck->setChecked(settings.promptPerPartition);
     m_blockModifiedCheck->setChecked(settings.blockModifiedDevices);
     m_defaultTrustCombo->setCurrentIndex(settings.defaultTrustLevel);
     
@@ -80,6 +81,7 @@ AppSettings SettingsDialog::getSettings() const
     settings.autoHashOnEject = m_autoHashOnEjectCheck->isChecked();
     settings.requireConfirmationForNew = m_confirmNewDeviceCheck->isChecked();
     settings.requireConfirmationForModified = m_confirmModifiedCheck->isChecked();
+    settings.promptPerPartition = m_promptPerPartitionCheck->isChecked();
     settings.blockModifiedDevices = m_blockModifiedCheck->isChecked();
     settings.defaultTrustLevel = m_defaultTrustCombo->currentIndex();
     
@@ -207,10 +209,19 @@ QWidget* SettingsDialog::createSecurityTab()
     connect(m_confirmNewDeviceCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     confirmLayout->addWidget(m_confirmNewDeviceCheck);
     
-    m_confirmModifiedCheck = new QCheckBox("Alert when device hash doesn't match");
-    m_confirmModifiedCheck->setToolTip("Show a warning when a known device has been modified");
+    m_confirmModifiedCheck = new QCheckBox("Confirm before mounting modified devices");
+    m_confirmModifiedCheck->setToolTip(
+        "When you manually mount a modified partition, show expected vs actual hash "
+        "and require confirmation (uses the verification hash; no re-hash)");
     connect(m_confirmModifiedCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     confirmLayout->addWidget(m_confirmModifiedCheck);
+
+    m_promptPerPartitionCheck = new QCheckBox("Prompt separately for each partition");
+    m_promptPerPartitionCheck->setToolTip(
+        "Default: one whitelist prompt per physical drive (all partitions). "
+        "Enable to prompt once per partition instead.");
+    connect(m_promptPerPartitionCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    confirmLayout->addWidget(m_promptPerPartitionCheck);
     
     m_blockModifiedCheck = new QCheckBox("Block mounting of modified devices");
     m_blockModifiedCheck->setToolTip("Prevent automatic mounting of devices that fail hash verification");

@@ -158,6 +158,7 @@ private:
     QCheckBox* m_autoHashOnEjectCheck = nullptr;
     QCheckBox* m_confirmNewDeviceCheck = nullptr;
     QCheckBox* m_confirmModifiedCheck = nullptr;
+    QCheckBox* m_promptPerPartitionCheck = nullptr;
     QCheckBox* m_blockModifiedCheck = nullptr;
     QComboBox* m_defaultTrustCombo = nullptr;
 

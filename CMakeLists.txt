@@ -22,8 +22,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Optimization flags
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -flto -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -Wpedantic -fsanitize=address,undefined")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -Wpedantic")
 
 # ============================================================================
 # Dependencies
@@ -49,6 +49,7 @@ set(SOURCES
     src/MainWindow.cpp
     src/DeviceMonitor.cpp
     src/HashWorker.cpp
+    src/RawDeviceHash.cpp
     src/DatabaseManager.cpp
     src/MountManager.cpp
     src/DeviceCard.cpp
@@ -108,12 +109,36 @@ if(LIBNOTIFY_FOUND)
 endif()
 
 # ============================================================================
-# Installation
+# Privileged read helper (polkit)
 # ============================================================================
 include(GNUInstallDirs)
 
+set(FLASHSENTRY_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/flashsentry/flashsentry-read-helper")
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    FLASHSENTRY_READ_HELPER_PATH="${FLASHSENTRY_READ_HELPER}"
+)
+
+add_executable(flashsentry-read-helper
+    src/flashsentry-read-helper.cpp
+    src/RawDeviceHash.cpp
+)
+target_include_directories(flashsentry-read-helper PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${OPENSSL_INCLUDE_DIRS}
+)
+target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
+
+
+# ============================================================================
+# Installation
+# ============================================================================
+
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+install(TARGETS flashsentry-read-helper
+    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/flashsentry
 )
 
 install(FILES packaging/flashsentry.desktop
@@ -149,13 +174,7 @@ endif()
 # ============================================================================
 # Package Info
 # ============================================================================
-message(STATUS "")
-message(STATUS "FlashSentry v${PROJECT_VERSION}")
-message(STATUS "  Build type:    ${CMAKE_BUILD_TYPE}")
-message(STATUS "  C++ Standard:  ${CMAKE_CXX_STANDARD}")
-message(STATUS "  Qt6 Version:   ${Qt6_VERSION}")
-message(STATUS "  libnotify:     ${LIBNOTIFY_FOUND}")
-message(STATUS "  Install to:    ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "  Read helper:   ${FLASHSENTRY_READ_HELPER}")
 message(STATUS "")
 
 option(FLASHSENTRY_BUILD_TESTS "Build unit tests" ON)
@@ -163,3 +182,10 @@ if(FLASHSENTRY_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+message(STATUS "FlashSentry v${PROJECT_VERSION}")
+message(STATUS "  Build type:    ${CMAKE_BUILD_TYPE}")
+message(STATUS "  C++ Standard:  ${CMAKE_CXX_STANDARD}")
+message(STATUS "  Qt6 Version:   ${Qt6_VERSION}")
+message(STATUS "  libnotify:     ${LIBNOTIFY_FOUND}")
+message(STATUS "  Install to:    ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "")

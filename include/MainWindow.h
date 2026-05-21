@@ -222,7 +222,7 @@ private:
     /**
      * @brief Start hashing a device
      */
-    void startHashing(const QString& deviceNode);
+    void startHashing(const QString& deviceNode, bool skipUnmount = false);
 
     void hashAllPartitionsOnParent(const DeviceInfo& device);
 
@@ -315,6 +315,7 @@ private:
     QHash<QString, QString> m_lastVerificationHashes;
     QSet<QString> m_drivePromptInProgress;
     QSet<QString> m_rejectedDrives;
+    QSet<QString> m_unmountBeforeHash;
 
     // State
     bool m_isClosing = false;

@@ -989,6 +989,20 @@ void MainWindow::onMountCompleted(const MountManager::MountResult& result)
 
 void MainWindow::onUnmountCompleted(const MountManager::UnmountResult& result)
 {
+    if (m_unmountBeforeHash.remove(result.deviceNode)) {
+        if (result.success) {
+            logMessage(QString("Unmounted %1; starting hash").arg(result.deviceNode));
+            m_deviceMonitor->rescan();
+            startHashing(result.deviceNode, true);
+        } else {
+            logMessage(QString("Pre-hash unmount failed for %1: %2")
+                           .arg(result.deviceNode, result.errorMessage),
+                       LogLevel::Error);
+            m_pendingHashActions.remove(result.deviceNode);
+        }
+        return;
+    }
+
     if (result.success) {
         logMessage(QString("Unmounted %1").arg(result.deviceNode));
         m_deviceMonitor->rescan();
@@ -1303,7 +1317,7 @@ void MainWindow::updateDeviceCard(const DeviceInfo& device)
     }
 }
 
-void MainWindow::startHashing(const QString& deviceNode)
+void MainWindow::startHashing(const QString& deviceNode, bool skipUnmount)
 {
     if (m_hashJobDevices.values().contains(deviceNode)) {
         return;
@@ -1312,6 +1326,17 @@ void MainWindow::startHashing(const QString& deviceNode)
     auto deviceInfo = m_deviceMonitor->getDevice(deviceNode);
     if (!deviceInfo) {
         return;
+    }
+
+    if (!skipUnmount) {
+        const bool mounted = deviceInfo->isMounted
+            || !m_mountManager->getMountPoint(deviceNode).isEmpty();
+        if (mounted) {
+            logMessage(QString("Unmounting %1 before hash verification").arg(deviceNode));
+            m_unmountBeforeHash.insert(deviceNode);
+            m_mountManager->unmount(deviceNode);
+            return;
+        }
     }
 
     HashWorker::HashJob job;

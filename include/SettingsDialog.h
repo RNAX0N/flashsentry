@@ -71,7 +71,7 @@ signals:
     /**
      * @brief Emitted when user requests database import
      */
-    void importDatabaseRequested(const QString& path);
+    void importDatabaseRequested(const QString& path, bool merge);
 
     /**
      * @brief Emitted when user requests database backup

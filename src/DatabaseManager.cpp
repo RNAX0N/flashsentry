@@ -70,6 +70,13 @@ bool DatabaseManager::hasDevice(const QString& uniqueId) const
     return m_devices.contains(uniqueId);
 }
 
+bool DatabaseManager::hasDevice(const DeviceInfo& device) const
+{
+    QReadLocker locker(&m_lock);
+    return m_devices.contains(device.uniqueId())
+        || m_devices.contains(device.legacyUniqueId());
+}
+
 std::optional<DeviceRecord> DatabaseManager::getDevice(const QString& uniqueId) const
 {
     QReadLocker locker(&m_lock);
@@ -78,6 +85,60 @@ std::optional<DeviceRecord> DatabaseManager::getDevice(const QString& uniqueId) 
         return *it;
     }
     return std::nullopt;
+}
+
+
+QString DatabaseManager::canonicalUniqueId(const DeviceInfo& device)
+{
+    const QString newId = device.uniqueId();
+    const QString legacyId = device.legacyUniqueId();
+
+    {
+        QReadLocker locker(&m_lock);
+        if (m_devices.contains(newId)) {
+            return newId;
+        }
+        if (!m_devices.contains(legacyId)) {
+            return newId;
+        }
+    }
+
+    {
+        QWriteLocker locker(&m_lock);
+        auto legacyIt = m_devices.find(legacyId);
+        if (legacyIt == m_devices.end()) {
+            return newId;
+        }
+        if (m_devices.contains(newId)) {
+            return newId;
+        }
+
+        DeviceRecord record = legacyIt.value();
+        m_devices.erase(legacyIt);
+        record.uniqueId = newId;
+        record.lastKnownInfo = device;
+        m_devices.insert(newId, record);
+        markModified();
+        emit deviceUpdated(newId);
+        return newId;
+    }
+}
+
+std::optional<DeviceRecord> DatabaseManager::getDevice(const DeviceInfo& device)
+{
+    {
+        QReadLocker locker(&m_lock);
+        auto it = m_devices.find(device.uniqueId());
+        if (it != m_devices.end()) {
+            return *it;
+        }
+        if (!m_devices.contains(device.legacyUniqueId())) {
+            return std::nullopt;
+        }
+    }
+
+    const QString id = canonicalUniqueId(device);
+    return getDevice(id);
 }
 
 QList<DeviceRecord> DatabaseManager::getAllDevices() const
@@ -265,6 +326,29 @@ bool DatabaseManager::verifyHash(const QString& uniqueId, const QString& hash) c
     }
     
     return matches;
+}
+
+bool DatabaseManager::verifyHash(const DeviceInfo& device, const QString& hash) const
+{
+    QReadLocker locker(&m_lock);
+
+    auto lookup = [&](const QString& id) -> bool {
+        auto it = m_devices.find(id);
+        if (it == m_devices.end()) {
+            return false;
+        }
+        const bool matches = (it->hash.compare(hash, Qt::CaseInsensitive) == 0);
+        if (!matches && !it->hash.isEmpty()) {
+            const_cast<DatabaseManager*>(this)->emit hashMismatch(
+                id, it->hash, hash);
+        }
+        return matches;
+    };
+
+    if (lookup(device.uniqueId())) {
+        return true;
+    }
+    return lookup(device.legacyUniqueId());
 }
 
 bool DatabaseManager::setTrustLevel(const QString& uniqueId, int level)

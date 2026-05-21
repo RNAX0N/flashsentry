@@ -7,6 +7,8 @@
 #include <QHash>
 #include <QElapsedTimer>
 #include <QTimer>
+#include <QQueue>
+#include <QPair>
 #include <atomic>
 #include <memory>
 
@@ -190,9 +192,20 @@ private:
      */
     void updateProgress();
 
+    /**
+     * @brief Start queued jobs when capacity is available
+     */
+    void processPendingQueue();
+
+    /**
+     * @brief Run a hash job (must hold no locks that block on pool)
+     */
+    QString launchJob(const QString& jobId, const HashJob& job);
+
     // Active jobs
     mutable QMutex m_jobsMutex;
     QHash<QString, std::shared_ptr<JobState>> m_jobs;
+    QQueue<QPair<QString, HashJob>> m_pendingQueue;
 
     // Job ID counter
     mutable std::atomic<uint64_t> m_jobCounter{0};

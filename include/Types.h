@@ -31,10 +31,23 @@ struct DeviceInfo {
         return deviceNode.split('/').last();
     }
     
+    /** Stable ID including partition (e.g. SERIAL_vendor_model/sdb1). */
     QString uniqueId() const {
-        return serial.isEmpty() ? 
-            QString("%1_%2").arg(vendor, model) :
-            QString("%1_%2_%3").arg(serial, vendor, model);
+        const QString base = serial.isEmpty()
+            ? QString("%1_%2").arg(vendor, model)
+            : QString("%1_%2_%3").arg(serial, vendor, model);
+        const QString partition = deviceNode.section('/', -1);
+        if (partition.isEmpty()) {
+            return base;
+        }
+        return QString("%1/%2").arg(base, partition);
+    }
+
+    /** Pre-1.1 ID without partition suffix (for database migration). */
+    QString legacyUniqueId() const {
+        return serial.isEmpty()
+            ? QString("%1_%2").arg(vendor, model)
+            : QString("%1_%2_%3").arg(serial, vendor, model);
     }
     
     QJsonObject toJson() const {

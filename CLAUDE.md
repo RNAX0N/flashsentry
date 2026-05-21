@@ -172,7 +172,7 @@ gsettings set org.gnome.desktop.media-handling automount false
   "version": "1.0",
   "devices": [
     {
-      "unique_id": "SERIAL_VENDOR_MODEL",
+      "unique_id": "SERIAL_VENDOR_MODEL/sdb1",
       "hash": "sha256_hex_string",
       "hash_algorithm": "SHA256",
       "first_seen": "2024-01-01T00:00:00Z",

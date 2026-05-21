@@ -578,7 +578,7 @@ void SettingsDialog::onImportDatabase()
             QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
         
         if (reply != QMessageBox::Cancel) {
-            emit importDatabaseRequested(path);
+            emit importDatabaseRequested(path, reply == QMessageBox::Yes);
         }
     }
 }

@@ -54,6 +54,8 @@ public:
      */
     bool shouldMinimizeToTray() const;
 
+    bool wantsStartMinimized() const { return m_settings.startMinimized; }
+
 public slots:
     /**
      * @brief Show and raise the window
@@ -64,6 +66,9 @@ public slots:
      * @brief Toggle window visibility
      */
     void toggleVisibility();
+
+    void showSettingsDialog();
+
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -210,6 +215,12 @@ private:
      */
     void startHashing(const QString& deviceNode);
 
+    void hashAllPartitionsOnParent(const DeviceInfo& device);
+
+    QString canonicalDeviceId(const DeviceInfo& device);
+
+    void mountIfVerified(const QString& deviceNode);
+
     /**
      * @brief Log a message to the log panel
      */
@@ -279,6 +290,14 @@ private:
     // Device tracking
     QHash<QString, DeviceCard*> m_deviceCards;  // deviceNode -> card
     QHash<QString, QString> m_hashJobDevices;   // jobId -> deviceNode
+
+    enum class PendingHashAction {
+        None,
+        MountAfterVerify,
+        UnmountAfterVerify
+    };
+
+    QHash<QString, PendingHashAction> m_pendingHashActions;
 
     // State
     bool m_isClosing = false;

@@ -70,12 +70,18 @@ public:
      */
     bool hasDevice(const QString& uniqueId) const;
 
+    bool hasDevice(const DeviceInfo& device) const;
+
     /**
      * @brief Get a device record
      * @param uniqueId Device unique identifier
      * @return Device record if found
      */
     std::optional<DeviceRecord> getDevice(const QString& uniqueId) const;
+
+    std::optional<DeviceRecord> getDevice(const DeviceInfo& device);
+
+    QString canonicalUniqueId(const DeviceInfo& device);
 
     /**
      * @brief Get all device records
@@ -158,6 +164,11 @@ public:
      * @return true if matches, false if different or not found
      */
     bool verifyHash(const QString& uniqueId, const QString& hash) const;
+
+    /**
+     * @brief Verify hash using the stored algorithm for the device
+     */
+    bool verifyHash(const DeviceInfo& device, const QString& hash) const;
 
     // ========================================================================
     // Trust Level Operations

@@ -23,7 +23,7 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
     // Initialize settings storage
-    m_qsettings = std::make_unique<QSettings>("FlashSentry", "FlashSentry");
+    m_qsettings = std::make_unique<QSettings>("flashsentry", "FlashSentry");
     
     // Initialize the style manager
     FSStyle.initialize();
@@ -371,6 +371,10 @@ void MainWindow::connectSignals()
             this, &MainWindow::onDeviceChanged);
     connect(m_deviceMonitor.get(), &DeviceMonitor::initialScanComplete,
             this, &MainWindow::onInitialScanComplete);
+    connect(m_deviceMonitor.get(), &DeviceMonitor::monitorError,
+            this, [this](const QString& error) {
+                logMessage(QString("Device monitor error: %1").arg(error), LogLevel::Error);
+            });
     
     // Hash worker signals
     connect(m_hashWorker.get(), &HashWorker::hashStarted,
@@ -513,6 +517,11 @@ void MainWindow::showAndRaise()
     m_trayIcon->updateWindowVisibility(true);
 }
 
+void MainWindow::showSettingsDialog()
+{
+    onSettingsClicked();
+}
+
 void MainWindow::toggleVisibility()
 {
     if (isVisible()) {
@@ -559,10 +568,8 @@ void MainWindow::onDeviceConnected(const DeviceInfo& device)
     DeviceCard* card = addDeviceCard(device);
     
     // Check if device is known
-    QString deviceId = device.uniqueId();
-    
-    if (m_database->hasDevice(deviceId)) {
-        auto record = m_database->getDevice(deviceId);
+    if (m_database->hasDevice(device)) {
+        auto record = m_database->getDevice(device);
         if (record) {
             handleKnownDevice(device, *record);
             m_trayIcon->notifyDeviceConnected(device, true);
@@ -637,10 +644,8 @@ void MainWindow::handleNewDevice(const DeviceInfo& device)
             // Start hashing
             if (m_settings.autoHashOnConnect) {
                 startHashing(device.deviceNode);
+                hashAllPartitionsOnParent(device);
             }
-            
-            // Mount the device
-            m_mountManager->mount(device.deviceNode);
         } else {
             logMessage(QString("Device rejected: %1").arg(device.displayName()), LogLevel::Warning);
         }
@@ -657,31 +662,28 @@ void MainWindow::handleNewDevice(const DeviceInfo& device)
         
         if (m_settings.autoHashOnConnect) {
             startHashing(device.deviceNode);
+            hashAllPartitionsOnParent(device);
         }
     }
 }
 
 void MainWindow::handleKnownDevice(const DeviceInfo& device, const DeviceRecord& record)
 {
-    // Update last seen
-    m_database->updateLastSeen(record.uniqueId);
+    const QString deviceId = m_database->canonicalUniqueId(device);
+    m_database->updateLastSeen(deviceId);
     
     DeviceCard* card = getDeviceCard(device.deviceNode);
     if (card) {
-        card->setDeviceRecord(record);
+        if (auto updated = m_database->getDevice(deviceId)) {
+            card->setDeviceRecord(*updated);
+        } else {
+            card->setDeviceRecord(record);
+        }
     }
     
-    if (m_settings.autoHashOnConnect && !record.hash.isEmpty()) {
-        // Verify hash
+    if (m_settings.autoHashOnConnect) {
         startHashing(device.deviceNode);
-    } else if (m_settings.autoHashOnConnect) {
-        // No stored hash, calculate one
-        startHashing(device.deviceNode);
-    } else {
-        // Trusted, mount directly
-        if (record.autoMount || record.trustLevel >= 2) {
-            m_mountManager->mount(device.deviceNode);
-        }
+        hashAllPartitionsOnParent(device);
     }
 }
 
@@ -734,15 +736,31 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
     
     if (!deviceInfo) {
         logMessage(QString("Hash completed but device disconnected: %1").arg(deviceNode));
+        m_pendingHashActions.remove(deviceNode);
         return;
     }
     
-    QString deviceId = deviceInfo->uniqueId();
+    const PendingHashAction pending = m_pendingHashActions.take(deviceNode);
+    const QString deviceId = canonicalDeviceId(*deviceInfo);
     auto record = m_database->getDevice(deviceId);
     
+    auto finishVerified = [&]() {
+        if (pending == PendingHashAction::UnmountAfterVerify) {
+            m_mountManager->unmount(deviceNode);
+            return;
+        }
+        if (!deviceInfo->isMounted) {
+            if (pending == PendingHashAction::MountAfterVerify
+                || pending == PendingHashAction::None) {
+                m_mountManager->mount(deviceNode);
+            } else {
+                mountIfVerified(deviceNode);
+            }
+        }
+    };
+    
     if (record && !record->hash.isEmpty()) {
-        // Verify against stored hash
-        if (m_database->verifyHash(deviceId, result.hash)) {
+        if (m_database->verifyHash(*deviceInfo, result.hash)) {
             logMessage(QString("Verified: %1 - hash matches").arg(deviceInfo->displayName()));
             
             if (card) {
@@ -752,13 +770,8 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             }
             
             m_trayIcon->notifyVerificationResult(deviceInfo->displayName(), VerificationStatus::Verified);
-            
-            // Mount if not already
-            if (!deviceInfo->isMounted) {
-                m_mountManager->mount(deviceNode);
-            }
+            finishVerified();
         } else {
-            // Hash mismatch!
             logMessage(QString("ALERT: %1 - hash MISMATCH!").arg(deviceInfo->displayName()), LogLevel::Security);
             
             if (card) {
@@ -770,7 +783,6 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             m_trayIcon->notifyVerificationResult(deviceInfo->displayName(), VerificationStatus::Modified);
         }
     } else {
-        // First hash for this device
         m_database->updateHash(deviceId, result.hash, result.algorithm, result.durationMs);
         logMessage(QString("Hash stored for %1").arg(deviceInfo->displayName()));
         
@@ -780,11 +792,7 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
         }
         
         m_trayIcon->notifyHashCompleted(deviceInfo->displayName(), result.durationMs, result.speedMBps());
-        
-        // Mount if not already
-        if (!deviceInfo->isMounted) {
-            m_mountManager->mount(deviceNode);
-        }
+        finishVerified();
     }
     
     if (m_activeHashCount == 0) {
@@ -799,6 +807,7 @@ void MainWindow::onHashFailed(const QString& jobId, const QString& error)
 {
     QString deviceNode = m_hashJobDevices.take(jobId);
     m_activeHashCount = qMax(0, m_activeHashCount - 1);
+    m_pendingHashActions.remove(deviceNode);
     
     logMessage(QString("Hash failed for %1: %2").arg(deviceNode, error), LogLevel::Error);
     
@@ -820,6 +829,7 @@ void MainWindow::onHashCancelled(const QString& jobId)
 {
     QString deviceNode = m_hashJobDevices.take(jobId);
     m_activeHashCount = qMax(0, m_activeHashCount - 1);
+    m_pendingHashActions.remove(deviceNode);
     
     logMessage(QString("Hash cancelled for %1").arg(deviceNode));
     
@@ -893,7 +903,15 @@ void MainWindow::onHashMismatch(const QString& uniqueId, const QString& expected
 void MainWindow::onMountRequested(const QString& deviceNode)
 {
     logMessage(QString("Mount requested: %1").arg(deviceNode));
-    m_mountManager->mount(deviceNode);
+
+    DeviceCard* card = getDeviceCard(deviceNode);
+    if (card && card->verificationStatus() == VerificationStatus::Verified) {
+        m_mountManager->mount(deviceNode);
+        return;
+    }
+
+    m_pendingHashActions[deviceNode] = PendingHashAction::MountAfterVerify;
+    startHashing(deviceNode);
 }
 
 void MainWindow::onUnmountRequested(const QString& deviceNode)
@@ -901,11 +919,10 @@ void MainWindow::onUnmountRequested(const QString& deviceNode)
     auto device = m_deviceMonitor->getDevice(deviceNode);
     if (!device) return;
     
-    // Re-hash before unmount if enabled
     if (m_settings.autoHashOnEject) {
         logMessage(QString("Re-hashing before unmount: %1").arg(deviceNode));
+        m_pendingHashActions[deviceNode] = PendingHashAction::UnmountAfterVerify;
         startHashing(deviceNode);
-        // Note: Mount manager will be called after hash completes
     } else {
         m_mountManager->unmount(deviceNode);
     }
@@ -999,11 +1016,57 @@ void MainWindow::onSettingsClicked()
     dialog.loadSettings(m_settings);
     
     connect(&dialog, &SettingsDialog::themeChanged, this, &MainWindow::onThemeChanged);
+    connect(&dialog, &SettingsDialog::exportDatabaseRequested, this,
+            [this](const QString& path) {
+                if (m_database->exportToFile(path)) {
+                    logMessage(QString("Database exported to %1").arg(path));
+                    QMessageBox::information(this, "Export Complete",
+                                             "Database exported successfully.");
+                } else {
+                    QMessageBox::warning(this, "Export Failed",
+                                         "Could not export the database.");
+                }
+            });
+    connect(&dialog, &SettingsDialog::importDatabaseRequested, this,
+            [this](const QString& path, bool merge) {
+                const int count = m_database->importFromFile(path, merge);
+                if (count >= 0) {
+                    logMessage(QString("Imported %1 device(s) from %2").arg(count).arg(path));
+                    updateSidebarStats();
+                    QMessageBox::information(this, "Import Complete",
+                                             QString("Imported %1 device(s).").arg(count));
+                } else {
+                    QMessageBox::warning(this, "Import Failed",
+                                         "Could not import the database file.");
+                }
+            });
+    connect(&dialog, &SettingsDialog::backupDatabaseRequested, this, [this, &dialog]() {
+        const QString backupPath = m_database->createBackup();
+        if (!backupPath.isEmpty()) {
+            logMessage(QString("Database backup: %1").arg(backupPath));
+            QMessageBox::information(&dialog, "Backup Created",
+                                     QString("Backup saved to:\n%1").arg(backupPath));
+        } else {
+            QMessageBox::warning(&dialog, "Backup Failed",
+                                 "Could not create a database backup.");
+        }
+    });
+    connect(&dialog, &SettingsDialog::clearDatabaseRequested, this, [this]() {
+        m_database->clearAllDevices();
+        logMessage("Database cleared", LogLevel::Warning);
+        updateSidebarStats();
+    });
     
     if (dialog.exec() == QDialog::Accepted) {
+        const QString previousDbPath = m_database->databasePath();
         m_settings = dialog.getSettings();
         applySettings(m_settings);
         saveSettings();
+
+        if (!m_settings.databasePath.isEmpty()
+            && m_settings.databasePath != previousDbPath) {
+            m_database->initialize(m_settings.databasePath);
+        }
     }
 }
 
@@ -1089,13 +1152,73 @@ void MainWindow::updateDeviceCard(const DeviceInfo& device)
 
 void MainWindow::startHashing(const QString& deviceNode)
 {
+    if (m_hashJobDevices.values().contains(deviceNode)) {
+        return;
+    }
+
+    auto deviceInfo = m_deviceMonitor->getDevice(deviceNode);
+    if (!deviceInfo) {
+        return;
+    }
+
     HashWorker::HashJob job;
     job.deviceNode = deviceNode;
-    job.algorithm = HashWorker::algorithmFromName(m_settings.hashAlgorithm);
     job.bufferSizeKB = m_settings.hashBufferSizeKB;
     job.useMemoryMapping = m_settings.useMemoryMapping;
-    
+
+    if (auto record = m_database->getDevice(*deviceInfo)) {
+        job.algorithm = HashWorker::algorithmFromName(
+            record->hashAlgorithm.isEmpty() ? m_settings.hashAlgorithm : record->hashAlgorithm);
+    } else {
+        job.algorithm = HashWorker::algorithmFromName(m_settings.hashAlgorithm);
+    }
+
     m_hashWorker->startHash(job);
+}
+
+QString MainWindow::canonicalDeviceId(const DeviceInfo& device)
+{
+    return m_database->canonicalUniqueId(device);
+}
+
+void MainWindow::hashAllPartitionsOnParent(const DeviceInfo& device)
+{
+    if (!m_settings.autoHashOnConnect || device.parentDevice.isEmpty()) {
+        return;
+    }
+
+    for (const DeviceInfo& sibling : m_deviceMonitor->connectedDevices()) {
+        if (sibling.parentDevice != device.parentDevice) {
+            continue;
+        }
+        if (sibling.deviceNode == device.deviceNode) {
+            continue;
+        }
+        if (!m_database->hasDevice(sibling)) {
+            continue;
+        }
+        if (m_hashJobDevices.values().contains(sibling.deviceNode)) {
+            continue;
+        }
+        startHashing(sibling.deviceNode);
+    }
+}
+
+void MainWindow::mountIfVerified(const QString& deviceNode)
+{
+    auto deviceInfo = m_deviceMonitor->getDevice(deviceNode);
+    if (!deviceInfo || deviceInfo->isMounted) {
+        return;
+    }
+
+    auto record = m_database->getDevice(canonicalDeviceId(*deviceInfo));
+    if (!record) {
+        return;
+    }
+
+    if (record->autoMount || record->trustLevel >= 2) {
+        m_mountManager->mount(deviceNode);
+    }
 }
 
 void MainWindow::logMessage(const QString& message, LogLevel level)
@@ -1194,39 +1317,55 @@ bool MainWindow::showNewDeviceDialog(const DeviceInfo& device)
 
 void MainWindow::showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected, const QString& actual)
 {
-    QString message = QString(
-        "<b style='color: red;'>⚠️ SECURITY ALERT ⚠️</b><br><br>"
-        "Device <b>%1</b> has been <b>MODIFIED</b> since last use!<br><br>"
-        "<b>Device:</b> %2<br>"
-        "<b>Expected Hash:</b><br><code>%3</code><br>"
-        "<b>Actual Hash:</b><br><code>%4</code><br><br>"
-        "This device may have been tampered with. "
-        "Do you want to mount it anyway?")
-        .arg(device.displayName())
-        .arg(device.deviceNode)
-        .arg(expected.left(32) + "...")
-        .arg(actual.left(32) + "...");
-    
+    logMessage(QString("Modified device detected: %1").arg(device.displayName()), LogLevel::Security);
+
+    if (m_settings.blockModifiedDevices) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Security Alert - Device Modified");
+        msgBox.setIcon(QMessageBox::Critical);
+        msgBox.setTextFormat(Qt::RichText);
+        msgBox.setText(QString(
+            "<b>Device %1 was modified.</b><br><br>"
+            "<b>Partition:</b> %2<br>"
+            "<b>Expected:</b><br><code>%3</code><br>"
+            "<b>Actual:</b><br><code>%4</code><br><br>"
+            "Mounting is blocked by your security settings.")
+            .arg(device.displayName(), device.deviceNode, expected, actual));
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.exec();
+        return;
+    }
+
+    if (!m_settings.requireConfirmationForModified) {
+        return;
+    }
+
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Security Alert - Device Modified");
     msgBox.setTextFormat(Qt::RichText);
-    msgBox.setText(message);
+    msgBox.setText(QString(
+        "<b style='color: red;'>Device %1 was modified</b><br><br>"
+        "<b>Partition:</b> %2<br>"
+        "<b>Expected Hash:</b><br><code>%3</code><br>"
+        "<b>Actual Hash:</b><br><code>%4</code><br><br>"
+        "Accept the new fingerprint to mount this partition.")
+        .arg(device.displayName(), device.deviceNode, expected, actual));
     msgBox.setIcon(QMessageBox::Critical);
-    
-    if (m_settings.blockModifiedDevices) {
-        msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.exec();
-    } else {
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::No);
-        
-        if (msgBox.exec() == QMessageBox::Yes) {
-            // Update hash to new value
-            m_database->updateHash(device.uniqueId(), actual, m_settings.hashAlgorithm, 0);
-            m_mountManager->mount(device.deviceNode);
-            logMessage(QString("User accepted modified device: %1").arg(device.displayName()), LogLevel::Warning);
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setDefaultButton(QMessageBox::No);
+
+    if (msgBox.exec() == QMessageBox::Yes) {
+        const QString deviceId = canonicalDeviceId(device);
+        m_database->updateHash(deviceId, actual, m_settings.hashAlgorithm, 0);
+        DeviceCard* card = getDeviceCard(device.deviceNode);
+        if (card) {
+            card->setVerificationStatus(VerificationStatus::Verified);
         }
+        m_mountManager->mount(device.deviceNode);
+        logMessage(QString("User accepted new fingerprint for: %1").arg(device.displayName()),
+                   LogLevel::Warning);
     }
 }
+
 
 } // namespace FlashSentry

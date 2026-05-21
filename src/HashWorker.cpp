@@ -34,8 +34,22 @@ HashWorker::~HashWorker()
 
 QString HashWorker::startHash(const HashJob& job)
 {
-    QString jobId = generateJobId();
-    
+    const QString jobId = generateJobId();
+
+    {
+        QMutexLocker locker(&m_jobsMutex);
+        if (m_jobs.size() >= m_maxConcurrent) {
+            m_pendingQueue.enqueue(qMakePair(jobId, job));
+            return jobId;
+        }
+    }
+
+    launchJob(jobId, job);
+    return jobId;
+}
+
+QString HashWorker::launchJob(const QString& jobId, const HashJob& job)
+{
     auto state = std::make_shared<JobState>();
     state->jobId = jobId;
     state->config = job;
@@ -43,31 +57,44 @@ QString HashWorker::startHash(const HashJob& job)
     state->bytesProcessed.store(0);
     state->totalBytes.store(getDeviceSize(job.deviceNode));
     state->timer.start();
-    
-    // Create future watcher
+
     state->watcher = std::make_unique<QFutureWatcher<HashResult>>();
-    
-    // Connect watcher signals
     connect(state->watcher.get(), &QFutureWatcher<HashResult>::finished,
             this, [this, jobId]() { onJobFinished(jobId); });
-    
-    // Start the hash operation in thread pool
+
     state->future = QtConcurrent::run(&HashWorker::executeHash, state);
     state->watcher->setFuture(state->future);
-    
+
     {
         QMutexLocker locker(&m_jobsMutex);
         m_jobs.insert(jobId, state);
-        
-        // Start progress timer if not already running
         if (!m_progressTimer->isActive()) {
             m_progressTimer->start();
         }
     }
-    
+
     emit hashStarted(jobId, job.deviceNode);
-    
     return jobId;
+}
+
+void HashWorker::processPendingQueue()
+{
+    for (;;) {
+        QString jobId;
+        HashJob job;
+
+        {
+            QMutexLocker locker(&m_jobsMutex);
+            if (m_pendingQueue.isEmpty() || m_jobs.size() >= m_maxConcurrent) {
+                return;
+            }
+            const auto entry = m_pendingQueue.dequeue();
+            jobId = entry.first;
+            job = entry.second;
+        }
+
+        launchJob(jobId, job);
+    }
 }
 
 bool HashWorker::cancelHash(const QString& jobId)
@@ -86,7 +113,8 @@ bool HashWorker::cancelHash(const QString& jobId)
 void HashWorker::cancelAll()
 {
     QMutexLocker locker(&m_jobsMutex);
-    
+
+    m_pendingQueue.clear();
     for (auto& state : m_jobs) {
         state->cancelled.store(true);
     }
@@ -128,6 +156,7 @@ double HashWorker::progress(const QString& jobId) const
 void HashWorker::setMaxConcurrent(int max)
 {
     m_maxConcurrent = qMax(1, max);
+    processPendingQueue();
 }
 
 QString HashWorker::algorithmName(Algorithm algo)
@@ -178,12 +207,13 @@ void HashWorker::onJobFinished(const QString& jobId)
     
     if (state->cancelled.load()) {
         emit hashCancelled(jobId);
+        processPendingQueue();
         return;
     }
-    
+
     try {
         HashResult result = state->future.result();
-        
+
         if (result.success) {
             emit hashCompleted(jobId, result);
         } else {
@@ -192,6 +222,8 @@ void HashWorker::onJobFinished(const QString& jobId)
     } catch (const std::exception& e) {
         emit hashFailed(jobId, QString("Exception: %1").arg(e.what()));
     }
+
+    processPendingQueue();
 }
 
 void HashWorker::updateProgress()

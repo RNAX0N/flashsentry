@@ -31,10 +31,23 @@ struct DeviceInfo {
         return deviceNode.split('/').last();
     }
     
+    /** Stable ID including partition (e.g. SERIAL_vendor_model/sdb1). */
     QString uniqueId() const {
-        return serial.isEmpty() ? 
-            QString("%1_%2").arg(vendor, model) :
-            QString("%1_%2_%3").arg(serial, vendor, model);
+        const QString base = serial.isEmpty()
+            ? QString("%1_%2").arg(vendor, model)
+            : QString("%1_%2_%3").arg(serial, vendor, model);
+        const QString partition = deviceNode.section('/', -1);
+        if (partition.isEmpty()) {
+            return base;
+        }
+        return QString("%1/%2").arg(base, partition);
+    }
+
+    /** Pre-1.1 ID without partition suffix (for database migration). */
+    QString legacyUniqueId() const {
+        return serial.isEmpty()
+            ? QString("%1_%2").arg(vendor, model)
+            : QString("%1_%2_%3").arg(serial, vendor, model);
     }
     
     QJsonObject toJson() const {
@@ -174,6 +187,7 @@ struct AppSettings {
     // Security
     bool requireConfirmationForNew = true;
     bool requireConfirmationForModified = true;
+    bool promptPerPartition = false;
     bool blockModifiedDevices = false;
     int defaultTrustLevel = 0;
     
@@ -201,6 +215,7 @@ struct AppSettings {
         obj["auto_hash_on_eject"] = autoHashOnEject;
         obj["require_confirmation_new"] = requireConfirmationForNew;
         obj["require_confirmation_modified"] = requireConfirmationForModified;
+        obj["prompt_per_partition"] = promptPerPartition;
         obj["block_modified_devices"] = blockModifiedDevices;
         obj["default_trust_level"] = defaultTrustLevel;
         obj["hash_algorithm"] = hashAlgorithm;
@@ -224,6 +239,7 @@ struct AppSettings {
         settings.autoHashOnEject = obj["auto_hash_on_eject"].toBool(true);
         settings.requireConfirmationForNew = obj["require_confirmation_new"].toBool(true);
         settings.requireConfirmationForModified = obj["require_confirmation_modified"].toBool(true);
+        settings.promptPerPartition = obj["prompt_per_partition"].toBool(false);
         settings.blockModifiedDevices = obj["block_modified_devices"].toBool(false);
         settings.defaultTrustLevel = obj["default_trust_level"].toInt(0);
         settings.hashAlgorithm = obj["hash_algorithm"].toString("SHA256");

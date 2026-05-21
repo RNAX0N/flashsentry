@@ -15,6 +15,7 @@
 #include <QSettings>
 #include <memory>
 #include <QHash>
+#include <QSet>
 
 #include "Types.h"
 #include "DeviceMonitor.h"
@@ -54,6 +55,8 @@ public:
      */
     bool shouldMinimizeToTray() const;
 
+    bool wantsStartMinimized() const { return m_settings.startMinimized; }
+
 public slots:
     /**
      * @brief Show and raise the window
@@ -64,6 +67,9 @@ public slots:
      * @brief Toggle window visibility
      */
     void toggleVisibility();
+
+    void showSettingsDialog();
+
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -200,6 +206,14 @@ private:
      */
     void handleNewDevice(const DeviceInfo& device);
 
+    void handleNewDevicePartition(const DeviceInfo& device);
+
+    QString driveKey(const DeviceInfo& device) const;
+
+    bool isDriveKnown(const DeviceInfo& device) const;
+
+    void whitelistDrivePartitions(const DeviceInfo& device);
+
     /**
      * @brief Handle known device (verify hash)
      */
@@ -208,7 +222,13 @@ private:
     /**
      * @brief Start hashing a device
      */
-    void startHashing(const QString& deviceNode);
+    void startHashing(const QString& deviceNode, bool skipUnmount = false);
+
+    void hashAllPartitionsOnParent(const DeviceInfo& device);
+
+    QString canonicalDeviceId(const DeviceInfo& device);
+
+    void mountIfVerified(const QString& deviceNode);
 
     /**
      * @brief Log a message to the log panel
@@ -230,10 +250,15 @@ private:
      */
     bool showNewDeviceDialog(const DeviceInfo& device);
 
-    /**
-     * @brief Show the modified device alert
-     */
-    void showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected, const QString& actual);
+    bool showNewDriveDialog(const DeviceInfo& device);
+
+    void acceptFingerprintAndMount(const DeviceInfo& device, const QString& actualHash,
+                                   const QString& algorithm);
+
+    bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
+                                 const QString& actual, bool manualMountRequest);
+
+    void offerUnmountWithoutHash(const QString& deviceNode, const QString& error);
 
     // Backend components
     std::unique_ptr<DeviceMonitor> m_deviceMonitor;
@@ -279,6 +304,18 @@ private:
     // Device tracking
     QHash<QString, DeviceCard*> m_deviceCards;  // deviceNode -> card
     QHash<QString, QString> m_hashJobDevices;   // jobId -> deviceNode
+
+    enum class PendingHashAction {
+        None,
+        MountAfterVerify,
+        UnmountAfterVerify
+    };
+
+    QHash<QString, PendingHashAction> m_pendingHashActions;
+    QHash<QString, QString> m_lastVerificationHashes;
+    QSet<QString> m_drivePromptInProgress;
+    QSet<QString> m_rejectedDrives;
+    QSet<QString> m_unmountBeforeHash;
 
     // State
     bool m_isClosing = false;

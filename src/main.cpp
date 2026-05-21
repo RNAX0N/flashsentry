@@ -1,4 +1,7 @@
 #include <QApplication>
+#include <QLoggingCategory>
+#include <QFileInfo>
+#include <QTimer>
 #include <QSharedMemory>
 #include <QMessageBox>
 #include <QCommandLineParser>
@@ -167,8 +170,23 @@ int main(int argc, char* argv[])
         "path"
     );
     parser.addOption(configOption);
+
+    QCommandLineOption settingsOption(
+        "settings",
+        "Open the settings dialog on startup"
+    );
+    parser.addOption(settingsOption);
     
     parser.process(app);
+
+    if (parser.isSet(debugOption)) {
+        QLoggingCategory::setFilterRules(QStringLiteral("*.debug=true"));
+    }
+
+    if (parser.isSet(configOption)) {
+        const QString configDir = QFileInfo(parser.value(configOption)).absolutePath();
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, configDir);
+    }
     
     // Check for single instance
     if (!parser.isSet(forceOption) && isAlreadyRunning()) {
@@ -210,9 +228,13 @@ int main(int argc, char* argv[])
     // Create main window
     MainWindow mainWindow;
     g_mainWindow = &mainWindow;
+
+    if (parser.isSet(settingsOption)) {
+        QTimer::singleShot(0, &mainWindow, &MainWindow::showSettingsDialog);
+    }
     
-    // Show window (or minimize based on settings/args)
-    if (parser.isSet(minimizedOption)) {
+    const bool startMinimized = parser.isSet(minimizedOption) || mainWindow.wantsStartMinimized();
+    if (startMinimized) {
         // Start minimized
         if (QSystemTrayIcon::isSystemTrayAvailable() && !parser.isSet(noTrayOption)) {
             qInfo() << "Starting minimized to system tray";

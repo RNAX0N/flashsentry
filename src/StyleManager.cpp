@@ -59,7 +59,7 @@ const QHash<StyleManager::Theme, QHash<StyleManager::ColorRole, QColor>> StyleMa
         {ColorRole::TextMuted,       QColor(0x78, 0x68, 0x88)},
         {ColorRole::TextDisabled,    QColor(0x58, 0x48, 0x68)},
         
-        {ColorRole::AccentPrimary,   QColor(0xE040, 0x00, 0xFF)},  // Magenta
+        {ColorRole::AccentPrimary,   QColor(0xE0, 0x00, 0xFF)},  // Magenta
         {ColorRole::AccentSecondary, QColor(0xA0, 0x00, 0xC8)},
         {ColorRole::AccentGlow,      QColor(0xE0, 0x00, 0xFF, 0x40)},
         

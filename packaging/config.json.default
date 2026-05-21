@@ -1,0 +1,20 @@
+{
+  "security": {
+    "autoHashOnConnect": true,
+    "autoHashOnEject": true,
+    "confirmNewDevice": true,
+    "confirmModified": true,
+    "blockModified": false
+  },
+  "hashing": {
+    "algorithm": "SHA256",
+    "bufferSizeKB": 1024,
+    "useMemoryMapping": true,
+    "maxConcurrent": 2
+  },
+  "general": {
+    "startMinimized": false,
+    "minimizeToTray": true,
+    "showNotifications": true
+  }
+}

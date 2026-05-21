@@ -153,7 +153,10 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 make -j$(nproc)
 
 # Run
-./FlashSentry
+./flashsentry
+
+# Run unit tests
+ctest --test-dir build --output-on-failure
 ```
 
 ### Release Build

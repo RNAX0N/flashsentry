@@ -33,8 +33,9 @@
       <allow_inactive>auth_admin</allow_inactive>
       <allow_active>auth_admin_keep</allow_active>
     </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/flashsentry</annotate>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/flashsentry/flashsentry-read-helper</annotate>
     <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">hash</annotate>
   </action>
 
   <!-- Action for mounting USB devices -->

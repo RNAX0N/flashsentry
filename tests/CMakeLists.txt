@@ -13,5 +13,6 @@ add_executable(test_database_manager
     ${CMAKE_SOURCE_DIR}/include/DatabaseManager.h
 )
 target_include_directories(test_database_manager PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_database_manager PRIVATE Qt6::Test Qt6::Core)
+target_include_directories(test_database_manager PRIVATE ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_database_manager PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
 add_test(NAME test_database_manager COMMAND test_database_manager)

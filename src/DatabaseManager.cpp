@@ -11,6 +11,10 @@
 #include <QWriteLocker>
 #include <QDebug>
 #include <QDateTime>
+#include <QRandomGenerator>
+
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
 
 namespace FlashSentry {
 
@@ -36,12 +40,16 @@ bool DatabaseManager::initialize(const QString& path)
         emit databaseError("Failed to create database directory");
         return false;
     }
+
+    if (!loadIntegrityKey()) {
+        emit databaseError("Failed to load database integrity key");
+        return false;
+    }
     
     // Try to load existing database
     if (QFile::exists(m_databasePath)) {
         if (!loadFromFile()) {
-            emit databaseError("Failed to load database, creating new one");
-            m_devices.clear();
+            return false;
         }
     }
     
@@ -702,6 +710,79 @@ void DatabaseManager::compact()
     }
 }
 
+
+QString DatabaseManager::integrityKeyPath()
+{
+    const QString configDir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+        + "/flashsentry";
+    return configDir + "/db.key";
+}
+
+bool DatabaseManager::loadIntegrityKey()
+{
+    if (!m_integrityKey.isEmpty()) {
+        return true;
+    }
+
+    const QString keyPath = integrityKeyPath();
+    QFile keyFile(keyPath);
+    if (keyFile.exists()) {
+        if (!keyFile.open(QIODevice::ReadOnly)) {
+            qWarning() << "DatabaseManager: cannot read integrity key";
+            return false;
+        }
+        m_integrityKey = keyFile.readAll();
+        keyFile.close();
+        if (m_integrityKey.size() < 16) {
+            qWarning() << "DatabaseManager: integrity key too short";
+            m_integrityKey.clear();
+            return false;
+        }
+        return true;
+    }
+
+    m_integrityKey.resize(32);
+    for (int i = 0; i < m_integrityKey.size(); ++i) {
+        m_integrityKey[i] = static_cast<char>(QRandomGenerator::global()->bounded(256));
+    }
+
+    QDir().mkpath(QFileInfo(keyPath).absolutePath());
+    if (!keyFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qWarning() << "DatabaseManager: cannot create integrity key";
+        m_integrityKey.clear();
+        return false;
+    }
+    keyFile.write(m_integrityKey);
+    keyFile.close();
+    QFile::setPermissions(keyPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    return true;
+}
+
+QString DatabaseManager::computePayloadHmac(const QJsonObject& rootWithoutHmac) const
+{
+    if (m_integrityKey.isEmpty()) {
+        return QString();
+    }
+
+    const QByteArray payload = QJsonDocument(rootWithoutHmac).toJson(QJsonDocument::Compact);
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int digestLen = 0;
+
+    if (!HMAC(EVP_sha256(), m_integrityKey.constData(), m_integrityKey.size(),
+              reinterpret_cast<const unsigned char*>(payload.constData()),
+              static_cast<size_t>(payload.size()), digest, &digestLen)) {
+        return QString();
+    }
+
+    QByteArray hex;
+    hex.reserve(static_cast<int>(digestLen * 2));
+    for (unsigned int i = 0; i < digestLen; ++i) {
+        hex.append(QString("%1").arg(digest[i], 2, 16, QChar('0')).toLatin1());
+    }
+    return QString::fromLatin1(hex);
+}
+
+
 bool DatabaseManager::loadFromFile()
 {
     QFile file(m_databasePath);
@@ -727,6 +808,18 @@ bool DatabaseManager::loadFromFile()
     }
     
     QJsonObject root = doc.object();
+
+    const QString storedHmac = root.value(QStringLiteral("integrity_hmac")).toString();
+    if (!storedHmac.isEmpty()) {
+        QJsonObject payloadRoot = root;
+        payloadRoot.remove(QStringLiteral("integrity_hmac"));
+        const QString computed = computePayloadHmac(payloadRoot);
+        if (computed.isEmpty() || computed != storedHmac) {
+            qWarning() << "DatabaseManager: integrity HMAC mismatch";
+            emit databaseError("Database integrity check failed (possible tampering)");
+            return false;
+        }
+    }
     
     // Version check
     QString version = root["version"].toString();
@@ -762,6 +855,11 @@ bool DatabaseManager::writeToFile()
         devicesArray.append(record.toJson());
     }
     root["devices"] = devicesArray;
+
+    const QString hmac = computePayloadHmac(root);
+    if (!hmac.isEmpty()) {
+        root["integrity_hmac"] = hmac;
+    }
     
     QJsonDocument doc(root);
     QByteArray data = doc.toJson(QJsonDocument::Indented);

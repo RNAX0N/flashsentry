@@ -338,6 +338,12 @@ private:
      */
     void markModified();
 
+    static QString integrityKeyPath();
+    bool loadIntegrityKey();
+    QString computePayloadHmac(const QJsonObject& rootWithoutHmac) const;
+
+    QByteArray m_integrityKey;
+
     // Database file path
     QString m_databasePath;
 
@@ -356,7 +362,7 @@ private:
 
     // Configuration
     static constexpr int MAX_BACKUP_COUNT = 5;
-    static constexpr const char* DB_VERSION = "1.0";
+    static constexpr const char* DB_VERSION = "1.1";
 };
 
 } // namespace FlashSentry

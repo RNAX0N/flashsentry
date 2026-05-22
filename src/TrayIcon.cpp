@@ -145,7 +145,7 @@ void TrayIcon::notifyVerificationResult(const QString& deviceName,
             
         case VerificationStatus::Modified:
             title = "⚠️ SECURITY ALERT";
-            message = deviceName + " has been MODIFIED since last use!";
+            message = deviceName + " was modified. Use Accept on the device card to trust the new hash.";
             icon = QSystemTrayIcon::Critical;
             setIconState(IconState::Warning);
             break;

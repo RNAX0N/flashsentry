@@ -195,6 +195,7 @@ void DeviceCard::setupUi()
     m_unmountBtn = createActionButton("Unmount", "Safely unmount this device");
     m_ejectBtn = createActionButton("⏏ Eject", "Eject and power off device");
     m_rehashBtn = createActionButton("↻ Rehash", "Recalculate device hash");
+    m_acceptBtn = createActionButton("✓ Accept", "Store the new fingerprint in the whitelist");
     m_openBtn = createActionButton("📂 Open", "Open in file manager");
     
     // Style the eject button as danger
@@ -202,17 +203,21 @@ void DeviceCard::setupUi()
     
     // Style rehash as primary
     m_rehashBtn->setStyleSheet(FSStyle.primaryButtonStyleSheet());
+    m_acceptBtn->setStyleSheet(FSStyle.primaryButtonStyleSheet());
+    m_acceptBtn->setVisible(false);
     
     connect(m_mountBtn, &QPushButton::clicked, this, &DeviceCard::onMountClicked);
     connect(m_unmountBtn, &QPushButton::clicked, this, &DeviceCard::onUnmountClicked);
     connect(m_ejectBtn, &QPushButton::clicked, this, &DeviceCard::onEjectClicked);
     connect(m_rehashBtn, &QPushButton::clicked, this, &DeviceCard::onRehashClicked);
+    connect(m_acceptBtn, &QPushButton::clicked, this, &DeviceCard::onAcceptClicked);
     connect(m_openBtn, &QPushButton::clicked, this, [this]() {
         if (!m_device.mountPoint.isEmpty()) {
             emit openMountPointRequested(m_device.mountPoint);
         }
     });
     
+    m_actionsLayout->addWidget(m_acceptBtn);
     m_actionsLayout->addWidget(m_mountBtn);
     m_actionsLayout->addWidget(m_unmountBtn);
     m_actionsLayout->addWidget(m_openBtn);
@@ -289,6 +294,7 @@ void DeviceCard::setActionsEnabled(bool enabled)
     m_unmountBtn->setEnabled(enabled);
     m_ejectBtn->setEnabled(enabled);
     m_rehashBtn->setEnabled(enabled);
+    m_acceptBtn->setEnabled(enabled);
     m_openBtn->setEnabled(enabled);
 }
 
@@ -463,6 +469,11 @@ void DeviceCard::onRehashClicked()
     emit rehashRequested(m_device.deviceNode);
 }
 
+void DeviceCard::onAcceptClicked()
+{
+    emit acceptFingerprintRequested(m_device.deviceNode);
+}
+
 void DeviceCard::updatePulse()
 {
     m_pulsePhase = (m_pulsePhase + 1) % 100;
@@ -545,18 +556,22 @@ void DeviceCard::updateStatusIndicator()
 void DeviceCard::updateActionButtons()
 {
     bool isMounted = m_device.isMounted;
-    
+    const bool isModified = (m_status == VerificationStatus::Modified);
+
+    m_acceptBtn->setVisible(isModified);
     m_mountBtn->setVisible(!isMounted);
     m_unmountBtn->setVisible(isMounted);
     m_openBtn->setVisible(isMounted);
     m_openBtn->setEnabled(isMounted && !m_device.mountPoint.isEmpty());
-    
+
     // Disable rehash while hashing
     m_rehashBtn->setEnabled(m_status != VerificationStatus::Hashing);
-    
-    // Update rehash button appearance based on status
-    if (m_status == VerificationStatus::Modified) {
-        m_rehashBtn->setText("↻ Verify");
+    m_acceptBtn->setEnabled(m_status == VerificationStatus::Modified);
+
+    if (isModified) {
+        m_acceptBtn->setToolTip(
+            "Store the verified hash as the new trusted fingerprint (no re-hash)");
+        m_rehashBtn->setText("↻ Rehash");
         m_rehashBtn->setStyleSheet(FSStyle.dangerButtonStyleSheet());
     } else {
         m_rehashBtn->setText("↻ Rehash");

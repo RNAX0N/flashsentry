@@ -113,9 +113,16 @@ endif()
 # ============================================================================
 include(GNUInstallDirs)
 
-set(FLASHSENTRY_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/flashsentry/flashsentry-read-helper")
+set(FLASHSENTRY_HELPER_RELDIR "${CMAKE_INSTALL_LIBDIR}/flashsentry")
+set(FLASHSENTRY_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper")
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     FLASHSENTRY_READ_HELPER_PATH="${FLASHSENTRY_READ_HELPER}"
+)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/packaging/org.flashsentry.policy.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy"
+    @ONLY
 )
 
 add_executable(flashsentry-read-helper
@@ -138,8 +145,24 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 install(TARGETS flashsentry-read-helper
-    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/flashsentry
+    RUNTIME DESTINATION ${FLASHSENTRY_HELPER_RELDIR}
 )
+# Legacy installs expected the helper under libexec; keep a copy for upgrades.
+install(CODE "
+  set(_helper "\${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper")
+  set(_legacy "\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/flashsentry")
+  file(MAKE_DIRECTORY "\$ENV{DESTDIR}\${_legacy}")
+  execute_process(
+    COMMAND \${CMAKE_COMMAND} -E copy
+      "\$ENV{DESTDIR}\${_helper}"
+      "\$ENV{DESTDIR}\${_legacy}/flashsentry-read-helper"
+    RESULT_VARIABLE _copy_result
+  )
+  if(NOT _copy_result EQUAL 0)
+    message(WARNING "Could not install libexec compatibility copy of flashsentry-read-helper")
+  endif()
+")
+
 
 install(FILES packaging/flashsentry.desktop
     DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
@@ -149,7 +172,7 @@ install(FILES resources/icons/flashsentry.svg
     DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
 )
 
-install(FILES packaging/org.flashsentry.policy
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy
     DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions
 )
 

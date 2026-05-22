@@ -74,6 +74,12 @@ post_install() {
         _warning "Start it with: sudo systemctl enable --now udisks2.service"
     fi
 
+    # Check polkit read helper (hashing without storage group)
+    if [ ! -x /usr/lib/flashsentry/flashsentry-read-helper ]; then
+        _warning "flashsentry-read-helper missing at /usr/lib/flashsentry/"
+        _warning "Rehash may fail with 'permission denied' until the package is rebuilt/reinstalled."
+    fi
+
     # Check for polkit agent
     if ! pgrep -x "polkit" &>/dev/null && ! pgrep -f "polkit-agent" &>/dev/null; then
         _warning "No polkit authentication agent detected."

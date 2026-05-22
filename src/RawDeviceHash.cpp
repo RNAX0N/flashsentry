@@ -1,6 +1,7 @@
 #include "RawDeviceHash.h"
 
 #include <QProcess>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QFile>
@@ -186,17 +187,49 @@ QString defaultHelperPath()
 #endif
 }
 
+
+QString resolveHelperPath()
+{
+    const QByteArray overridePath = qgetenv("FLASHSENTRY_READ_HELPER");
+    if (!overridePath.isEmpty()) {
+        return QString::fromLocal8Bit(overridePath);
+    }
+
+    const QStringList candidates = {
+        defaultHelperPath(),
+        QStringLiteral("/usr/lib/flashsentry/flashsentry-read-helper"),
+        QStringLiteral("/usr/libexec/flashsentry/flashsentry-read-helper"),
+    };
+
+    for (const QString& candidate : candidates) {
+        if (QFileInfo::exists(candidate)) {
+            return candidate;
+        }
+    }
+
+    return defaultHelperPath();
+}
+
 HashResult hashViaPkexec(const Options& options, const QString& helperPath)
 {
     HashResult result;
     result.deviceNode = options.deviceNode;
     result.algorithm = algorithmName(options.algorithm);
 
-    const QString path = helperPath.isEmpty() ? defaultHelperPath() : helperPath;
+    const QString path = helperPath.isEmpty() ? resolveHelperPath() : helperPath;
 
     QProcess proc;
+    if (!QFileInfo::exists(path)) {
+        result.errorMessage = QString(
+            "Privileged helper not found at %1. Reinstall flashsentry or: sudo usermod -aG storage $USER")
+            .arg(path);
+        return result;
+    }
+
     proc.setProgram(QStringLiteral("pkexec"));
     proc.setArguments({
+        QStringLiteral("--action-id"),
+        QStringLiteral("org.flashsentry.read-raw-device"),
         path,
         QStringLiteral("hash"),
         options.deviceNode,

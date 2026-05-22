@@ -113,9 +113,16 @@ endif()
 # ============================================================================
 include(GNUInstallDirs)
 
-set(FLASHSENTRY_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/flashsentry/flashsentry-read-helper")
+set(FLASHSENTRY_HELPER_RELDIR "${CMAKE_INSTALL_LIBDIR}/flashsentry")
+set(FLASHSENTRY_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper")
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     FLASHSENTRY_READ_HELPER_PATH="${FLASHSENTRY_READ_HELPER}"
+)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/packaging/org.flashsentry.policy.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy"
+    @ONLY
 )
 
 add_executable(flashsentry-read-helper
@@ -138,7 +145,7 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 install(TARGETS flashsentry-read-helper
-    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/flashsentry
+    RUNTIME DESTINATION ${FLASHSENTRY_HELPER_RELDIR}
 )
 
 install(FILES packaging/flashsentry.desktop
@@ -149,7 +156,7 @@ install(FILES resources/icons/flashsentry.svg
     DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
 )
 
-install(FILES packaging/org.flashsentry.policy
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy
     DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions
 )
 

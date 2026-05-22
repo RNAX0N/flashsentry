@@ -1,6 +1,7 @@
 #include "RawDeviceHash.h"
 
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -226,10 +227,9 @@ HashResult hashViaPkexec(const Options& options, const QString& helperPath)
         return result;
     }
 
+    // pkexec matches org.flashsentry.read-raw-device via exec.path on the helper.
     proc.setProgram(QStringLiteral("pkexec"));
     proc.setArguments({
-        QStringLiteral("--action-id"),
-        QStringLiteral("org.flashsentry.read-raw-device"),
         path,
         QStringLiteral("hash"),
         options.deviceNode,
@@ -237,6 +237,7 @@ HashResult hashViaPkexec(const Options& options, const QString& helperPath)
         QString::number(options.bufferSizeKB),
         options.useMemoryMapping ? QStringLiteral("1") : QStringLiteral("0"),
     });
+    proc.setProcessEnvironment(QProcessEnvironment::systemEnvironment());
 
     proc.start();
     if (!proc.waitForStarted(10000)) {
@@ -261,6 +262,15 @@ HashResult hashViaPkexec(const Options& options, const QString& helperPath)
         QString msg = QString::fromUtf8(stderrData);
         if (msg.isEmpty()) {
             msg = QString("Privileged hash failed (exit %1)").arg(proc.exitCode());
+        }
+        const QString lower = msg.toLower();
+        if (lower.contains(QStringLiteral("not authorized"))
+            || lower.contains(QStringLiteral("permission denied"))
+            || lower.contains(QStringLiteral("cannot run"))) {
+            msg += QStringLiteral(
+                "\n\nEnsure flashsentry is reinstalled, a polkit agent is running in your "
+                "desktop session (e.g. polkit-kde-agent or polkit-gnome), and try: "
+                "sudo usermod -aG storage $USER (then log out and back in).");
         }
         result.errorMessage = msg;
         return result;

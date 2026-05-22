@@ -147,6 +147,22 @@ install(TARGETS ${PROJECT_NAME}
 install(TARGETS flashsentry-read-helper
     RUNTIME DESTINATION ${FLASHSENTRY_HELPER_RELDIR}
 )
+# Legacy installs expected the helper under libexec; keep a copy for upgrades.
+install(CODE "
+  set(_helper "\${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper")
+  set(_legacy "\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/flashsentry")
+  file(MAKE_DIRECTORY "\$ENV{DESTDIR}\${_legacy}")
+  execute_process(
+    COMMAND \${CMAKE_COMMAND} -E copy
+      "\$ENV{DESTDIR}\${_helper}"
+      "\$ENV{DESTDIR}\${_legacy}/flashsentry-read-helper"
+    RESULT_VARIABLE _copy_result
+  )
+  if(NOT _copy_result EQUAL 0)
+    message(WARNING "Could not install libexec compatibility copy of flashsentry-read-helper")
+  endif()
+")
+
 
 install(FILES packaging/flashsentry.desktop
     DESTINATION ${CMAKE_INSTALL_DATADIR}/applications

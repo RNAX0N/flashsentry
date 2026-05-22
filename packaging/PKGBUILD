@@ -94,9 +94,7 @@ package() {
     install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.desktop" \
         "${pkgdir}/usr/share/applications/flashsentry.desktop"
 
-    # Install polkit policy
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/org.flashsentry.policy" \
-        "${pkgdir}/usr/share/polkit-1/actions/org.flashsentry.policy"
+    # Polkit policy is installed by cmake (org.flashsentry.policy from build)
 
     # Install udev rules
     install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/99-flashsentry.rules" \

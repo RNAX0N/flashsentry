@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>FlashSentry</vendor>
+  <vendor_url>https://github.com/RNAX0N/flashsentry</vendor_url>
+  <icon_name>flashsentry</icon_name>
+  <action id="org.flashsentry.read-raw-device">
+    <description>Read raw USB block device</description>
+    <message>Authentication is required to read the raw USB device for hash verification.</message>
+    <icon_name>drive-removable-media</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_self_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">@FLASHSENTRY_READ_HELPER@</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+    <annotate key="org.freedesktop.policykit.exec.argv1">hash</annotate>
+  </action>
+</policyconfig>

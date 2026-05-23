@@ -195,6 +195,7 @@ void DeviceCard::setupUi()
     m_unmountBtn = createActionButton("Unmount", "Safely unmount this device");
     m_ejectBtn = createActionButton("⏏ Eject", "Eject and power off device");
     m_rehashBtn = createActionButton("↻ Rehash", "Recalculate device hash");
+    m_watchBtn = createActionButton("📋 Watch", "Edit Merkle watch groups");
     m_acceptBtn = createActionButton("✓ Accept", "Store the new fingerprint in the whitelist");
     m_openBtn = createActionButton("📂 Open", "Open in file manager");
     
@@ -210,6 +211,7 @@ void DeviceCard::setupUi()
     connect(m_unmountBtn, &QPushButton::clicked, this, &DeviceCard::onUnmountClicked);
     connect(m_ejectBtn, &QPushButton::clicked, this, &DeviceCard::onEjectClicked);
     connect(m_rehashBtn, &QPushButton::clicked, this, &DeviceCard::onRehashClicked);
+    connect(m_watchBtn, &QPushButton::clicked, this, &DeviceCard::onWatchListClicked);
     connect(m_acceptBtn, &QPushButton::clicked, this, &DeviceCard::onAcceptClicked);
     connect(m_openBtn, &QPushButton::clicked, this, [this]() {
         if (!m_device.mountPoint.isEmpty()) {
@@ -217,6 +219,7 @@ void DeviceCard::setupUi()
         }
     });
     
+    m_actionsLayout->addWidget(m_watchBtn);
     m_actionsLayout->addWidget(m_acceptBtn);
     m_actionsLayout->addWidget(m_mountBtn);
     m_actionsLayout->addWidget(m_unmountBtn);
@@ -294,6 +297,7 @@ void DeviceCard::setActionsEnabled(bool enabled)
     m_unmountBtn->setEnabled(enabled);
     m_ejectBtn->setEnabled(enabled);
     m_rehashBtn->setEnabled(enabled);
+    m_watchBtn->setEnabled(enabled);
     m_acceptBtn->setEnabled(enabled);
     m_openBtn->setEnabled(enabled);
 }
@@ -624,6 +628,11 @@ void DeviceCard::applyGlowEffect(QWidget* widget, const QColor& color, int blur)
     effect->setColor(color);
     effect->setOffset(0, 0);
     widget->setGraphicsEffect(effect);
+}
+
+void DeviceCard::onWatchListClicked()
+{
+    emit watchListRequested(deviceNode());
 }
 
 } // namespace FlashSentry

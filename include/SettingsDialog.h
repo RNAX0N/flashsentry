@@ -110,6 +110,7 @@ private:
      * @brief Create Security settings tab
      */
     QWidget* createSecurityTab();
+    QWidget* createVerificationTab();
 
     /**
      * @brief Create Hashing settings tab
@@ -161,6 +162,11 @@ private:
     QCheckBox* m_promptPerPartitionCheck = nullptr;
     QCheckBox* m_blockModifiedCheck = nullptr;
     QComboBox* m_defaultTrustCombo = nullptr;
+    QComboBox* m_appModuleCombo = nullptr;
+    QComboBox* m_defaultProfileCombo = nullptr;
+    QLineEdit* m_isoDirEdit = nullptr;
+    QCheckBox* m_isoAutoVerifyCheck = nullptr;
+    QCheckBox* m_isoAutoVerifyOnUsbMountCheck = nullptr;
 
     // Hashing tab
     QComboBox* m_hashAlgorithmCombo = nullptr;

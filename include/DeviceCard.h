@@ -160,6 +160,8 @@ signals:
     /**
      * @brief Emitted when user accepts a new fingerprint after modification
      */
+    void watchListRequested(const QString& deviceNode);
+
     void acceptFingerprintRequested(const QString& deviceNode);
 
     /**
@@ -191,6 +193,7 @@ private slots:
     void onEjectClicked();
     void onRehashClicked();
     void onAcceptClicked();
+    void onWatchListClicked();
     void updatePulse();
 
 private:
@@ -262,6 +265,7 @@ private:
     QPushButton* m_unmountBtn = nullptr;
     QPushButton* m_ejectBtn = nullptr;
     QPushButton* m_rehashBtn = nullptr;
+    QPushButton* m_watchBtn = nullptr;
     QPushButton* m_acceptBtn = nullptr;
     QPushButton* m_openBtn = nullptr;
 

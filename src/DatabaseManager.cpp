@@ -11,10 +11,6 @@
 #include <QWriteLocker>
 #include <QDebug>
 #include <QDateTime>
-#include <QRandomGenerator>
-
-#include <openssl/hmac.h>
-#include <openssl/evp.h>
 
 namespace FlashSentry {
 
@@ -40,16 +36,12 @@ bool DatabaseManager::initialize(const QString& path)
         emit databaseError("Failed to create database directory");
         return false;
     }
-
-    if (!loadIntegrityKey()) {
-        emit databaseError("Failed to load database integrity key");
-        return false;
-    }
     
     // Try to load existing database
     if (QFile::exists(m_databasePath)) {
         if (!loadFromFile()) {
-            return false;
+            emit databaseError("Failed to load database, creating new one");
+            m_devices.clear();
         }
     }
     
@@ -78,13 +70,6 @@ bool DatabaseManager::hasDevice(const QString& uniqueId) const
     return m_devices.contains(uniqueId);
 }
 
-bool DatabaseManager::hasDevice(const DeviceInfo& device) const
-{
-    QReadLocker locker(&m_lock);
-    return m_devices.contains(device.uniqueId())
-        || m_devices.contains(device.legacyUniqueId());
-}
-
 std::optional<DeviceRecord> DatabaseManager::getDevice(const QString& uniqueId) const
 {
     QReadLocker locker(&m_lock);
@@ -93,60 +78,6 @@ std::optional<DeviceRecord> DatabaseManager::getDevice(const QString& uniqueId) 
         return *it;
     }
     return std::nullopt;
-}
-
-
-QString DatabaseManager::canonicalUniqueId(const DeviceInfo& device)
-{
-    const QString newId = device.uniqueId();
-    const QString legacyId = device.legacyUniqueId();
-
-    {
-        QReadLocker locker(&m_lock);
-        if (m_devices.contains(newId)) {
-            return newId;
-        }
-        if (!m_devices.contains(legacyId)) {
-            return newId;
-        }
-    }
-
-    {
-        QWriteLocker locker(&m_lock);
-        auto legacyIt = m_devices.find(legacyId);
-        if (legacyIt == m_devices.end()) {
-            return newId;
-        }
-        if (m_devices.contains(newId)) {
-            return newId;
-        }
-
-        DeviceRecord record = legacyIt.value();
-        m_devices.erase(legacyIt);
-        record.uniqueId = newId;
-        record.lastKnownInfo = device;
-        m_devices.insert(newId, record);
-        markModified();
-        emit deviceUpdated(newId);
-        return newId;
-    }
-}
-
-std::optional<DeviceRecord> DatabaseManager::getDevice(const DeviceInfo& device)
-{
-    {
-        QReadLocker locker(&m_lock);
-        auto it = m_devices.find(device.uniqueId());
-        if (it != m_devices.end()) {
-            return *it;
-        }
-        if (!m_devices.contains(device.legacyUniqueId())) {
-            return std::nullopt;
-        }
-    }
-
-    const QString id = canonicalUniqueId(device);
-    return getDevice(id);
 }
 
 QList<DeviceRecord> DatabaseManager::getAllDevices() const
@@ -339,24 +270,14 @@ bool DatabaseManager::verifyHash(const QString& uniqueId, const QString& hash) c
 bool DatabaseManager::verifyHash(const DeviceInfo& device, const QString& hash) const
 {
     QReadLocker locker(&m_lock);
-
-    auto lookup = [&](const QString& id) -> bool {
-        auto it = m_devices.find(id);
-        if (it == m_devices.end()) {
-            return false;
-        }
-        const bool matches = (it->hash.compare(hash, Qt::CaseInsensitive) == 0);
-        if (!matches && !it->hash.isEmpty()) {
-            const_cast<DatabaseManager*>(this)->emit hashMismatch(
-                id, it->hash, hash);
-        }
-        return matches;
-    };
-
-    if (lookup(device.uniqueId())) {
-        return true;
+    auto it = m_devices.find(device.uniqueId());
+    if (it == m_devices.end()) {
+        it = m_devices.find(canonicalUniqueId(device));
     }
-    return lookup(device.legacyUniqueId());
+    if (it == m_devices.end()) {
+        return false;
+    }
+    return verifyHash(it->uniqueId, hash);
 }
 
 bool DatabaseManager::setTrustLevel(const QString& uniqueId, int level)
@@ -710,79 +631,6 @@ void DatabaseManager::compact()
     }
 }
 
-
-QString DatabaseManager::integrityKeyPath()
-{
-    const QString configDir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
-        + "/flashsentry";
-    return configDir + "/db.key";
-}
-
-bool DatabaseManager::loadIntegrityKey()
-{
-    if (!m_integrityKey.isEmpty()) {
-        return true;
-    }
-
-    const QString keyPath = integrityKeyPath();
-    QFile keyFile(keyPath);
-    if (keyFile.exists()) {
-        if (!keyFile.open(QIODevice::ReadOnly)) {
-            qWarning() << "DatabaseManager: cannot read integrity key";
-            return false;
-        }
-        m_integrityKey = keyFile.readAll();
-        keyFile.close();
-        if (m_integrityKey.size() < 16) {
-            qWarning() << "DatabaseManager: integrity key too short";
-            m_integrityKey.clear();
-            return false;
-        }
-        return true;
-    }
-
-    m_integrityKey.resize(32);
-    for (int i = 0; i < m_integrityKey.size(); ++i) {
-        m_integrityKey[i] = static_cast<char>(QRandomGenerator::global()->bounded(256));
-    }
-
-    QDir().mkpath(QFileInfo(keyPath).absolutePath());
-    if (!keyFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        qWarning() << "DatabaseManager: cannot create integrity key";
-        m_integrityKey.clear();
-        return false;
-    }
-    keyFile.write(m_integrityKey);
-    keyFile.close();
-    QFile::setPermissions(keyPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    return true;
-}
-
-QString DatabaseManager::computePayloadHmac(const QJsonObject& rootWithoutHmac) const
-{
-    if (m_integrityKey.isEmpty()) {
-        return QString();
-    }
-
-    const QByteArray payload = QJsonDocument(rootWithoutHmac).toJson(QJsonDocument::Compact);
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digestLen = 0;
-
-    if (!HMAC(EVP_sha256(), m_integrityKey.constData(), m_integrityKey.size(),
-              reinterpret_cast<const unsigned char*>(payload.constData()),
-              static_cast<size_t>(payload.size()), digest, &digestLen)) {
-        return QString();
-    }
-
-    QByteArray hex;
-    hex.reserve(static_cast<int>(digestLen * 2));
-    for (unsigned int i = 0; i < digestLen; ++i) {
-        hex.append(QString("%1").arg(digest[i], 2, 16, QChar('0')).toLatin1());
-    }
-    return QString::fromLatin1(hex);
-}
-
-
 bool DatabaseManager::loadFromFile()
 {
     QFile file(m_databasePath);
@@ -808,18 +656,6 @@ bool DatabaseManager::loadFromFile()
     }
     
     QJsonObject root = doc.object();
-
-    const QString storedHmac = root.value(QStringLiteral("integrity_hmac")).toString();
-    if (!storedHmac.isEmpty()) {
-        QJsonObject payloadRoot = root;
-        payloadRoot.remove(QStringLiteral("integrity_hmac"));
-        const QString computed = computePayloadHmac(payloadRoot);
-        if (computed.isEmpty() || computed != storedHmac) {
-            qWarning() << "DatabaseManager: integrity HMAC mismatch";
-            emit databaseError("Database integrity check failed (possible tampering)");
-            return false;
-        }
-    }
     
     // Version check
     QString version = root["version"].toString();
@@ -855,11 +691,6 @@ bool DatabaseManager::writeToFile()
         devicesArray.append(record.toJson());
     }
     root["devices"] = devicesArray;
-
-    const QString hmac = computePayloadHmac(root);
-    if (!hmac.isEmpty()) {
-        root["integrity_hmac"] = hmac;
-    }
     
     QJsonDocument doc(root);
     QByteArray data = doc.toJson(QJsonDocument::Indented);
@@ -933,6 +764,47 @@ void DatabaseManager::markModified()
             save();
         }, Qt::QueuedConnection);
     }
+}
+
+
+bool DatabaseManager::hasDevice(const DeviceInfo& device) const
+{
+    return hasDevice(canonicalUniqueId(device));
+}
+
+QString DatabaseManager::canonicalUniqueId(const DeviceInfo& device) const
+{
+    return device.partitionUniqueId();
+}
+
+std::optional<DeviceRecord> DatabaseManager::getDevice(const DeviceInfo& device) const
+{
+    return getDevice(canonicalUniqueId(device));
+}
+
+
+
+bool DatabaseManager::updateWatchManifest(const QString& uniqueId, const WatchManifest& manifest)
+{
+    QWriteLocker locker(&m_lock);
+    auto it = m_devices.find(uniqueId);
+    if (it == m_devices.end()) return false;
+    it->watchManifest = manifest;
+    it->lastManifestRoot = manifest.manifestRoot;
+    markModified();
+    emit deviceUpdated(uniqueId);
+    return true;
+}
+
+bool DatabaseManager::setVerificationProfile(const QString& uniqueId, VerificationProfile profile)
+{
+    QWriteLocker locker(&m_lock);
+    auto it = m_devices.find(uniqueId);
+    if (it == m_devices.end()) return false;
+    it->verificationProfile = profile;
+    markModified();
+    emit deviceUpdated(uniqueId);
+    return true;
 }
 
 } // namespace FlashSentry

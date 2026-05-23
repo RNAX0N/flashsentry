@@ -26,6 +26,8 @@
 #include "TrayIcon.h"
 #include "SettingsDialog.h"
 #include "StyleManager.h"
+#include "ManifestWorker.h"
+#include "IsoVerifierWidget.h"
 
 namespace FlashSentry {
 
@@ -117,6 +119,13 @@ private slots:
     void onSearchTextChanged(const QString& text);
     void onRefreshClicked();
     void onSettingsClicked();
+
+    void onManifestStarted(const QString& jobId, const QString& deviceNode);
+    void onManifestCompleted(const QString& jobId, const ManifestVerifyResult& result);
+    void onManifestBaselineBuilt(const QString& jobId, const QString& deviceId, const WatchManifest& manifest);
+    void onManifestFailed(const QString& jobId, const QString& error);
+    void onWatchListRequested(const QString& deviceNode);
+    void onIsoLogMessage(const QString& message);
 
     // Settings
     void onThemeChanged(StyleManager::Theme theme);
@@ -258,6 +267,14 @@ private:
     void acceptFingerprintAndMount(const DeviceInfo& device, const QString& actualHash,
                                    const QString& algorithm);
 
+    void startDeviceVerification(const QString& deviceNode);
+    void startManifestVerification(const QString& deviceNode);
+    void openWatchListDialog(const QString& deviceNode);
+    void applyAppModule();
+    void triggerIsoVerificationOnMount(const MountManager::MountResult& result);
+    void handleManifestMismatch(const DeviceInfo& device, const ManifestVerifyResult& result);
+    void acceptManifestBaseline(const DeviceInfo& device, const WatchManifest& manifest);
+
     void mountDespiteModification(const DeviceInfo& device);
 
     bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
@@ -270,6 +287,13 @@ private:
     // Backend components
     std::unique_ptr<DeviceMonitor> m_deviceMonitor;
     std::unique_ptr<HashWorker> m_hashWorker;
+    std::unique_ptr<ManifestWorker> m_manifestWorker;
+    IsoVerifierWidget* m_isoWidget = nullptr;
+    QStackedWidget* m_appModeStack = nullptr;
+    QHash<QString, QString> m_manifestJobDevices;
+    QHash<QString, ManifestVerifyResult> m_lastManifestResults;
+    bool m_pendingHybridFullHash = false;
+
     std::unique_ptr<DatabaseManager> m_database;
     std::unique_ptr<MountManager> m_mountManager;
     std::unique_ptr<TrayIcon> m_trayIcon;
@@ -315,7 +339,8 @@ private:
     enum class PendingHashAction {
         None,
         MountAfterVerify,
-        UnmountAfterVerify
+        UnmountAfterVerify,
+        RunFullHashAfterManifest
     };
 
     QHash<QString, PendingHashAction> m_pendingHashActions;

@@ -209,7 +209,7 @@ QWidget* SettingsDialog::createSecurityTab()
     connect(m_confirmNewDeviceCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     confirmLayout->addWidget(m_confirmNewDeviceCheck);
     
-    m_confirmModifiedCheck = new QCheckBox("Confirm before mounting modified devices");
+    m_confirmModifiedCheck = new QCheckBox("Show tamper alert when hash does not match");
     m_confirmModifiedCheck->setToolTip(
         "When you manually mount a modified partition, show expected vs actual hash "
         "and require confirmation (uses the verification hash; no re-hash)");

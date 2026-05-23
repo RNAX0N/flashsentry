@@ -258,6 +258,8 @@ private:
     void acceptFingerprintAndMount(const DeviceInfo& device, const QString& actualHash,
                                    const QString& algorithm);
 
+    void mountDespiteModification(const DeviceInfo& device);
+
     bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
                                  const QString& actual, bool offerMount = true);
 

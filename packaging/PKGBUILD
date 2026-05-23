@@ -22,6 +22,7 @@ makedepends=(
 optdepends=(
     'libnotify: Desktop notifications support'
     'qt6-wayland: Wayland support'
+    'gnupg: Automatic ISO OpenPGP signature verification'
 )
 provides=('flashsentry')
 conflicts=('flashsentry-git')

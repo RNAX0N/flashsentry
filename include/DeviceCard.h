@@ -158,6 +158,11 @@ signals:
     void rehashRequested(const QString& deviceNode);
 
     /**
+     * @brief Emitted when user accepts a new fingerprint after modification
+     */
+    void acceptFingerprintRequested(const QString& deviceNode);
+
+    /**
      * @brief Emitted when the card is clicked
      */
     void clicked(const QString& deviceNode);
@@ -185,6 +190,7 @@ private slots:
     void onUnmountClicked();
     void onEjectClicked();
     void onRehashClicked();
+    void onAcceptClicked();
     void updatePulse();
 
 private:
@@ -256,6 +262,7 @@ private:
     QPushButton* m_unmountBtn = nullptr;
     QPushButton* m_ejectBtn = nullptr;
     QPushButton* m_rehashBtn = nullptr;
+    QPushButton* m_acceptBtn = nullptr;
     QPushButton* m_openBtn = nullptr;
 
     // Layouts

@@ -896,13 +896,13 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             m_trayIcon->notifyVerificationResult(deviceInfo->displayName(), VerificationStatus::Modified);
 
             if (pending == PendingHashAction::MountAfterVerify) {
-                if (m_settings.blockModifiedDevices) {
+                if (m_settings.requireConfirmationForModified) {
                     showModifiedDeviceAlert(*deviceInfo, record->hash, result.hash, true);
-                } else if (m_settings.requireConfirmationForModified) {
-                    showModifiedDeviceAlert(*deviceInfo, record->hash, result.hash, true);
-                } else {
+                } else if (!m_settings.blockModifiedDevices) {
                     acceptFingerprintAndMount(*deviceInfo, result.hash, result.algorithm);
                 }
+            } else if (m_settings.requireConfirmationForModified) {
+                showModifiedDeviceAlert(*deviceInfo, record->hash, result.hash, false);
             }
         }
     } else {
@@ -1057,19 +1057,12 @@ void MainWindow::onMountRequested(const QString& deviceNode)
     }
 
     if (card && card->verificationStatus() == VerificationStatus::Modified) {
-        if (m_settings.blockModifiedDevices) {
-            auto record = m_database->getDevice(canonicalDeviceId(*deviceInfo));
-            const QString expected = record ? record->hash : QString();
-            const QString actual = m_lastVerificationHashes.value(deviceNode);
-            showModifiedDeviceAlert(*deviceInfo, expected, actual, true);
-            return;
-        }
-
         const QString actual = m_lastVerificationHashes.value(deviceNode);
         if (!actual.isEmpty()) {
-            if (m_settings.requireConfirmationForModified) {
-                auto record = m_database->getDevice(canonicalDeviceId(*deviceInfo));
-                showModifiedDeviceAlert(*deviceInfo, record ? record->hash : QString(), actual, true);
+            auto record = m_database->getDevice(canonicalDeviceId(*deviceInfo));
+            const QString expected = record ? record->hash : QString();
+            if (m_settings.requireConfirmationForModified || m_settings.blockModifiedDevices) {
+                showModifiedDeviceAlert(*deviceInfo, expected, actual, true);
             } else {
                 acceptFingerprintAndMount(*deviceInfo, actual, m_settings.hashAlgorithm);
             }
@@ -1281,6 +1274,8 @@ DeviceCard* MainWindow::addDeviceCard(const DeviceInfo& device)
     connect(card, &DeviceCard::unmountRequested, this, &MainWindow::onUnmountRequested);
     connect(card, &DeviceCard::ejectRequested, this, &MainWindow::onEjectRequested);
     connect(card, &DeviceCard::rehashRequested, this, &MainWindow::onRehashRequested);
+    connect(card, &DeviceCard::acceptFingerprintRequested,
+            this, &MainWindow::onAcceptFingerprintRequested);
     connect(card, &DeviceCard::openMountPointRequested, this, &MainWindow::onOpenMountPointRequested);
     connect(card, &DeviceCard::clicked, this, &MainWindow::onDeviceCardClicked);
     
@@ -1532,8 +1527,8 @@ bool MainWindow::showNewDeviceDialog(const DeviceInfo& device)
     return msgBox.exec() == QMessageBox::Yes;
 }
 
-void MainWindow::acceptFingerprintAndMount(const DeviceInfo& device, const QString& actualHash,
-                                                         const QString& algorithm)
+void MainWindow::acceptFingerprint(const DeviceInfo& device, const QString& actualHash,
+                                   const QString& algorithm, bool mountAfter)
 {
     const QString deviceId = canonicalDeviceId(device);
     m_database->updateHash(deviceId, actualHash, algorithm, 0);
@@ -1542,50 +1537,110 @@ void MainWindow::acceptFingerprintAndMount(const DeviceInfo& device, const QStri
     DeviceCard* card = getDeviceCard(device.deviceNode);
     if (card) {
         card->setVerificationStatus(VerificationStatus::Verified);
+        if (auto updated = m_database->getDevice(deviceId)) {
+            card->setDeviceRecord(*updated);
+        }
     }
 
-    m_mountManager->mount(device.deviceNode);
-    logMessage(QString("Fingerprint accepted for: %1").arg(device.displayName()), LogLevel::Warning);
+    updateSidebarStats();
+
+    if (mountAfter) {
+        m_mountManager->mount(device.deviceNode);
+        logMessage(QString("Fingerprint accepted and mount requested: %1")
+                       .arg(device.displayName()),
+                   LogLevel::Warning);
+    } else {
+        logMessage(QString("Fingerprint accepted for: %1").arg(device.displayName()),
+                   LogLevel::Warning);
+    }
+}
+
+void MainWindow::acceptFingerprintAndMount(const DeviceInfo& device, const QString& actualHash,
+                                           const QString& algorithm)
+{
+    acceptFingerprint(device, actualHash, algorithm, true);
+}
+
+void MainWindow::onAcceptFingerprintRequested(const QString& deviceNode)
+{
+    auto deviceInfo = m_deviceMonitor->getDevice(deviceNode);
+    if (!deviceInfo) {
+        return;
+    }
+
+    const QString actual = m_lastVerificationHashes.value(deviceNode);
+    if (actual.isEmpty()) {
+        logMessage(QString("No verification hash for %1 — rehash first").arg(deviceNode),
+                   LogLevel::Warning);
+        startHashing(deviceNode);
+        return;
+    }
+
+    auto record = m_database->getDevice(canonicalDeviceId(*deviceInfo));
+    const QString expected = record ? record->hash : QString();
+
+    if (m_settings.requireConfirmationForModified) {
+        showModifiedDeviceAlert(*deviceInfo, expected, actual, false);
+        return;
+    }
+
+    acceptFingerprint(*deviceInfo, actual, m_settings.hashAlgorithm, false);
 }
 
 bool MainWindow::showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
-                                         const QString& actual, bool manualMountRequest)
+                                         const QString& actual, bool offerMount)
 {
-    Q_UNUSED(manualMountRequest)
     logMessage(QString("Modified device detected: %1").arg(device.displayName()), LogLevel::Security);
 
-    if (m_settings.blockModifiedDevices) {
-        QMessageBox msgBox(this);
-        msgBox.setWindowTitle("Security Alert - Device Modified");
-        msgBox.setIcon(QMessageBox::Critical);
-        msgBox.setTextFormat(Qt::RichText);
-        msgBox.setText(QString(
-            "<b>Device %1 was modified.</b><br><br>"
-            "<b>Partition:</b> %2<br>"
-            "<b>Expected:</b><br><code>%3</code><br>"
-            "<b>Actual:</b><br><code>%4</code><br><br>"
-            "Mounting is blocked by your security settings.")
-            .arg(device.displayName(), device.deviceNode, expected, actual));
-        msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.exec();
-        return false;
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Device Modified");
+    msgBox.setIcon(QMessageBox::Warning);
+    msgBox.setTextFormat(Qt::RichText);
+
+    QString body = QString(
+        "<b style='color: red;'>%1 was modified</b> since it was last trusted.<br><br>"
+        "<b>Partition:</b> %2<br>"
+        "<b>Expected:</b><br><code style='font-size:10px;'>%3</code><br>"
+        "<b>Current:</b><br><code style='font-size:10px;'>%4</code><br><br>")
+                         .arg(device.displayName(), device.deviceNode, expected, actual);
+
+    if (m_settings.blockModifiedDevices && offerMount) {
+        body += QStringLiteral(
+            "<i>Automatic mounting of modified devices is disabled.</i><br>"
+            "You can still accept the new fingerprint below.");
+    } else if (offerMount) {
+        body += QStringLiteral(
+            "Accept stores the current hash as trusted (no re-hash). "
+            "You can mount afterward or use <b>Accept &amp; Mount</b>.");
+    } else {
+        body += QStringLiteral(
+            "Accept stores the current hash as trusted (no re-hash).");
     }
 
-    QMessageBox msgBox(this);
-    msgBox.setWindowTitle("Security Alert - Device Modified");
-    msgBox.setTextFormat(Qt::RichText);
-    msgBox.setText(QString(
-        "<b style='color: red;'>Device %1 was modified</b><br><br>"
-        "<b>Partition:</b> %2<br>"
-        "<b>Expected Hash:</b><br><code>%3</code><br>"
-        "<b>Actual Hash:</b><br><code>%4</code><br><br>"
-        "Accept the new fingerprint to mount (uses the hash from verification; no re-hash).")
-        .arg(device.displayName(), device.deviceNode, expected, actual));
-    msgBox.setIcon(QMessageBox::Critical);
-    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    msgBox.setDefaultButton(QMessageBox::No);
+    msgBox.setText(body);
 
-    if (msgBox.exec() == QMessageBox::Yes) {
+    QPushButton* acceptBtn = msgBox.addButton(QStringLiteral("Accept fingerprint"),
+                                              QMessageBox::AcceptRole);
+    QPushButton* acceptMountBtn = nullptr;
+    if (offerMount && !device.isMounted) {
+        acceptMountBtn = msgBox.addButton(QStringLiteral("Accept & mount"),
+                                          QMessageBox::ActionRole);
+        if (m_settings.blockModifiedDevices) {
+            acceptMountBtn->setEnabled(false);
+            acceptMountBtn->setToolTip(
+                QStringLiteral("Disabled while \"Block modified devices\" is on. "
+                               "Accept the fingerprint first, then change the setting to mount."));
+        }
+    }
+    msgBox.addButton(QMessageBox::Cancel);
+
+    msgBox.exec();
+
+    if (msgBox.clickedButton() == acceptBtn) {
+        acceptFingerprint(device, actual, m_settings.hashAlgorithm, false);
+        return true;
+    }
+    if (acceptMountBtn && msgBox.clickedButton() == acceptMountBtn) {
         acceptFingerprintAndMount(device, actual, m_settings.hashAlgorithm);
         return true;
     }

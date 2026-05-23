@@ -252,11 +252,16 @@ private:
 
     bool showNewDriveDialog(const DeviceInfo& device);
 
+    void acceptFingerprint(const DeviceInfo& device, const QString& actualHash,
+                         const QString& algorithm, bool mountAfter = false);
+
     void acceptFingerprintAndMount(const DeviceInfo& device, const QString& actualHash,
                                    const QString& algorithm);
 
     bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
-                                 const QString& actual, bool manualMountRequest);
+                                 const QString& actual, bool offerMount = true);
+
+    void onAcceptFingerprintRequested(const QString& deviceNode);
 
     void offerUnmountWithoutHash(const QString& deviceNode, const QString& error);
 

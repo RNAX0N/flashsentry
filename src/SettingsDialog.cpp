@@ -224,7 +224,9 @@ QWidget* SettingsDialog::createSecurityTab()
     confirmLayout->addWidget(m_promptPerPartitionCheck);
     
     m_blockModifiedCheck = new QCheckBox("Block mounting of modified devices");
-    m_blockModifiedCheck->setToolTip("Prevent automatic mounting of devices that fail hash verification");
+    m_blockModifiedCheck->setToolTip(
+        "Prevent automatic mounting when verification fails. You can still use "
+        "\"Accept fingerprint\" on the device card to update the whitelist.");
     connect(m_blockModifiedCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     confirmLayout->addWidget(m_blockModifiedCheck);
     

@@ -208,6 +208,13 @@ QWidget* SettingsDialog::createVerificationTab()
     QWidget* tab = new QWidget;
     QVBoxLayout* layout = new QVBoxLayout(tab);
 
+    auto* intro = new QLabel(QStringLiteral(
+        "Recommended for most users: <b>ISO verification</b> (no PGP/Kleopatra knowledge needed) "
+        "or <b>watch lists</b> that hash only the folders you care about. "
+        "Full raw-partition hashing is available but slow — enable it under Security if you need it."));
+    intro->setWordWrap(true);
+    layout->addWidget(intro);
+
     QGroupBox* moduleGroup = new QGroupBox(QStringLiteral("Application mode"));
     QFormLayout* moduleForm = new QFormLayout(moduleGroup);
     m_appModuleCombo = new QComboBox;
@@ -218,12 +225,12 @@ QWidget* SettingsDialog::createVerificationTab()
     moduleForm->addRow(QStringLiteral("Mode:"), m_appModuleCombo);
     layout->addWidget(moduleGroup);
 
-    QGroupBox* profileGroup = new QGroupBox(QStringLiteral("USB verification profile (default)"));
+    QGroupBox* profileGroup = new QGroupBox(QStringLiteral("USB file-tree verification (default)"));
     QFormLayout* profileForm = new QFormLayout(profileGroup);
     m_defaultProfileCombo = new QComboBox;
-    m_defaultProfileCombo->addItem(QStringLiteral("Watch manifest (Merkle, fast)"),
+    m_defaultProfileCombo->addItem(QStringLiteral("Watch folders only (Merkle, recommended)"),
                                    static_cast<int>(VerificationProfile::WatchManifest));
-    m_defaultProfileCombo->addItem(QStringLiteral("Full partition (raw hash)"),
+    m_defaultProfileCombo->addItem(QStringLiteral("Full partition (raw hash, advanced)"),
                                    static_cast<int>(VerificationProfile::FullPartition));
     m_defaultProfileCombo->addItem(QStringLiteral("Hybrid (watch + full hash)"),
                                    static_cast<int>(VerificationProfile::Hybrid));
@@ -240,7 +247,8 @@ QWidget* SettingsDialog::createVerificationTab()
     isoForm->addRow(QStringLiteral("Scan folder:"), m_isoDirEdit);
     m_isoAutoVerifyCheck = new QCheckBox(QStringLiteral("Verify ISOs automatically after scan"));
     m_isoAutoVerifyOnUsbMountCheck = new QCheckBox(
-        QStringLiteral("Automatically verify ISOs when a USB drive is mounted (Rufus/dd copies)"));
+        QStringLiteral("Automatically verify ISOs when a USB drive is mounted (recommended; Rufus/dd copies)"));
+    m_isoAutoVerifyOnUsbMountCheck->setChecked(true);
     connect(m_isoAutoVerifyOnUsbMountCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     connect(m_isoAutoVerifyCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     isoForm->addRow(QStringLiteral(""), m_isoAutoVerifyCheck);
@@ -258,11 +266,11 @@ QWidget* SettingsDialog::createSecurityTab()
     layout->setSpacing(16);
     
     // Auto-hashing group
-    QGroupBox* hashingGroup = new QGroupBox("Automatic Hashing");
+    QGroupBox* hashingGroup = new QGroupBox("Full-drive hashing (advanced)");
     QVBoxLayout* hashingLayout = new QVBoxLayout(hashingGroup);
     
-    m_autoHashOnConnectCheck = new QCheckBox("Hash devices when connected");
-    m_autoHashOnConnectCheck->setToolTip("Automatically calculate hash when a device is plugged in");
+    m_autoHashOnConnectCheck = new QCheckBox("Hash entire partition when a device is connected");
+    m_autoHashOnConnectCheck->setToolTip("Slow: reads the whole block device. Prefer watch folders or ISO mode unless you need a full-disk fingerprint.");
     connect(m_autoHashOnConnectCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     hashingLayout->addWidget(m_autoHashOnConnectCheck);
     

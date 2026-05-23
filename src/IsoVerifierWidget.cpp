@@ -24,10 +24,9 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
     auto* layout = new QVBoxLayout(this);
 
     layout->addWidget(new QLabel(
-        QStringLiteral("<b>Fully automated ISO verification</b><br>"
-                       "Detects <code>.iso</code> files on mounted USB drives (including after Rufus or similar), "
-                       "downloads official SHA-256 checksums from the publisher, verifies OpenPGP signatures "
-                       "and signing-key fingerprints — no Kleopatra or manual <code>sha256sum</code> required.")));
+        QStringLiteral("<b>Fully automated ISO verification</b> — built for people who want confidence without learning hashes or PGP.<br>"
+                       "Plug in a stick with a copied <code>.iso</code> (Rufus, etc.): we detect it, fetch the publisher checksums, "
+                       "verify signatures and key fingerprints for you — no Kleopatra or terminal commands.")));
 
     auto* dirRow = new QHBoxLayout;
     m_dirEdit = new QLineEdit;

@@ -447,7 +447,7 @@ void MainWindow::loadSettings()
     m_settings.startMinimized = m_qsettings->value("general/startMinimized", false).toBool();
     m_settings.minimizeToTray = m_qsettings->value("general/minimizeToTray", true).toBool();
     m_settings.showNotifications = m_qsettings->value("general/showNotifications", true).toBool();
-    m_settings.autoHashOnConnect = m_qsettings->value("security/autoHashOnConnect", true).toBool();
+    m_settings.autoHashOnConnect = m_qsettings->value("security/autoHashOnConnect", false).toBool();
     m_settings.autoHashOnEject = m_qsettings->value("security/autoHashOnEject", true).toBool();
     m_settings.appModule = appModuleFromString(m_qsettings->value("general/appModule", "usb_monitor").toString());
     m_settings.defaultVerificationProfile = verificationProfileFromString(
@@ -1498,8 +1498,9 @@ void MainWindow::updateEmptyState()
     if (m_deviceCards.isEmpty()) {
         m_emptyStateLabel->setText(
             "💾\n\nNo USB devices connected\n\n"
-            "Connect a USB flash drive to get started.\n"
-            "FlashSentry will monitor and verify your devices."
+            "Connect a USB flash drive or switch to ISO Verify in Settings.\n\n"
+            "Recommended: watch selected folders (fast) or automatic ISO checks — "
+            "full-partition hashing is optional for advanced users."
         );
         m_contentStack->setCurrentIndex(1);  // Empty state
     } else {

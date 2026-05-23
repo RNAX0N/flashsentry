@@ -343,7 +343,7 @@ struct AppSettings {
     bool startMinimized = false;
     bool minimizeToTray = true;
     bool showNotifications = true;
-    bool autoHashOnConnect = true;
+    bool autoHashOnConnect = false;
     bool autoHashOnEject = true;
     bool requireConfirmationForNew = true;
     bool requireConfirmationForModified = true;
@@ -398,7 +398,7 @@ struct AppSettings {
         settings.startMinimized = obj["start_minimized"].toBool(false);
         settings.minimizeToTray = obj["minimize_to_tray"].toBool(true);
         settings.showNotifications = obj["show_notifications"].toBool(true);
-        settings.autoHashOnConnect = obj["auto_hash_on_connect"].toBool(true);
+        settings.autoHashOnConnect = obj["auto_hash_on_connect"].toBool(false);
         settings.autoHashOnEject = obj["auto_hash_on_eject"].toBool(true);
         settings.requireConfirmationForNew = obj["require_confirmation_new"].toBool(true);
         settings.requireConfirmationForModified = obj["require_confirmation_modified"].toBool(true);

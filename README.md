@@ -137,15 +137,18 @@ Device database: `~/.config/flashsentry/devices.json`
 | **Auto hash entire partition on connect** | Off | Full raw-device hash (advanced) |
 | **Block modified devices** | Off | Refuse mount after failed verify |
 
-See **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** for workflows, screenshots placeholders, and troubleshooting.
+See **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** for workflows and troubleshooting.
 
 ## Documentation
 
 | Document | Audience |
 |----------|----------|
+| **[docs/README.md](docs/README.md)** | Documentation index |
 | **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** | End users — ISO verify, watch lists, settings, FAQ |
 | **[docs/VERIFICATION.md](docs/VERIFICATION.md)** | How verification modes work (Merkle, ISO chain, full hash) |
 | **[CLAUDE.md](CLAUDE.md)** | Developers — architecture, components, build |
+| **[CHANGELOG.md](CHANGELOG.md)** | Release history |
+| **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute |
 
 ## Building
 

@@ -96,6 +96,16 @@ post_install() {
     _info "  Ensure your kernel has CONFIG_BLK_DEV_BSG enabled for raw access."
     echo ""
 
+    # ISO verification
+    if ! command -v gpg &>/dev/null; then
+        _warning "Install 'gnupg' for automatic ISO OpenPGP verification (pacman -S gnupg)"
+    fi
+
+    echo ""
+    _info "Documentation: /usr/share/doc/flashsentry/ (USER_GUIDE.md, VERIFICATION.md)"
+    _info "  ISO verify: enable in Settings > Verification (on by default on USB mount)"
+    echo ""
+
     _success "Run 'flashsentry' or find it in your application menu to get started!"
 }
 

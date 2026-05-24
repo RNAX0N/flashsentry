@@ -2,12 +2,12 @@
 Type=Application
 Name=FlashSentry
 GenericName=USB Security Monitor
-Comment=Monitor and verify USB flash drives through cryptographic hashing
+Comment=Verify Linux ISOs and USB sticks — automatic checksums, PGP, and folder watch lists
 Exec=flashsentry %U
 Icon=flashsentry
 Terminal=false
 Categories=System;Security;Utility;
-Keywords=USB;flash;drive;security;hash;verify;monitor;whitelist;
+Keywords=USB;ISO;Linux;security;hash;verify;gpg;Rufus;checksum;Merkle;
 StartupNotify=true
 StartupWMClass=FlashSentry
 

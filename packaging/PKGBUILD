@@ -1,8 +1,8 @@
 # Maintainer: FlashSentry Team <team@flashsentry.io>
 pkgname=flashsentry
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
-pkgdesc="USB Flash Drive Security Monitor - Track, verify, and protect your USB devices"
+pkgdesc="USB and ISO security monitor - verify Linux ISOs, watch folders, optional full-disk hash"
 arch=('x86_64' 'aarch64')
 url="https://github.com/RNAX0N/flashsentry"
 license=('MIT')

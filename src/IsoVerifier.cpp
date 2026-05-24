@@ -78,6 +78,7 @@ QString findChecksumSidecar(const QString& isoPath)
         iso.absoluteFilePath() + QStringLiteral(".sha256"),
         iso.absolutePath() + QStringLiteral("/SHA256SUMS"),
         iso.absolutePath() + QStringLiteral("/sha256sums.txt"),
+        iso.absolutePath() + QStringLiteral("/sha256sum.txt"),
     };
     for (const QString& c : candidates) {
         if (QFileInfo::exists(c)) return c;
@@ -94,6 +95,7 @@ QString findSignatureSidecar(const QString& isoPath)
         iso.absoluteFilePath() + QStringLiteral(".asc"),
         iso.absolutePath() + QStringLiteral("/SHA256SUMS.gpg"),
         iso.absolutePath() + QStringLiteral("/sha256sums.txt.sig"),
+        iso.absolutePath() + QStringLiteral("/sha256sum.txt.gpg"),
         base + QStringLiteral(".sig"),
     };
     for (const QString& c : candidates) {

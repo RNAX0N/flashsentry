@@ -113,7 +113,7 @@ Log out and back in after adding the `storage` group.
 3. Plug in a stick that contains a supported `.iso` (e.g. `archlinux-*-x86_64.iso`, `ubuntu-*-desktop-amd64.iso`).
 4. Read the report in the log panel, or switch **Mode** to **Automatic ISO verification** for the full ISO UI.
 
-Supported publisher matching (by filename): **Arch Linux**, **Ubuntu**, **Debian**, **Fedora**. Others can still use local `.sha256` / `.asc` files on the drive.
+Supported publisher matching (by filename): **Arch Linux**, **Ubuntu**, **Debian**, **Fedora**, **Linux Mint**, **openSUSE Leap**, **openSUSE Tumbleweed**. Others can still use local `.sha256` / `.asc` / `.gpg` sidecars on the drive.
 
 ### Verify specific folders on a USB stick
 

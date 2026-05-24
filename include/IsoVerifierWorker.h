@@ -4,6 +4,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QFuture>
 
 namespace FlashSentry {
 
@@ -30,6 +31,7 @@ signals:
 
 private:
     bool m_cancelled = false;
+    QFuture<void> m_activeJob;
 };
 
 } // namespace FlashSentry

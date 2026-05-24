@@ -193,6 +193,9 @@ Filename patterns (examples):
 | Ubuntu | `ubuntu-24.04.2-desktop-amd64.iso` |
 | Debian | `debian-12.8.0-amd64-netinst.iso` |
 | Fedora | `Fedora-Workstation-Live-41-1.4.x86_64.iso` |
+| Linux Mint | `linuxmint-22.2-cinnamon-64bit.iso` |
+| openSUSE Leap | `openSUSE-Leap-15.6-DVD-x86_64-Media.iso` |
+| openSUSE Tumbleweed | `openSUSE-Tumbleweed-DVD-x86_64-Current.iso` |
 
 Publisher mirrors and keys are defined in the application; see [VERIFICATION.md](VERIFICATION.md) for technical detail.
 

@@ -21,3 +21,8 @@ add_executable(test_merkle test_merkle.cpp ${CMAKE_SOURCE_DIR}/src/MerkleTree.cp
 target_include_directories(test_merkle PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
 target_link_libraries(test_merkle PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
 add_test(NAME test_merkle COMMAND test_merkle)
+
+add_executable(test_iso_catalog test_iso_catalog.cpp ${CMAKE_SOURCE_DIR}/src/IsoCatalog.cpp)
+target_include_directories(test_iso_catalog PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_iso_catalog PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_iso_catalog COMMAND test_iso_catalog)

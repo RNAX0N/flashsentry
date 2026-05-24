@@ -4,6 +4,15 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- ISO publisher catalog: **Linux Mint**, **openSUSE Leap**, **openSUSE Tumbleweed**
+- Unit tests for `IsoCatalog` filename matching (`test_iso_catalog`)
+
+### Fixed
+
+- `IsoVerifierWorker` stores `QFuture` from `QtConcurrent::run` (silences `-Wunused-result`)
+
 ## [1.1.1] - 2026-05-24
 
 ### Added

@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "AutostartManager.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -445,6 +446,7 @@ void MainWindow::connectSignals()
 void MainWindow::loadSettings()
 {
     m_settings.startMinimized = m_qsettings->value("general/startMinimized", false).toBool();
+    m_settings.autoStartAtLogin = m_qsettings->value("general/autoStartAtLogin", false).toBool();
     m_settings.minimizeToTray = m_qsettings->value("general/minimizeToTray", true).toBool();
     m_settings.showNotifications = m_qsettings->value("general/showNotifications", true).toBool();
     m_settings.autoHashOnConnect = m_qsettings->value("security/autoHashOnConnect", false).toBool();
@@ -487,6 +489,7 @@ void MainWindow::loadSettings()
 void MainWindow::saveSettings()
 {
     m_qsettings->setValue("general/startMinimized", m_settings.startMinimized);
+    m_qsettings->setValue("general/autoStartAtLogin", m_settings.autoStartAtLogin);
     m_qsettings->setValue("general/minimizeToTray", m_settings.minimizeToTray);
     m_qsettings->setValue("general/showNotifications", m_settings.showNotifications);
     m_qsettings->setValue("security/autoHashOnConnect", m_settings.autoHashOnConnect);
@@ -1300,6 +1303,25 @@ void MainWindow::applySettings(const AppSettings& settings)
     m_hashWorker->setMaxConcurrent(settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(settings.animationsEnabled);
     applyAppModule();
+
+    if (AutostartManager::isAvailable()) {
+        const auto current = AutostartManager::isLoginAutostartEnabled();
+        if (!current.has_value() || *current != settings.autoStartAtLogin) {
+            QString error;
+            if (!AutostartManager::setLoginAutostartEnabled(settings.autoStartAtLogin, &error)) {
+                logMessage(QStringLiteral("Autostart: %1").arg(error), LogLevel::Warning);
+                QMessageBox::warning(this, QStringLiteral("Autostart"),
+                                     QStringLiteral("Could not update login autostart:\n%1").arg(error));
+            } else {
+                const QString mode = settings.autoStartAtLogin
+                    ? QStringLiteral("enabled")
+                    : QStringLiteral("disabled");
+                logMessage(QStringLiteral("Login autostart %1 (%2)")
+                               .arg(mode, AutostartManager::backendDescription()),
+                           LogLevel::Info);
+            }
+        }
+    }
 }
 
 void MainWindow::updateStatusBar()

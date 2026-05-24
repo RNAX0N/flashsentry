@@ -47,6 +47,7 @@ set(SOURCES
     src/DeviceCard.cpp
     src/TrayIcon.cpp
     src/SettingsDialog.cpp
+    src/AutostartManager.cpp
     src/StyleManager.cpp
 )
 
@@ -68,6 +69,7 @@ set(HEADERS
     include/DeviceCard.h
     include/TrayIcon.h
     include/SettingsDialog.h
+    include/AutostartManager.h
     include/StyleManager.h
     include/Types.h
 )
@@ -136,6 +138,7 @@ install(FILES packaging/flashsentry.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}
 install(FILES resources/icons/flashsentry.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
 install(FILES packaging/99-flashsentry.rules DESTINATION ${CMAKE_INSTALL_LIBDIR}/udev/rules.d)
+install(FILES packaging/flashsentry.service DESTINATION ${CMAKE_INSTALL_DATADIR}/systemd/user)
 
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/flashsentry)
 

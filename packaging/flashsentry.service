@@ -1,6 +1,6 @@
 [Unit]
 Description=FlashSentry - USB Flash Drive Security Monitor
-Documentation=https://github.com/flashsentry/flashsentry
+Documentation=https://github.com/RNAX0N/flashsentry
 After=graphical-session.target
 Wants=graphical-session.target
 PartOf=graphical-session.target

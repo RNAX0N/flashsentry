@@ -148,6 +148,15 @@ Use when you need a fingerprint of **every byte** on the partition.
 
 ## Settings reference
 
+### General tab
+
+| Option | Description |
+|--------|-------------|
+| **Start minimized to tray** | Launch into the tray instead of showing the main window |
+| **Start automatically at login** | Enables `flashsentry.service` (systemd user unit) when installed from the Arch package; otherwise writes an XDG autostart entry under `~/.config/autostart/` |
+| **Minimize to tray instead of closing** | Keep running in the background when the window is closed |
+| **Show desktop notifications** | Tray / libnotify alerts for device events |
+
 ### Verification tab
 
 | Option | Description |

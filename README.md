@@ -9,6 +9,11 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/RNAX0N/flashsentry/actions/workflows/ci.yml"><img src="https://github.com/RNAX0N/flashsentry/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/RNAX0N/flashsentry/releases"><img src="https://img.shields.io/github/v/release/RNAX0N/flashsentry?label=release" alt="Latest release"></a>
+</p>
+
+<p align="center">
   <a href="#features">Features</a> •
   <a href="#who-is-this-for">Who is this for?</a> •
   <a href="#installation">Installation</a> •

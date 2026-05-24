@@ -4,6 +4,11 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- README: CI and release badges
+- Docs: Ventoy / multi-ISO guide, `perFileArtifacts` and publisher table in [VERIFICATION.md](docs/VERIFICATION.md)
+
 ## [1.1.3] - 2026-05-24
 
 ### Added

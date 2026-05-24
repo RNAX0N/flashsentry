@@ -1,6 +1,6 @@
 # FlashSentry screenshots
 
-Place UI screenshots here for the README and release notes.
+Place UI screenshots here for the README and release notes. The main README links here until real captures are added.
 
 Suggested filenames:
 

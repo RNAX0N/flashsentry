@@ -196,6 +196,7 @@ Filename patterns (examples):
 | Linux Mint | `linuxmint-22.2-cinnamon-64bit.iso` |
 | openSUSE Leap | `openSUSE-Leap-15.6-DVD-x86_64-Media.iso` |
 | openSUSE Tumbleweed | `openSUSE-Tumbleweed-DVD-x86_64-Current.iso` |
+| Manjaro | `manjaro-kde-25.0.0-250527-linux612.iso` |
 
 Publisher mirrors and keys are defined in the application; see [VERIFICATION.md](VERIFICATION.md) for technical detail.
 

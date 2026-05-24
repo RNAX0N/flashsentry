@@ -16,6 +16,8 @@ struct IsoPublisherMatch {
     QString signatureUrl;
     QStringList signingKeyIds;
     QStringList trustedFingerprints;
+    /** When true, checksumUrl/signatureUrl name the ISO's .sha256 and .sig (not a SUMS file). */
+    bool perFileArtifacts = false;
 };
 
 /**

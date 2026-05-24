@@ -119,6 +119,26 @@ IsoPublisherMatch makeOpenSuseTumbleweed(const QString& fileName)
     return m;
 }
 
+IsoPublisherMatch makeManjaro(const QString& fileName, const QString& edition,
+                              const QString& version)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("manjaro");
+    m.publisherName = QStringLiteral("Manjaro");
+    m.releaseLabel = QStringLiteral("%1 %2").arg(edition, version);
+    m.isoFileName = fileName;
+    m.perFileArtifacts = true;
+    const QString base = QStringLiteral("https://download.manjaro.org/manjaro/iso/%1/%2/")
+                             .arg(version, edition);
+    m.checksumUrl = base + fileName + QStringLiteral(".sha256");
+    m.signatureUrl = base + fileName + QStringLiteral(".sig");
+    m.signingKeyIds = {QStringLiteral("0x5EBE35B2")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("518C BA83 A18D 0F97 4D17 FBB6 5F1E 8D0A 0C5C 2E5B")),
+    };
+    return m;
+}
+
 IsoPublisherMatch makeFedora(const QString& fileName, const QString& version)
 {
     IsoPublisherMatch m;
@@ -184,6 +204,16 @@ std::optional<IsoPublisherMatch> IsoCatalog::matchIso(const QString& isoPath)
     }
 
     {
+        static const QRegularExpression manjaroRe(
+            QStringLiteral("^manjaro-(\\w+)-(\\d+\\.\\d+\\.\\d+)-.+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = manjaroRe.match(name);
+        if (m.hasMatch()) {
+            return makeManjaro(name, m.captured(1).toLower(), m.captured(2));
+        }
+    }
+
+    {
         static const QRegularExpression mintRe(
             QStringLiteral("^linuxmint-(\\d+)(?:\\.\\d+)?-.+\\.iso$"),
             QRegularExpression::CaseInsensitiveOption);
@@ -219,7 +249,7 @@ QStringList IsoCatalog::knownPublisherIds()
     return {QStringLiteral("archlinux"), QStringLiteral("ubuntu"),
             QStringLiteral("debian"), QStringLiteral("fedora"),
             QStringLiteral("linuxmint"), QStringLiteral("opensuse-leap"),
-            QStringLiteral("opensuse-tumbleweed")};
+            QStringLiteral("opensuse-tumbleweed"), QStringLiteral("manjaro")};
 }
 
 } // namespace FlashSentry

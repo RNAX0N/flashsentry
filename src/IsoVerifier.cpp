@@ -65,6 +65,11 @@ QString parseChecksumContent(const QString& content, const QString& isoBaseName,
             return normalizeHash(hash);
         }
     }
+    const QString trimmed = content.trimmed();
+    if (trimmed.size() == 64 && trimmed.indexOf(QLatin1Char(' ')) < 0) {
+        return normalizeHash(trimmed);
+    }
+
     if (errorOut) *errorOut = QStringLiteral("ISO not listed in checksum file");
     return {};
 }
@@ -79,6 +84,7 @@ QString findChecksumSidecar(const QString& isoPath)
         iso.absolutePath() + QStringLiteral("/SHA256SUMS"),
         iso.absolutePath() + QStringLiteral("/sha256sums.txt"),
         iso.absolutePath() + QStringLiteral("/sha256sum.txt"),
+        iso.absoluteFilePath() + QStringLiteral(".sha256"),
     };
     for (const QString& c : candidates) {
         if (QFileInfo::exists(c)) return c;
@@ -97,6 +103,7 @@ QString findSignatureSidecar(const QString& isoPath)
         iso.absolutePath() + QStringLiteral("/sha256sums.txt.sig"),
         iso.absolutePath() + QStringLiteral("/sha256sum.txt.gpg"),
         base + QStringLiteral(".sig"),
+        iso.absoluteFilePath() + QStringLiteral(".sig"),
     };
     for (const QString& c : candidates) {
         if (QFileInfo::exists(c)) return c;
@@ -373,8 +380,9 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
 
             const QByteArray sigData = httpGet(match->signatureUrl, &fetchErr);
             if (!sigData.isEmpty()) {
-                const QString sigPath = cacheDir() + QLatin1Char('/') + match->publisherId
-                                        + QStringLiteral("-SHA256SUMS.sig");
+                const QString sigSuffix = match->perFileArtifacts ? QStringLiteral("-iso.sig")
+                                                                  : QStringLiteral("-SHA256SUMS.sig");
+                const QString sigPath = cacheDir() + QLatin1Char('/') + match->publisherId + sigSuffix;
                 QFile sigFile(sigPath);
                 if (sigFile.open(QIODevice::WriteOnly)) {
                     sigFile.write(sigData);
@@ -385,15 +393,20 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
                 QString importLog;
                 if (importPublisherKeys(match->signingKeyIds, r.keyserverUsed, &importLog)) {
                     r.pgpChecked = true;
-                    const GpgVerifyDetails vd = gpgVerifyDetached(sigPath, sumsPath);
+                    const QString signedDataPath = match->perFileArtifacts ? isoPath : sumsPath;
+                    const GpgVerifyDetails vd = gpgVerifyDetached(sigPath, signedDataPath);
                     r.pgpValid = vd.valid;
                     r.pgpSummary = vd.summary;
                     r.signingKeyId = vd.keyId;
                     r.signingKeyFingerprint = vd.fingerprint;
-                    r.signatureCoversChecksums = vd.valid;
-                    r.fingerprintTrusted = fingerprintIsTrusted(vd.fingerprint, match->trustedFingerprints);
-                    if (vd.valid && !r.fingerprintTrusted) {
-                        r.errorMessage = QStringLiteral("Signature OK but signing key fingerprint is not in the trusted list");
+                    r.signatureCoversChecksums = !match->perFileArtifacts && vd.valid;
+                    r.fingerprintTrusted = match->trustedFingerprints.isEmpty()
+                                               ? vd.valid
+                                               : fingerprintIsTrusted(vd.fingerprint,
+                                                                      match->trustedFingerprints);
+                    if (vd.valid && !match->trustedFingerprints.isEmpty() && !r.fingerprintTrusted) {
+                        r.errorMessage = QStringLiteral(
+                            "Signature OK but signing key fingerprint is not in the trusted list");
                     }
                 } else {
                     r.pgpSummary = importLog;

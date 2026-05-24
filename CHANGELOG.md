@@ -4,6 +4,16 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Manjaro** ISO publisher (per-file `.sha256` / `.sig` on download.manjaro.org)
+- Unit test `test_autostart` for XDG login autostart enable/disable
+
+### Fixed
+
+- Parse single-line `.iso.sha256` checksum files (Manjaro and local sidecars)
+- OpenPGP verify per-ISO `.sig` when `perFileArtifacts` is set on catalog entry
+
 ## [1.1.2] - 2026-05-24
 
 ### Added

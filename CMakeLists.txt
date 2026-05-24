@@ -102,8 +102,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 
 configure_file(
-    packaging/org.flashsentry.policy.in
-    ${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy
+    "${CMAKE_CURRENT_SOURCE_DIR}/packaging/org.flashsentry.policy.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy"
     @ONLY
 )
 
@@ -115,7 +115,23 @@ target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INC
 target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 install(TARGETS flashsentry-read-helper RUNTIME DESTINATION ${FLASHSENTRY_HELPER_RELDIR})
+install(CODE "
+  set(_helper \"\${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper\")
+  set(_legacy \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/flashsentry\")
+  file(MAKE_DIRECTORY \"\$ENV{DESTDIR}\${_legacy}\")
+  execute_process(
+    COMMAND \${CMAKE_COMMAND} -E copy
+      \"\$ENV{DESTDIR}\${_helper}\"
+      \"\$ENV{DESTDIR}\${_legacy}/flashsentry-read-helper\"
+    RESULT_VARIABLE _copy_result
+  )
+  if(NOT _copy_result EQUAL 0)
+    message(WARNING \"Could not install libexec compatibility copy of flashsentry-read-helper\")
+  endif()
+")
+
 install(FILES packaging/flashsentry.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 install(FILES resources/icons/flashsentry.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
@@ -133,8 +149,28 @@ install(
 )
 install(FILES docs/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME docs-README.md)
 
+if(NOT TARGET uninstall)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+        IMMEDIATE @ONLY
+    )
+    add_custom_target(uninstall
+        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+    )
+endif()
+
 option(FLASHSENTRY_BUILD_TESTS "Build unit tests" ON)
 if(FLASHSENTRY_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+message(STATUS "FlashSentry v${PROJECT_VERSION}")
+message(STATUS "  Build type:    ${CMAKE_BUILD_TYPE}")
+message(STATUS "  C++ Standard:  ${CMAKE_CXX_STANDARD}")
+message(STATUS "  Qt6 Version:   ${Qt6_VERSION}")
+message(STATUS "  libnotify:     ${LIBNOTIFY_FOUND}")
+message(STATUS "  Install to:    ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "  Read helper:   ${FLASHSENTRY_READ_HELPER}")
+message(STATUS "")

@@ -74,6 +74,28 @@ post_install() {
         _warning "Start it with: sudo systemctl enable --now udisks2.service"
     fi
 
+    # Check polkit read helper (hashing without storage group)
+    _helper_ok=false
+    for _h in /usr/lib/flashsentry/flashsentry-read-helper /usr/libexec/flashsentry/flashsentry-read-helper; do
+        if [ -x "$_h" ]; then
+            _helper_ok=true
+            break
+        fi
+    done
+    if [ "$_helper_ok" = false ]; then
+        _warning "flashsentry-read-helper not found under /usr/lib/flashsentry or /usr/libexec/flashsentry"
+        _warning "Rehash may fail with 'permission denied' until the package is rebuilt/reinstalled."
+    fi
+
+    # Polkit exec.path must match the installed helper
+    if [ -f /usr/share/polkit-1/actions/org.flashsentry.policy ]; then
+        _policy_path=$(grep -oP '(?<=exec.path">)[^<]+' /usr/share/polkit-1/actions/org.flashsentry.policy 2>/dev/null | head -1)
+        if [ -n "$_policy_path" ] && [ ! -x "$_policy_path" ]; then
+            _warning "Polkit policy points to $_policy_path but that file is missing or not executable."
+            _warning "Run: sudo pacman -S flashsentry  (reinstall) after upgrading."
+        fi
+    fi
+
     # Check for polkit agent
     if ! pgrep -x "polkit" &>/dev/null && ! pgrep -f "polkit-agent" &>/dev/null; then
         _warning "No polkit authentication agent detected."

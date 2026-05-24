@@ -1,6 +1,8 @@
 #include "RawDeviceHash.h"
 
 #include <QProcess>
+#include <QProcessEnvironment>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QFile>
@@ -186,15 +188,46 @@ QString defaultHelperPath()
 #endif
 }
 
+
+QString resolveHelperPath()
+{
+    const QByteArray overridePath = qgetenv("FLASHSENTRY_READ_HELPER");
+    if (!overridePath.isEmpty()) {
+        return QString::fromLocal8Bit(overridePath);
+    }
+
+    const QStringList candidates = {
+        defaultHelperPath(),
+        QStringLiteral("/usr/lib/flashsentry/flashsentry-read-helper"),
+        QStringLiteral("/usr/libexec/flashsentry/flashsentry-read-helper"),
+    };
+
+    for (const QString& candidate : candidates) {
+        if (QFileInfo::exists(candidate)) {
+            return candidate;
+        }
+    }
+
+    return defaultHelperPath();
+}
+
 HashResult hashViaPkexec(const Options& options, const QString& helperPath)
 {
     HashResult result;
     result.deviceNode = options.deviceNode;
     result.algorithm = algorithmName(options.algorithm);
 
-    const QString path = helperPath.isEmpty() ? defaultHelperPath() : helperPath;
+    const QString path = helperPath.isEmpty() ? resolveHelperPath() : helperPath;
 
     QProcess proc;
+    if (!QFileInfo::exists(path)) {
+        result.errorMessage = QString(
+            "Privileged helper not found at %1. Reinstall flashsentry or: sudo usermod -aG storage $USER")
+            .arg(path);
+        return result;
+    }
+
+    // pkexec matches org.flashsentry.read-raw-device via exec.path on the helper.
     proc.setProgram(QStringLiteral("pkexec"));
     proc.setArguments({
         path,
@@ -204,6 +237,7 @@ HashResult hashViaPkexec(const Options& options, const QString& helperPath)
         QString::number(options.bufferSizeKB),
         options.useMemoryMapping ? QStringLiteral("1") : QStringLiteral("0"),
     });
+    proc.setProcessEnvironment(QProcessEnvironment::systemEnvironment());
 
     proc.start();
     if (!proc.waitForStarted(10000)) {
@@ -228,6 +262,15 @@ HashResult hashViaPkexec(const Options& options, const QString& helperPath)
         QString msg = QString::fromUtf8(stderrData);
         if (msg.isEmpty()) {
             msg = QString("Privileged hash failed (exit %1)").arg(proc.exitCode());
+        }
+        const QString lower = msg.toLower();
+        if (lower.contains(QStringLiteral("not authorized"))
+            || lower.contains(QStringLiteral("permission denied"))
+            || lower.contains(QStringLiteral("cannot run"))) {
+            msg += QStringLiteral(
+                "\n\nEnsure flashsentry is reinstalled, a polkit agent is running in your "
+                "desktop session (e.g. polkit-kde-agent or polkit-gnome), and try: "
+                "sudo usermod -aG storage $USER (then log out and back in).");
         }
         result.errorMessage = msg;
         return result;

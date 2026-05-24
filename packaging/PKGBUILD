@@ -82,6 +82,14 @@ package() {
     # Install documentation
     install -Dm644 "${srcdir}/${pkgname}-${pkgver}/README.md" \
         "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/CHANGELOG.md" \
+        "${pkgdir}/usr/share/doc/${pkgname}/CHANGELOG.md"
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/docs/USER_GUIDE.md" \
+        "${pkgdir}/usr/share/doc/${pkgname}/USER_GUIDE.md"
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/docs/VERIFICATION.md" \
+        "${pkgdir}/usr/share/doc/${pkgname}/VERIFICATION.md"
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/docs/README.md" \
+        "${pkgdir}/usr/share/doc/${pkgname}/docs-README.md"
 
     # Install default config
     install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/config.json.default" \

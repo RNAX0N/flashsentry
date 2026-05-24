@@ -4,10 +4,16 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-05-24
+
 ### Added
 
 - **Login autostart** — Settings → General → “Start automatically at login” uses the systemd user unit when installed, or an XDG autostart entry otherwise
 - `docs/images/` placeholder for future UI screenshots
+
+### Changed
+
+- CMake installs `flashsentry.service` to `share/systemd/user`
 
 ## [1.1.0] - 2026-05-24
 

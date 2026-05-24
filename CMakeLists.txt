@@ -121,6 +121,18 @@ install(FILES resources/icons/flashsentry.svg DESTINATION ${CMAKE_INSTALL_DATADI
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
 install(FILES packaging/99-flashsentry.rules DESTINATION ${CMAKE_INSTALL_LIBDIR}/udev/rules.d)
 
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/flashsentry)
+
+install(
+    FILES
+        README.md
+        CHANGELOG.md
+        docs/USER_GUIDE.md
+        docs/VERIFICATION.md
+    DESTINATION ${CMAKE_INSTALL_DOCDIR}
+)
+install(FILES docs/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME docs-README.md)
+
 option(FLASHSENTRY_BUILD_TESTS "Build unit tests" ON)
 if(FLASHSENTRY_BUILD_TESTS)
     enable_testing()

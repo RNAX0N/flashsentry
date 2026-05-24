@@ -55,6 +55,7 @@ build() {
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_INSTALL_LIBDIR=lib \
+        -DFLASHSENTRY_BUILD_TESTS=ON \
         -Wno-dev
 
     cmake --build . --parallel
@@ -75,21 +76,7 @@ package() {
     # Install using CMake
     DESTDIR="${pkgdir}" cmake --install .
 
-    # Install license
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/LICENSE" \
-        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
-
-    # Install documentation
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/README.md" \
-        "${pkgdir}/usr/share/doc/${pkgname}/README.md"
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/CHANGELOG.md" \
-        "${pkgdir}/usr/share/doc/${pkgname}/CHANGELOG.md"
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/docs/USER_GUIDE.md" \
-        "${pkgdir}/usr/share/doc/${pkgname}/USER_GUIDE.md"
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/docs/VERIFICATION.md" \
-        "${pkgdir}/usr/share/doc/${pkgname}/VERIFICATION.md"
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/docs/README.md" \
-        "${pkgdir}/usr/share/doc/${pkgname}/docs-README.md"
+    # License and documentation are installed by cmake --install (see root CMakeLists.txt)
 
     # Install default config
     install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/config.json.default" \

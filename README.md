@@ -58,6 +58,16 @@ Built with Qt6 for Arch Linux: tray integration, polkit for safe mounting, and a
 
 If you only need “is this entire stick bit-for-bit the same as last time?”, enable full-partition hashing in **Settings → Security**.
 
+## Screenshots
+
+UI screenshots are planned for a future release. After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. Contributions of screenshots (PNG, no personal data on drives) are welcome in `docs/images/`.
+
+| View | Status |
+|------|--------|
+| USB monitor with device cards | Coming soon |
+| ISO verification report | Coming soon |
+| Watch lists dialog | Coming soon |
+
 ## Installation
 
 ### From source (Arch)
@@ -171,7 +181,7 @@ cmake -DFLASHSENTRY_BUILD_TESTS=ON ..
 cmake --build . && ctest --output-on-failure
 ```
 
-Install:
+Install (binary, polkit policy, udev rules, and docs under `/usr/share/doc/flashsentry/`):
 
 ```bash
 sudo cmake --install . --prefix /usr

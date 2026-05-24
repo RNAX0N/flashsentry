@@ -233,6 +233,27 @@ Each `.iso` on the mounted Ventoy partition can be verified when the volume moun
 
 ---
 
+## Ventoy and multi-ISO USB sticks
+
+[Ventoy](https://www.ventoy.net/) exposes a normal data partition that holds many `.iso` files. FlashSentry treats that like any other mounted volume:
+
+1. Plug in the stick and let your desktop (or FlashSentry) mount the **data** partition — not the small Ventoy EFI area unless you only care about that layout.
+2. Keep **Automatically verify ISOs when a USB drive is mounted** enabled (default).
+3. FlashSentry scans **all** `*.iso` files under the mount point (recursive) and runs publisher checks for each supported filename.
+
+**Tips:**
+
+| Situation | What to do |
+|-----------|------------|
+| Several distros on one stick | Wait for the log panel / notifications; each ISO gets its own pass/fail line |
+| One ISO fails, others pass | Normal — check filename matches a [supported publisher](#supported-iso-publishers-automatic) or add sidecars next to that ISO |
+| No `.iso` files found | You may have booted from the stick or only have a `dd`-written layout — see [dd / live USB without a loose file](#dd-or-rufus-iso-mode-without-a-loose-file) |
+| Ventoy copy + publisher checksum files | Copy `SHA256SUMS`, `.gpg`, or per-ISO `.sha256` / `.sig` beside the ISO; local sidecars are used if download fails |
+
+Ventoy does not require a separate mode — use **USB drive monitor** with ISO auto-verify on mount.
+
+---
+
 ## Getting help
 
 - Technical detail: [VERIFICATION.md](VERIFICATION.md)

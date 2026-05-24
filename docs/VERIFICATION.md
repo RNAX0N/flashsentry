@@ -78,10 +78,22 @@ For each `.iso` file:
 
 If remote fetch fails or publisher is unknown:
 
-- `*.sha256`, `SHA256SUMS`, `sha256sums.txt` next to ISO
-- `*.asc`, `*.sig`, `SHA256SUMS.gpg` for detached signatures
+- `SHA256SUMS`, `sha256sums.txt`, `sha256sum.txt` (directory-level)
+- `{iso}.sha256` or `{iso}.sha256` single-line hash (e.g. Manjaro layout)
+- `*.asc`, `*.sig`, `{iso}.sig`, `SHA256SUMS.gpg` for detached signatures
 
-Sidecar PGP on the ISO file itself is also attempted.
+Sidecar OpenPGP on the ISO file itself is also attempted when no checksum-file signature was verified.
+
+### Per-file publisher layout (`perFileArtifacts`)
+
+Some publishers (e.g. **Manjaro**) ship `{iso}.sha256` and `{iso}.sig` instead of a combined `SHA256SUMS` file. Catalog entries set `perFileArtifacts = true` so that:
+
+1. The checksum URL points at the single hash file (often one 64-character hex line).
+2. GPG verifies the detached `.sig` against the **ISO file**, not against a sums file.
+
+### Ventoy / multi-ISO volumes
+
+`verifyMountPoint()` calls `findIsoFiles()` recursively on the mounted path. A Ventoy data partition with many `.iso` files produces **one `IsoVerifyResult` per image**; results are independent (one failure does not block others).
 
 ### Bootable stick without `.iso`
 
@@ -127,6 +139,21 @@ Legacy records without partition suffix may still resolve via `legacyUniqueId()`
 | `iso/autoVerifyOnUsbMount` | ISO check on mount |
 | `iso/scanDirectory` | Default ISO folder |
 
+## Supported automatic publishers
+
+| ID | Filename hint |
+|----|----------------|
+| `archlinux` | `archlinux-*-x86_64.iso` |
+| `ubuntu` | `ubuntu-*-desktop-amd64.iso` |
+| `debian` | `debian-*-amd64*.iso` |
+| `fedora` | `Fedora-*-*.iso` |
+| `linuxmint` | `linuxmint-{major}-*.iso` |
+| `opensuse-leap` | `openSUSE-Leap-*-*-Media.iso` |
+| `opensuse-tumbleweed` | `openSUSE-Tumbleweed-*.iso` |
+| `manjaro` | `manjaro-{edition}-{version}-*.iso` |
+
+Run `test_iso_catalog` after editing `IsoCatalog.cpp`.
+
 ## Extending publisher support
 
 Add an entry in `IsoCatalog.cpp`:
@@ -135,5 +162,6 @@ Add an entry in `IsoCatalog.cpp`:
 - Checksum and signature URL builders
 - `signingKeyIds` for `gpg --recv-keys`
 - `trustedFingerprints` (normalized hex, no spaces)
+- Set `perFileArtifacts = true` when URLs are `{iso}.sha256` / `{iso}.sig` and GPG signs the ISO
 
 Rebuild and test with a real ISO on a loop mount or USB stick.

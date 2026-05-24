@@ -60,7 +60,7 @@ If you only need “is this entire stick bit-for-bit the same as last time?”, 
 
 ## Screenshots
 
-UI screenshots are planned for a future release. After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. Contributions of screenshots (PNG, no personal data on drives) are welcome in `docs/images/`.
+UI screenshots are planned for a future release. After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. Contributions of screenshots (PNG, no personal data on drives) are welcome in [`docs/images/`](docs/images/).
 
 | View | Status |
 |------|--------|

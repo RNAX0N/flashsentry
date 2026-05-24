@@ -341,6 +341,7 @@ inline QString verificationStatusToString(VerificationStatus status) {
 
 struct AppSettings {
     bool startMinimized = false;
+    bool autoStartAtLogin = false;
     bool minimizeToTray = true;
     bool showNotifications = true;
     bool autoHashOnConnect = false;
@@ -368,6 +369,7 @@ struct AppSettings {
     QJsonObject toJson() const {
         QJsonObject obj;
         obj["start_minimized"] = startMinimized;
+        obj["auto_start_at_login"] = autoStartAtLogin;
         obj["minimize_to_tray"] = minimizeToTray;
         obj["show_notifications"] = showNotifications;
         obj["auto_hash_on_connect"] = autoHashOnConnect;
@@ -396,6 +398,7 @@ struct AppSettings {
     static AppSettings fromJson(const QJsonObject& obj) {
         AppSettings settings;
         settings.startMinimized = obj["start_minimized"].toBool(false);
+        settings.autoStartAtLogin = obj["auto_start_at_login"].toBool(false);
         settings.minimizeToTray = obj["minimize_to_tray"].toBool(true);
         settings.showNotifications = obj["show_notifications"].toBool(true);
         settings.autoHashOnConnect = obj["auto_hash_on_connect"].toBool(false);

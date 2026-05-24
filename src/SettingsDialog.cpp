@@ -1,4 +1,5 @@
 #include "SettingsDialog.h"
+#include "AutostartManager.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -32,6 +33,11 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     
     // General
     m_startMinimizedCheck->setChecked(settings.startMinimized);
+    if (const auto enabled = AutostartManager::isLoginAutostartEnabled(); enabled.has_value()) {
+        m_autoStartCheck->setChecked(*enabled);
+    } else {
+        m_autoStartCheck->setChecked(settings.autoStartAtLogin);
+    }
     m_minimizeToTrayCheck->setChecked(settings.minimizeToTray);
     m_showNotificationsCheck->setChecked(settings.showNotifications);
     
@@ -89,6 +95,7 @@ AppSettings SettingsDialog::getSettings() const
     
     // General
     settings.startMinimized = m_startMinimizedCheck->isChecked();
+    settings.autoStartAtLogin = m_autoStartCheck->isChecked();
     settings.minimizeToTray = m_minimizeToTrayCheck->isChecked();
     settings.showNotifications = m_showNotificationsCheck->isChecked();
     
@@ -175,8 +182,18 @@ QWidget* SettingsDialog::createGeneralTab()
     startupLayout->addWidget(m_startMinimizedCheck);
     
     m_autoStartCheck = new QCheckBox("Start automatically at login");
-    m_autoStartCheck->setToolTip("Launch FlashSentry when you log in");
-    m_autoStartCheck->setEnabled(false); // TODO: Implement autostart
+    const QString autostartBackend = AutostartManager::backendDescription();
+    if (AutostartManager::isAvailable()) {
+        m_autoStartCheck->setToolTip(
+            autostartBackend.isEmpty()
+                ? QStringLiteral("Launch FlashSentry when you log in (minimized to tray)")
+                : QStringLiteral("Launch FlashSentry when you log in via %1").arg(autostartBackend));
+        connect(m_autoStartCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    } else {
+        m_autoStartCheck->setToolTip(
+            QStringLiteral("Install the Arch package (systemd user service) or use a desktop session with XDG autostart support"));
+        m_autoStartCheck->setEnabled(false);
+    }
     startupLayout->addWidget(m_autoStartCheck);
     
     layout->addWidget(startupGroup);

@@ -26,3 +26,11 @@ add_executable(test_iso_catalog test_iso_catalog.cpp ${CMAKE_SOURCE_DIR}/src/Iso
 target_include_directories(test_iso_catalog PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_iso_catalog PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME test_iso_catalog COMMAND test_iso_catalog)
+
+add_executable(test_autostart
+    test_autostart.cpp
+    ${CMAKE_SOURCE_DIR}/src/AutostartManager.cpp
+)
+target_include_directories(test_autostart PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_autostart PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_autostart COMMAND test_autostart)

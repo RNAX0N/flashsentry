@@ -14,6 +14,7 @@ private slots:
     void openSuseTumbleweedMatches();
     void unknownIsoReturnsNullopt();
     void knownPublisherIdsIncludesNewPublishers();
+    void manjaroPerFileArtifacts();
 };
 
 void TestIsoCatalog::archIsoMatches()
@@ -72,6 +73,19 @@ void TestIsoCatalog::knownPublisherIdsIncludesNewPublishers()
     QVERIFY(ids.contains(QStringLiteral("linuxmint")));
     QVERIFY(ids.contains(QStringLiteral("opensuse-leap")));
     QVERIFY(ids.contains(QStringLiteral("opensuse-tumbleweed")));
+    QVERIFY(ids.contains(QStringLiteral("manjaro")));
+}
+
+void TestIsoCatalog::manjaroPerFileArtifacts()
+{
+    const auto match = IsoCatalog::matchIso(
+        QStringLiteral("/usb/manjaro-kde-25.0.0-250527-linux612.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("manjaro"));
+    QVERIFY(match->perFileArtifacts);
+    QVERIFY(match->checksumUrl.endsWith(QStringLiteral(".iso.sha256")));
+    QVERIFY(match->signatureUrl.endsWith(QStringLiteral(".iso.sig")));
+    QVERIFY(match->checksumUrl.contains(QStringLiteral("/kde/")));
 }
 
 QTEST_MAIN(TestIsoCatalog)

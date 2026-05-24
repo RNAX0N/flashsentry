@@ -16,3 +16,8 @@ target_include_directories(test_database_manager PRIVATE ${CMAKE_SOURCE_DIR}/inc
 target_include_directories(test_database_manager PRIVATE ${OPENSSL_INCLUDE_DIRS})
 target_link_libraries(test_database_manager PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
 add_test(NAME test_database_manager COMMAND test_database_manager)
+
+add_executable(test_merkle test_merkle.cpp ${CMAKE_SOURCE_DIR}/src/MerkleTree.cpp)
+target_include_directories(test_merkle PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_merkle PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
+add_test(NAME test_merkle COMMAND test_merkle)

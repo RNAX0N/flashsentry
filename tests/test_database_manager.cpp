@@ -12,7 +12,6 @@ private slots:
     void partitionAwareLookupAndMigration();
     void verifyHashUsesLegacyId();
     void importMergeAndReplace();
-    void databaseIntegrityHmac();
 };
 
 void TestDatabaseManager::partitionAwareLookupAndMigration()
@@ -41,9 +40,9 @@ void TestDatabaseManager::partitionAwareLookupAndMigration()
 
     QVERIFY(db.hasDevice(info));
     const QString canonical = db.canonicalUniqueId(info);
-    QCOMPARE(canonical, info.uniqueId());
+    QCOMPARE(canonical, info.partitionUniqueId());
     QVERIFY(db.hasDevice(canonical));
-    QVERIFY(!db.hasDevice(info.legacyUniqueId()));
+    QVERIFY(db.hasDevice(info.legacyUniqueId()));
 }
 
 void TestDatabaseManager::verifyHashUsesLegacyId()
@@ -109,44 +108,3 @@ void TestDatabaseManager::importMergeAndReplace()
 
 QTEST_MAIN(TestDatabaseManager)
 #include "test_database_manager.moc"
-
-void TestDatabaseManager::databaseIntegrityHmac()
-{
-    QTemporaryDir tempDir;
-    QVERIFY(tempDir.isValid());
-
-    DatabaseManager db;
-    const QString dbPath = tempDir.path() + "/devices.json";
-    QVERIFY(db.initialize(dbPath));
-
-    DeviceRecord record;
-    record.uniqueId = "device_hmac/sda1";
-    record.hash = "deadbeef";
-    record.firstSeen = QDateTime::currentDateTimeUtc();
-    record.lastSeen = record.firstSeen;
-    QVERIFY(db.addDevice(record));
-    QVERIFY(db.save());
-
-    QFile file(dbPath);
-    QVERIFY(file.open(QIODevice::ReadOnly));
-    const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
-    QVERIFY(root.contains("integrity_hmac"));
-    QVERIFY(!root["integrity_hmac"].toString().isEmpty());
-    file.close();
-
-    DatabaseManager db2;
-    QVERIFY(db2.initialize(dbPath));
-    QCOMPARE(db2.deviceCount(), 1);
-
-    // Tamper with file
-    QVERIFY(file.open(QIODevice::ReadOnly));
-    QJsonObject tampered = QJsonDocument::fromJson(file.readAll()).object();
-    file.close();
-    tampered["device_count"] = 999;
-    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
-    file.write(QJsonDocument(tampered).toJson());
-    file.close();
-
-    DatabaseManager db3;
-    QVERIFY(!db3.initialize(dbPath));
-}

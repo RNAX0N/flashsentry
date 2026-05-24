@@ -1,169 +1,108 @@
 # FlashSentry - CLAUDE.md
 
+Developer reference for the FlashSentry codebase. End-user documentation: [docs/USER_GUIDE.md](docs/USER_GUIDE.md), [docs/VERIFICATION.md](docs/VERIFICATION.md), [README.md](README.md).
+
 ## Project Overview
 
-FlashSentry is a high-performance USB flash drive security monitoring application for Arch Linux. It monitors USB device insertions, maintains a cryptographic whitelist of known devices, verifies device integrity through SHA-256/SHA-512/BLAKE2b hashing, and alerts users when devices have been modified.
+FlashSentry is a Qt6 USB security application for Arch Linux. It:
 
-**Design Philosophy**: Built the "Arch way" - simple, modular, well-documented, and optimized for speed and security.
+1. **Monitors** removable block devices (libudev)
+2. **Verifies** content via configurable profiles (recommended: **watch manifests** / **ISO**)
+3. **Optionally** hashes entire partitions (advanced)
+4. **Mounts** via UDisks2 + polkit with safe defaults
 
-## Features
-
-- **Real-time Device Monitoring**: Uses libudev for efficient USB detection without polling
-- **Cryptographic Verification**: SHA-256, SHA-512, or BLAKE2b hashing with memory-mapped I/O
-- **Futuristic UI**: Qt6-based GUI with cyberpunk-inspired themes and smooth animations
-- **System Tray Integration**: Runs in background with desktop notifications
-- **Privilege Escalation**: Uses polkit for secure operations without running as root
-- **Pacman Integration**: Full PKGBUILD for easy Arch Linux installation
+**Product defaults:** ISO auto-verify on USB mount **on**; full-partition hash on connect **off**; default profile **watch manifest**.
 
 ## Technology Stack
 
 | Component | Technology |
 |-----------|------------|
 | Language | C++20 |
-| GUI Framework | Qt6 (Core, Gui, Widgets, DBus, Concurrent) |
-| Device Monitoring | libudev |
-| Cryptography | OpenSSL (EVP API) |
-| Mount Operations | UDisks2 via D-Bus |
-| Build System | CMake 3.20+ |
-| Package Manager | pacman (PKGBUILD) |
+| GUI | Qt6 (Core, Gui, Widgets, DBus, Concurrent, Network) |
+| Device monitoring | libudev |
+| Cryptography | OpenSSL (EVP) |
+| ISO OpenPGP | `gpg` subprocess, isolated homedir under cache |
+| Mount | UDisks2 / polkit |
+| Build | CMake 3.20+ |
 
 ## Project Structure
 
 ```
 flashsentry/
-├── CMakeLists.txt              # Build configuration
+├── CMakeLists.txt
 ├── src/
-│   ├── main.cpp                # Application entry point
-│   ├── MainWindow.cpp          # Main application window
-│   ├── DeviceMonitor.cpp       # libudev monitoring thread
-│   ├── HashWorker.cpp          # Async hashing with QtConcurrent
-│   ├── DatabaseManager.cpp     # Thread-safe JSON whitelist
-│   ├── MountManager.cpp        # UDisks2 D-Bus integration
-│   ├── DeviceCard.cpp          # Animated device display widget
-│   ├── TrayIcon.cpp            # System tray with notifications
-│   ├── SettingsDialog.cpp      # Configuration UI
-│   └── StyleManager.cpp        # Theming and styling
-├── include/
-│   ├── Types.h                 # Shared data structures
-│   ├── MainWindow.h
-│   ├── DeviceMonitor.h
-│   ├── HashWorker.h
-│   ├── DatabaseManager.h
-│   ├── MountManager.h
-│   ├── DeviceCard.h
-│   ├── TrayIcon.h
-│   ├── SettingsDialog.h
-│   └── StyleManager.h
-├── resources/
-│   ├── resources.qrc           # Qt resource file
-│   ├── icons/
-│   │   └── flashsentry.svg     # Application icon
-│   ├── styles/
-│   └── fonts/
+│   ├── main.cpp
+│   ├── MainWindow.cpp              # USB UI, settings, device flow
+│   ├── MainWindow_verify_ext.cpp   # Manifest + ISO module wiring
+│   ├── DeviceMonitor.cpp
+│   ├── HashWorker.cpp              # Raw partition hash
+│   ├── RawDeviceHash.cpp           # Shared read/hash for helper
+│   ├── flashsentry-read-helper.cpp # polkit elevated reads
+│   ├── MerkleTree.cpp
+│   ├── ManifestService.cpp         # Build/verify watch groups
+│   ├── ManifestWorker.cpp          # Async manifest jobs
+│   ├── WatchListDialog.cpp
+│   ├── IsoCatalog.cpp              # Publisher URL + key metadata
+│   ├── IsoVerifier.cpp             # ISO hash + remote + gpg
+│   ├── IsoVerifierWorker.cpp
+│   ├── IsoVerifierWidget.cpp
+│   ├── DatabaseManager.cpp
+│   ├── MountManager.cpp
+│   ├── DeviceCard.cpp
+│   ├── TrayIcon.cpp
+│   ├── SettingsDialog.cpp
+│   └── StyleManager.cpp
+├── include/                        # Headers mirror src/
+├── docs/
+│   ├── USER_GUIDE.md
+│   └── VERIFICATION.md
 ├── packaging/
-│   ├── PKGBUILD                # Arch Linux package build
-│   ├── flashsentry.install     # pacman install hooks
-│   ├── flashsentry.desktop     # Desktop entry
-│   ├── flashsentry.service     # systemd user service
-│   ├── org.flashsentry.policy  # polkit policy
-│   └── 99-flashsentry.rules    # udev rules
-└── cmake/
+│   ├── PKGBUILD
+│   ├── org.flashsentry.policy.in
+│   └── ...
+└── tests/
+    ├── test_merkle.cpp
+    └── ...
 ```
 
-## Building
+## Verification Modes
 
-### Dependencies (Arch Linux)
+| Mode | Entry point | Storage |
+|------|-------------|---------|
+| Watch manifest | `startDeviceVerification()` → `ManifestWorker` | `DeviceRecord.watchManifest` |
+| Full partition | `startHashing()` → `HashWorker` | `DeviceRecord.hash` |
+| Hybrid | Manifest then `PendingHashAction::RunFullHashAfterManifest` | Both |
+| ISO | `IsoVerifier::verifyMountPoint()` / `IsoVerifierWidget` | Results only (not whitelisted) |
 
-```bash
-sudo pacman -S qt6-base qt6-tools cmake base-devel openssl pkgconf
-```
-
-### Development Build
-
-```bash
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Debug ..
-make -j$(nproc)
-```
-
-### Release Build
-
-```bash
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
-```
-
-### Package Build (for pacman)
-
-```bash
-cd packaging
-makepkg -si
-```
-
-## Installation
-
-### From Package (Recommended)
-
-```bash
-cd packaging
-makepkg -si
-```
-
-### Manual Installation
-
-```bash
-sudo cmake --install build --prefix /usr
-```
-
-### Post-Installation
-
-```bash
-# Add user to storage group for raw device access
-sudo usermod -aG storage $USER
-
-# Enable autostart
-systemctl --user enable --now flashsentry.service
-
-# Disable DE auto-mount (GNOME example)
-gsettings set org.gnome.desktop.media-handling automount false
-```
+See [docs/VERIFICATION.md](docs/VERIFICATION.md) for algorithms.
 
 ## Key Components
 
 ### DeviceMonitor
-- Runs in dedicated QThread
-- Uses poll() for efficient event waiting
-- Filters for USB block device partitions
-- Emits Qt signals on device add/remove/change
-- Thread-safe device tracking with QMutex
+- Dedicated `QThread`, `poll()` on udev fd
+- USB block partitions; emits `deviceConnected` / `deviceDisconnected` / `deviceChanged`
 
-### HashWorker
-- Asynchronous hashing via QtConcurrent
-- Supports SHA-256, SHA-512, BLAKE2b
-- Memory-mapped I/O for speed (mmap)
-- Falls back to buffered read with O_DIRECT
-- Real-time progress reporting
-- Cancellation support
+### ManifestService / ManifestWorker
+- `buildGroup()` / `verifyManifest()` on mount paths
+- `ManifestWorker` runs jobs on `QtConcurrent`, signals `manifestCompleted` etc.
+
+### IsoVerifier / IsoCatalog
+- `IsoCatalog::matchIso()` → publisher URLs + trusted fingerprints
+- HTTP fetch (Qt Network) + `gpg --homedir` in `~/.cache/FlashSentry/iso-verify/`
+- `verifyMountPoint()` for automation on USB mount (`triggerIsoVerificationOnMount`)
+
+### HashWorker / RawDeviceHash
+- Full-device hashing; may use `flashsentry-read-helper` via polkit (`FLASHSENTRY_READ_HELPER_PATH`)
 
 ### DatabaseManager
-- Thread-safe with QReadWriteLock
-- JSON storage for human readability
-- Atomic writes with temp file + rename
-- Automatic backups (max 5)
-- Secure file permissions (600)
+- `canonicalUniqueId()` → `DeviceInfo::partitionUniqueId()`
+- `updateWatchManifest()`, `setVerificationProfile()`
+- JSON at `~/.config/flashsentry/devices.json`, atomic write, mode 600
 
-### MountManager
-- Communicates with UDisks2 via D-Bus
-- Async mount/unmount/eject operations
-- polkit integration for privileges
-- Security defaults: noexec, nosuid, nodev
-
-### StyleManager
-- 5 built-in themes: CyberDark, NeonPurple, MatrixGreen, BladeRunner, GhostWhite
-- Dynamic theme switching
-- Glow and pulse animations
-- Consistent styling across all widgets
+### MainWindow
+- `m_appModeStack`: USB splitter vs `IsoVerifierWidget`
+- `startDeviceVerification()` routes by `VerificationProfile`
+- `applyAppModule()` switches stacked UI
 
 ## Database Format (devices.json)
 
@@ -172,126 +111,113 @@ gsettings set org.gnome.desktop.media-handling automount false
   "version": "1.0",
   "devices": [
     {
-      "unique_id": "SERIAL_VENDOR_MODEL/sdb1",
-      "hash": "sha256_hex_string",
-      "hash_algorithm": "SHA256",
-      "first_seen": "2024-01-01T00:00:00Z",
-      "last_seen": "2024-01-01T00:00:00Z",
+      "unique_id": "SERIAL_Vendor_Model_sdb1",
+      "hash": "optional_full_partition_sha256",
+      "verification_profile": "watch_manifest",
+      "watch_manifest": {
+        "groups": [
+          {
+            "id": "docs",
+            "name": "Documents",
+            "watch_paths": ["Documents"],
+            "merkle_root": "abc...",
+            "files": []
+          }
+        ],
+        "manifest_root": "def..."
+      },
       "trust_level": 1,
-      "auto_mount": false,
-      "device_info": {
-        "serial": "ABC123",
-        "vendor": "SanDisk",
-        "model": "Ultra USB 3.0"
-      }
+      "device_info": { }
     }
   ]
 }
 ```
 
-## Configuration
+## Configuration (QSettings)
 
-Settings stored in: `~/.config/FlashSentry/FlashSentry.conf`
+File: `~/.config/FlashSentry/FlashSentry.conf`
 
-Key settings:
-- `security/autoHashOnConnect`: Auto-verify devices on plug-in
-- `security/autoHashOnEject`: Re-hash before ejecting
-- `security/blockModified`: Prevent mounting modified devices
-- `hashing/algorithm`: SHA256, SHA512, or BLAKE2b
-- `hashing/bufferSizeKB`: Read buffer size (64-16384 KB)
-- `hashing/useMemoryMapping`: Use mmap for speed
+| Key | Default | Notes |
+|-----|---------|-------|
+| `general/appModule` | `usb_monitor` | or `iso_verifier` |
+| `security/defaultVerificationProfile` | `watch_manifest` | |
+| `security/autoHashOnConnect` | `false` | Full partition |
+| `iso/autoVerifyOnUsbMount` | `true` | ISO automation |
+| `iso/autoVerify` | `true` | After folder scan |
+| `hashing/algorithm` | SHA256 | Full partition only |
 
-## Kernel Compatibility
+Types: `include/Types.h` (`AppSettings`, `VerificationProfile`, `WatchManifest`, `IsoVerifyResult`).
 
-FlashSentry works with any Linux kernel that has:
-- udev support (all modern kernels)
-- Block device support
-- USB mass storage support
+## Signal Flow (USB + watch manifest)
 
-Tested kernels:
-- linux (standard Arch kernel)
-- linux-lts
-- linux-zen
-- linux-hardened
+1. `DeviceMonitor::deviceConnected`
+2. `MainWindow::handleNewDevice` / `handleKnownDevice`
+3. `startDeviceVerification` → mount if needed → `ManifestWorker::startVerify`
+4. `onManifestCompleted` → mount or `handleManifestMismatch`
+5. Hybrid → `startHashing` after manifest pass
 
-## Security Considerations
+## Signal Flow (ISO)
 
-1. **No Root Required**: Uses polkit for privilege escalation
-2. **Mount Security**: Default mount options include noexec, nosuid, nodev
-3. **Secure Storage**: Database file has 600 permissions
-4. **Tamper Detection**: Cryptographic hashes detect any modification
-5. **User Confirmation**: Prompts before mounting unknown/modified devices
+1. `MountManager::mountCompleted` → `triggerIsoVerificationOnMount`
+2. `IsoVerifierWidget::verifyMountPoint` → `IsoVerifierWorker`
+3. `IsoVerifier::verifyMountPoint` per `.iso`
+4. UI table + `verificationReportReady` / log
 
-## Troubleshooting
+## Building
 
-### Device not detected
 ```bash
-# Check udev rules
-udevadm test /sys/block/sdX
+sudo pacman -S qt6-base qt6-tools cmake base-devel openssl pkgconf
 
-# Monitor udev events
-udevadm monitor --property --udev --subsystem-match=block
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+cmake --build . -j$(nproc)
 ```
 
-### Permission denied on hash
+Runtime: `gpg` recommended for ISO; network for publisher fetch.
+
 ```bash
-# Add user to storage group
-sudo usermod -aG storage $USER
-# Log out and back in
+cmake -DFLASHSENTRY_BUILD_TESTS=ON ..
+ctest --output-on-failure
 ```
 
-### UDisks2 mount fails
+Package:
+
 ```bash
-# Check UDisks2 service
-systemctl status udisks2.service
-
-# Check polkit agent
-pgrep -f polkit
+cd packaging && makepkg -si
 ```
 
-### Non-standard kernel issues
-```bash
-# Verify kernel config
-zcat /proc/config.gz | grep CONFIG_BLK_DEV_BSG
-```
-
-## Command Line Options
+## Command Line
 
 ```
-flashsentry [options]
-
-Options:
-  -m, --minimized    Start minimized to system tray
-  -f, --force        Force start even if another instance is running
-  -d, --debug        Enable debug output
-  --no-tray          Disable system tray icon
-  -c, --config PATH  Path to configuration file
-  -h, --help         Display help
-  -v, --version      Display version
+flashsentry [--minimized] [--debug] [--no-tray] [--force] [--config PATH]
 ```
 
-## Development Notes
+## Threading
 
-### Threading Model
-- Main thread: Qt event loop, GUI
-- DeviceMonitor thread: udev event polling
-- HashWorker threads: QtConcurrent thread pool
-- DatabaseManager: Thread-safe, called from any thread
+| Thread / pool | Work |
+|---------------|------|
+| Main | Qt GUI, D-Bus |
+| DeviceMonitor | udev poll |
+| QtConcurrent | HashWorker, ManifestWorker, IsoVerifierWorker |
+| DatabaseManager | `QReadWriteLock`; `markModified()` may queue `save()` |
 
-### Signal Flow
-1. DeviceMonitor emits `deviceConnected`
-2. MainWindow receives, creates DeviceCard
-3. MainWindow checks database, starts HashWorker
-4. HashWorker emits `hashProgress`, `hashCompleted`
-5. MainWindow updates DeviceCard status
-6. MountManager called if verified
+## Adding a Publisher (ISO)
 
-### Adding a New Theme
-1. Add enum value to `StyleManager::Theme`
-2. Add color palette to `s_themePalettes` in StyleManager.cpp
-3. Add name mapping in `themeName()`
-4. Update `availableThemes()` return list
+Edit `src/IsoCatalog.cpp`: regex, checksum/signature URLs, `signingKeyIds`, `trustedFingerprints`. Document in [docs/VERIFICATION.md](docs/VERIFICATION.md).
+
+## Adding a Theme
+
+1. `StyleManager::Theme` enum
+2. Palette in `StyleManager.cpp` `s_themePalettes`
+3. `themeName()` / `availableThemes()`
+
+## Security Notes
+
+- Polkit for helper and mount; not setuid GUI
+- ISO: trust publisher fingerprints in catalog; TOFU for unknown keys fails closed on fingerprint mismatch
+- Manifest: only watches explicit paths; unrelated stick changes are invisible by design
+- Full partition: detects any byte change; requires `storage` group
 
 ## License
 
-MIT License - See LICENSE file
+MIT — see LICENSE.

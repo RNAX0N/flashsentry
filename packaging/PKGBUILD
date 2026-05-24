@@ -1,8 +1,8 @@
 # Maintainer: FlashSentry Team <team@flashsentry.io>
 pkgname=flashsentry
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
-pkgdesc="USB Flash Drive Security Monitor - Track, verify, and protect your USB devices"
+pkgdesc="USB and ISO security monitor - verify Linux ISOs, watch folders, optional full-disk hash"
 arch=('x86_64' 'aarch64')
 url="https://github.com/RNAX0N/flashsentry"
 license=('MIT')
@@ -22,6 +22,7 @@ makedepends=(
 optdepends=(
     'libnotify: Desktop notifications support'
     'qt6-wayland: Wayland support'
+    'gnupg: Automatic ISO OpenPGP signature verification'
 )
 provides=('flashsentry')
 conflicts=('flashsentry-git')
@@ -54,6 +55,7 @@ build() {
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DCMAKE_INSTALL_LIBDIR=lib \
+        -DFLASHSENTRY_BUILD_TESTS=ON \
         -Wno-dev
 
     cmake --build . --parallel
@@ -74,13 +76,7 @@ package() {
     # Install using CMake
     DESTDIR="${pkgdir}" cmake --install .
 
-    # Install license
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/LICENSE" \
-        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
-
-    # Install documentation
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/README.md" \
-        "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+    # License and documentation are installed by cmake --install (see root CMakeLists.txt)
 
     # Install default config
     install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/config.json.default" \

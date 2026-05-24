@@ -42,6 +42,22 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     m_confirmModifiedCheck->setChecked(settings.requireConfirmationForModified);
     m_promptPerPartitionCheck->setChecked(settings.promptPerPartition);
     m_blockModifiedCheck->setChecked(settings.blockModifiedDevices);
+    for (int i = 0; i < m_appModuleCombo->count(); ++i) {
+        if (m_appModuleCombo->itemData(i).toInt() == static_cast<int>(settings.appModule)) {
+            m_appModuleCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+    for (int i = 0; i < m_defaultProfileCombo->count(); ++i) {
+        if (m_defaultProfileCombo->itemData(i).toInt() == static_cast<int>(settings.defaultVerificationProfile)) {
+            m_defaultProfileCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+    m_isoDirEdit->setText(settings.isoScanDirectory);
+    m_isoAutoVerifyCheck->setChecked(settings.isoAutoVerifyOnScan);
+    if (m_isoAutoVerifyOnUsbMountCheck)
+        m_isoAutoVerifyOnUsbMountCheck->setChecked(settings.isoAutoVerifyOnUsbMount);
     m_defaultTrustCombo->setCurrentIndex(settings.defaultTrustLevel);
     
     // Hashing
@@ -83,6 +99,13 @@ AppSettings SettingsDialog::getSettings() const
     settings.requireConfirmationForModified = m_confirmModifiedCheck->isChecked();
     settings.promptPerPartition = m_promptPerPartitionCheck->isChecked();
     settings.blockModifiedDevices = m_blockModifiedCheck->isChecked();
+    settings.appModule = static_cast<AppModule>(m_appModuleCombo->currentData().toInt());
+    settings.defaultVerificationProfile = static_cast<VerificationProfile>(
+        m_defaultProfileCombo->currentData().toInt());
+    settings.isoScanDirectory = m_isoDirEdit->text().trimmed();
+    settings.isoAutoVerifyOnScan = m_isoAutoVerifyCheck->isChecked();
+    if (m_isoAutoVerifyOnUsbMountCheck)
+        settings.isoAutoVerifyOnUsbMount = m_isoAutoVerifyOnUsbMountCheck->isChecked();
     settings.defaultTrustLevel = m_defaultTrustCombo->currentIndex();
     
     // Hashing
@@ -111,6 +134,7 @@ void SettingsDialog::setupUi()
     m_tabWidget = new QTabWidget;
     m_tabWidget->addTab(createGeneralTab(), "General");
     m_tabWidget->addTab(createSecurityTab(), "Security");
+    m_tabWidget->addTab(createVerificationTab(), "Verification");
     m_tabWidget->addTab(createHashingTab(), "Hashing");
     m_tabWidget->addTab(createAppearanceTab(), "Appearance");
     m_tabWidget->addTab(createDatabaseTab(), "Database");
@@ -178,6 +202,63 @@ QWidget* SettingsDialog::createGeneralTab()
     return tab;
 }
 
+
+QWidget* SettingsDialog::createVerificationTab()
+{
+    QWidget* tab = new QWidget;
+    QVBoxLayout* layout = new QVBoxLayout(tab);
+
+    auto* intro = new QLabel(QStringLiteral(
+        "Recommended for most users: <b>ISO verification</b> (no PGP/Kleopatra knowledge needed) "
+        "or <b>watch lists</b> that hash only the folders you care about. "
+        "Full raw-partition hashing is available but slow — enable it under Security if you need it."));
+    intro->setWordWrap(true);
+    layout->addWidget(intro);
+
+    QGroupBox* moduleGroup = new QGroupBox(QStringLiteral("Application mode"));
+    QFormLayout* moduleForm = new QFormLayout(moduleGroup);
+    m_appModuleCombo = new QComboBox;
+    m_appModuleCombo->addItem(QStringLiteral("USB drive monitor"), static_cast<int>(AppModule::UsbMonitor));
+    m_appModuleCombo->addItem(QStringLiteral("Automatic ISO verification"), static_cast<int>(AppModule::IsoVerifier));
+    connect(m_appModuleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsDialog::onSettingChanged);
+    moduleForm->addRow(QStringLiteral("Mode:"), m_appModuleCombo);
+    layout->addWidget(moduleGroup);
+
+    QGroupBox* profileGroup = new QGroupBox(QStringLiteral("USB file-tree verification (default)"));
+    QFormLayout* profileForm = new QFormLayout(profileGroup);
+    m_defaultProfileCombo = new QComboBox;
+    m_defaultProfileCombo->addItem(QStringLiteral("Watch folders only (Merkle, recommended)"),
+                                   static_cast<int>(VerificationProfile::WatchManifest));
+    m_defaultProfileCombo->addItem(QStringLiteral("Full partition (raw hash, advanced)"),
+                                   static_cast<int>(VerificationProfile::FullPartition));
+    m_defaultProfileCombo->addItem(QStringLiteral("Hybrid (watch + full hash)"),
+                                   static_cast<int>(VerificationProfile::Hybrid));
+    connect(m_defaultProfileCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsDialog::onSettingChanged);
+    profileForm->addRow(QStringLiteral("Default:"), m_defaultProfileCombo);
+    layout->addWidget(profileGroup);
+
+    QGroupBox* isoGroup = new QGroupBox(QStringLiteral("ISO verification module"));
+    QFormLayout* isoForm = new QFormLayout(isoGroup);
+    m_isoDirEdit = new QLineEdit;
+    m_isoDirEdit->setPlaceholderText(QStringLiteral("~/Downloads"));
+    connect(m_isoDirEdit, &QLineEdit::textChanged, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral("Scan folder:"), m_isoDirEdit);
+    m_isoAutoVerifyCheck = new QCheckBox(QStringLiteral("Verify ISOs automatically after scan"));
+    m_isoAutoVerifyOnUsbMountCheck = new QCheckBox(
+        QStringLiteral("Automatically verify ISOs when a USB drive is mounted (recommended; Rufus/dd copies)"));
+    m_isoAutoVerifyOnUsbMountCheck->setChecked(true);
+    connect(m_isoAutoVerifyOnUsbMountCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    connect(m_isoAutoVerifyCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_isoAutoVerifyCheck);
+    isoForm->addRow(QStringLiteral(""), m_isoAutoVerifyOnUsbMountCheck);
+    layout->addWidget(isoGroup);
+
+    layout->addStretch();
+    return tab;
+}
+
 QWidget* SettingsDialog::createSecurityTab()
 {
     QWidget* tab = new QWidget;
@@ -185,11 +266,11 @@ QWidget* SettingsDialog::createSecurityTab()
     layout->setSpacing(16);
     
     // Auto-hashing group
-    QGroupBox* hashingGroup = new QGroupBox("Automatic Hashing");
+    QGroupBox* hashingGroup = new QGroupBox("Full-drive hashing (advanced)");
     QVBoxLayout* hashingLayout = new QVBoxLayout(hashingGroup);
     
-    m_autoHashOnConnectCheck = new QCheckBox("Hash devices when connected");
-    m_autoHashOnConnectCheck->setToolTip("Automatically calculate hash when a device is plugged in");
+    m_autoHashOnConnectCheck = new QCheckBox("Hash entire partition when a device is connected");
+    m_autoHashOnConnectCheck->setToolTip("Slow: reads the whole block device. Prefer watch folders or ISO mode unless you need a full-disk fingerprint.");
     connect(m_autoHashOnConnectCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     hashingLayout->addWidget(m_autoHashOnConnectCheck);
     
@@ -209,7 +290,7 @@ QWidget* SettingsDialog::createSecurityTab()
     connect(m_confirmNewDeviceCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     confirmLayout->addWidget(m_confirmNewDeviceCheck);
     
-    m_confirmModifiedCheck = new QCheckBox("Confirm before mounting modified devices");
+    m_confirmModifiedCheck = new QCheckBox("Show tamper alert when hash does not match");
     m_confirmModifiedCheck->setToolTip(
         "When you manually mount a modified partition, show expected vs actual hash "
         "and require confirmation (uses the verification hash; no re-hash)");

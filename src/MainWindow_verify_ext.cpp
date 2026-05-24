@@ -1,0 +1,267 @@
+#include "MainWindow.h"
+#include "WatchListDialog.h"
+#include <QMessageBox>
+
+namespace FlashSentry {
+
+void MainWindow::applyAppModule()
+{
+    if (!m_appModeStack) {
+        return;
+    }
+    if (m_settings.appModule == AppModule::IsoVerifier) {
+        m_appModeStack->setCurrentWidget(m_isoWidget);
+        if (m_titleLabel) {
+            m_titleLabel->setText(QStringLiteral("FlashSentry — ISO Verify"));
+        }
+        if (m_isoWidget && !m_settings.isoScanDirectory.isEmpty()) {
+            m_isoWidget->setScanDirectory(m_settings.isoScanDirectory);
+        }
+    } else {
+        m_appModeStack->setCurrentWidget(m_splitter);
+        if (m_titleLabel) {
+            m_titleLabel->setText(QStringLiteral("FlashSentry"));
+        }
+    }
+}
+
+void MainWindow::onIsoLogMessage(const QString& message)
+{
+    logMessage(message, LogLevel::Info);
+}
+
+void MainWindow::startDeviceVerification(const QString& deviceNode)
+{
+    auto deviceInfo = m_deviceMonitor->getDevice(deviceNode);
+    if (!deviceInfo) {
+        return;
+    }
+
+    const QString deviceId = canonicalDeviceId(*deviceInfo);
+    auto record = m_database->getDevice(deviceId);
+    VerificationProfile profile = m_settings.defaultVerificationProfile;
+    if (record) {
+        profile = record->verificationProfile;
+    }
+
+    if (profile == VerificationProfile::FullPartition) {
+        startHashing(deviceNode);
+        return;
+    }
+
+    if (deviceInfo->mountPoint.isEmpty()) {
+        m_pendingHashActions[deviceNode] = PendingHashAction::MountAfterVerify;
+        if (!deviceInfo->isMounted) {
+            m_mountManager->mount(deviceNode);
+        }
+        return;
+    }
+
+    startManifestVerification(deviceNode);
+}
+
+void MainWindow::startManifestVerification(const QString& deviceNode)
+{
+    auto deviceInfo = m_deviceMonitor->getDevice(deviceNode);
+    if (!deviceInfo || deviceInfo->mountPoint.isEmpty()) {
+        logMessage(QStringLiteral("Cannot verify manifest: %1 not mounted").arg(deviceNode),
+                   LogLevel::Warning);
+        return;
+    }
+
+    const QString deviceId = canonicalDeviceId(*deviceInfo);
+    auto record = m_database->getDevice(deviceId);
+    if (!record) {
+        return;
+    }
+
+    if (!record->watchManifest.hasBaseline()) {
+        openWatchListDialog(deviceNode);
+        return;
+    }
+
+    DeviceCard* card = getDeviceCard(deviceNode);
+    if (card) {
+        card->setVerificationStatus(VerificationStatus::Hashing);
+        card->setProgressVisible(true);
+        card->setHashProgress(0);
+    }
+
+    const QString jobId = m_manifestWorker->startVerify(
+        deviceNode, deviceInfo->mountPoint, deviceId, record->watchManifest);
+    m_manifestJobDevices[jobId] = deviceNode;
+}
+
+void MainWindow::openWatchListDialog(const QString& deviceNode)
+{
+    auto deviceInfo = m_deviceMonitor->getDevice(deviceNode);
+    if (!deviceInfo) {
+        return;
+    }
+    if (deviceInfo->mountPoint.isEmpty()) {
+        QMessageBox::information(this, QStringLiteral("Mount required"),
+                               QStringLiteral("Mount the partition before editing watch lists."));
+        m_mountManager->mount(deviceNode);
+        return;
+    }
+
+    const QString deviceId = canonicalDeviceId(*deviceInfo);
+    WatchManifest manifest;
+    if (auto record = m_database->getDevice(deviceId)) {
+        manifest = record->watchManifest;
+    }
+
+    WatchListDialog dialog(deviceInfo->mountPoint, deviceInfo->displayName(), manifest, this);
+    connect(&dialog, &WatchListDialog::buildBaselineRequested, this,
+            [this, deviceNode, deviceId](const WatchManifest& spec) {
+                auto info = m_deviceMonitor->getDevice(deviceNode);
+                if (!info) {
+                    return;
+                }
+                const QString jobId = m_manifestWorker->startBuildBaseline(
+                    deviceNode, info->mountPoint, deviceId, spec);
+                m_manifestJobDevices[jobId] = deviceNode;
+            });
+
+    if (dialog.exec() == QDialog::Accepted) {
+        WatchManifest updated = dialog.manifest();
+        m_database->updateWatchManifest(deviceId, updated);
+        m_database->setVerificationProfile(deviceId, dialog.selectedProfile());
+        if (auto record = m_database->getDevice(deviceId)) {
+            if (DeviceCard* card = getDeviceCard(deviceNode)) {
+                card->setDeviceRecord(*record);
+            }
+        }
+    }
+}
+
+void MainWindow::onWatchListRequested(const QString& deviceNode)
+{
+    openWatchListDialog(deviceNode);
+}
+
+void MainWindow::onManifestStarted(const QString& jobId, const QString& deviceNode)
+{
+    Q_UNUSED(jobId)
+    DeviceCard* card = getDeviceCard(deviceNode);
+    if (card) {
+        card->setVerificationStatus(VerificationStatus::Hashing);
+        card->setProgressVisible(true);
+    }
+}
+
+void MainWindow::onManifestCompleted(const QString& jobId, const ManifestVerifyResult& result)
+{
+    m_manifestJobDevices.remove(jobId);
+    auto deviceInfo = m_deviceMonitor->getDevice(result.deviceNode);
+    if (!deviceInfo) {
+        return;
+    }
+
+    DeviceCard* card = getDeviceCard(result.deviceNode);
+    if (card) {
+        card->setProgressVisible(false);
+    }
+
+    if (result.matches) {
+        logMessage(QStringLiteral("Watch manifest verified: %1").arg(deviceInfo->displayName()));
+        if (card) {
+            card->setVerificationStatus(VerificationStatus::Verified);
+        }
+        m_trayIcon->notifyVerificationResult(deviceInfo->displayName(), VerificationStatus::Verified);
+
+        const QString deviceId = canonicalDeviceId(*deviceInfo);
+        if (auto record = m_database->getDevice(deviceId)) {
+            if (record->verificationProfile == VerificationProfile::Hybrid) {
+                m_pendingHashActions[result.deviceNode] = PendingHashAction::RunFullHashAfterManifest;
+                startHashing(result.deviceNode);
+            }
+        }
+
+        const PendingHashAction pending = m_pendingHashActions.take(result.deviceNode);
+        if (pending == PendingHashAction::MountAfterVerify && !deviceInfo->isMounted) {
+            m_mountManager->mount(result.deviceNode);
+        }
+    } else {
+        m_lastManifestResults[result.deviceNode] = result;
+        handleManifestMismatch(*deviceInfo, result);
+    }
+}
+
+void MainWindow::onManifestBaselineBuilt(const QString& jobId, const QString& deviceId,
+                                         const WatchManifest& manifest)
+{
+    const QString deviceNode = m_manifestJobDevices.take(jobId);
+    m_database->updateWatchManifest(deviceId, manifest);
+
+    DeviceCard* card = getDeviceCard(deviceNode);
+    if (card) {
+        card->setProgressVisible(false);
+        card->setVerificationStatus(VerificationStatus::Verified);
+    }
+    logMessage(QStringLiteral("Watch baseline saved (%1 group(s))").arg(manifest.groups.size()));
+
+    if (!deviceNode.isEmpty()) {
+        startManifestVerification(deviceNode);
+    }
+}
+
+void MainWindow::onManifestFailed(const QString& jobId, const QString& error)
+{
+    const QString deviceNode = m_manifestJobDevices.take(jobId);
+    logMessage(QStringLiteral("Manifest verify failed: %1").arg(error), LogLevel::Error);
+    DeviceCard* card = getDeviceCard(deviceNode);
+    if (card) {
+        card->setVerificationStatus(VerificationStatus::Error);
+        card->setProgressVisible(false);
+    }
+}
+
+void MainWindow::handleManifestMismatch(const DeviceInfo& device, const ManifestVerifyResult& result)
+{
+    logMessage(QStringLiteral("Watch manifest mismatch: %1").arg(device.displayName()),
+               LogLevel::Security);
+
+    DeviceCard* card = getDeviceCard(device.deviceNode);
+    if (card) {
+        card->setVerificationStatus(VerificationStatus::Modified);
+    }
+
+    QString detail = result.changedPaths.join(QStringLiteral(", "));
+    if (detail.isEmpty()) {
+        detail = result.addedPaths.join(QStringLiteral(", "));
+    }
+    m_lastVerificationHashes[device.deviceNode] = result.computedRootHex;
+
+    if (m_settings.requireConfirmationForModified) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle(QStringLiteral("Watch list mismatch"));
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setText(QStringLiteral(
+            "<b>%1</b> — watched files differ from the saved Merkle baseline.<br><br>%2")
+                           .arg(device.displayName(), detail.toHtmlEscaped()));
+        auto* approve = msgBox.addButton(QStringLiteral("Rebuild baseline"), QMessageBox::AcceptRole);
+        auto* mountBtn = msgBox.addButton(QStringLiteral("Mount anyway"), QMessageBox::DestructiveRole);
+        msgBox.addButton(QMessageBox::Cancel);
+        msgBox.exec();
+        if (msgBox.clickedButton() == approve) {
+            openWatchListDialog(device.deviceNode);
+        } else if (mountBtn && msgBox.clickedButton() == mountBtn) {
+            mountDespiteModification(device);
+        }
+    }
+
+    m_trayIcon->notifyVerificationResult(device.displayName(), VerificationStatus::Modified);
+}
+
+void MainWindow::acceptManifestBaseline(const DeviceInfo& device, const WatchManifest& manifest)
+{
+    const QString deviceId = canonicalDeviceId(device);
+    m_database->updateWatchManifest(deviceId, manifest);
+    DeviceCard* card = getDeviceCard(device.deviceNode);
+    if (card) {
+        card->setVerificationStatus(VerificationStatus::Verified);
+    }
+}
+
+} // namespace FlashSentry

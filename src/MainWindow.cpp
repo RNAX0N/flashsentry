@@ -107,8 +107,23 @@ void MainWindow::setupUi()
     // Add header
     m_mainLayout->addWidget(createHeader());
     
-    // Add main content
-    m_mainLayout->addWidget(createMainContent(), 1);
+    m_appModeStack = new QStackedWidget;
+    m_splitter = nullptr;
+    m_appModeStack->addWidget(createMainContent());
+    m_isoWidget = new IsoVerifierWidget;
+    connect(m_isoWidget, &IsoVerifierWidget::logMessageRequested,
+            this, &MainWindow::onIsoLogMessage);
+    connect(m_isoWidget, &IsoVerifierWidget::verificationReportReady,
+            this, [this](const QString& deviceNode, const QList<IsoVerifyResult>& results) {
+                int passed = 0;
+                for (const auto& r : results) if (r.passed()) ++passed;
+                const QString summary = QStringLiteral("ISO verify: %1/%2 passed").arg(passed).arg(results.size());
+                logMessage(summary, passed == results.size() ? LogLevel::Info : LogLevel::Security);
+Q_UNUSED(deviceNode);
+            });
+
+    m_appModeStack->addWidget(m_isoWidget);
+    m_mainLayout->addWidget(m_appModeStack, 1);
     
     // Create status bar
     createStatusBar();
@@ -346,6 +361,8 @@ void MainWindow::initializeBackend()
     
     // Create hash worker
     m_hashWorker = std::make_unique<HashWorker>(this);
+
+    m_manifestWorker = std::make_unique<ManifestWorker>(this);
     
     // Create database manager
     m_database = std::make_unique<DatabaseManager>(this);
@@ -388,6 +405,16 @@ void MainWindow::connectSignals()
     connect(m_hashWorker.get(), &HashWorker::hashCancelled,
             this, &MainWindow::onHashCancelled);
     
+
+    connect(m_manifestWorker.get(), &ManifestWorker::manifestStarted,
+            this, &MainWindow::onManifestStarted);
+    connect(m_manifestWorker.get(), &ManifestWorker::manifestCompleted,
+            this, &MainWindow::onManifestCompleted);
+    connect(m_manifestWorker.get(), &ManifestWorker::manifestBaselineBuilt,
+            this, &MainWindow::onManifestBaselineBuilt);
+    connect(m_manifestWorker.get(), &ManifestWorker::manifestFailed,
+            this, &MainWindow::onManifestFailed);
+
     // Mount manager signals
     connect(m_mountManager.get(), &MountManager::mountCompleted,
             this, &MainWindow::onMountCompleted);
@@ -420,8 +447,14 @@ void MainWindow::loadSettings()
     m_settings.startMinimized = m_qsettings->value("general/startMinimized", false).toBool();
     m_settings.minimizeToTray = m_qsettings->value("general/minimizeToTray", true).toBool();
     m_settings.showNotifications = m_qsettings->value("general/showNotifications", true).toBool();
-    m_settings.autoHashOnConnect = m_qsettings->value("security/autoHashOnConnect", true).toBool();
+    m_settings.autoHashOnConnect = m_qsettings->value("security/autoHashOnConnect", false).toBool();
     m_settings.autoHashOnEject = m_qsettings->value("security/autoHashOnEject", true).toBool();
+    m_settings.appModule = appModuleFromString(m_qsettings->value("general/appModule", "usb_monitor").toString());
+    m_settings.defaultVerificationProfile = verificationProfileFromString(
+        m_qsettings->value("security/defaultVerificationProfile", "watch_manifest").toString());
+    m_settings.isoScanDirectory = m_qsettings->value("iso/scanDirectory").toString();
+    m_settings.isoAutoVerifyOnScan = m_qsettings->value("iso/autoVerify", true).toBool();
+    m_settings.isoAutoVerifyOnUsbMount = m_qsettings->value("iso/autoVerifyOnUsbMount", true).toBool();
     m_settings.requireConfirmationForNew = m_qsettings->value("security/confirmNewDevice", true).toBool();
     m_settings.requireConfirmationForModified = m_qsettings->value("security/confirmModified", true).toBool();
     m_settings.blockModifiedDevices = m_qsettings->value("security/blockModified", false).toBool();
@@ -443,6 +476,7 @@ void MainWindow::loadSettings()
     m_trayIcon->setNotificationsEnabled(m_settings.showNotifications);
     m_hashWorker->setMaxConcurrent(m_settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(m_settings.animationsEnabled);
+    applyAppModule();
     
     // Restore window geometry
     if (m_qsettings->contains("window/geometry")) {
@@ -465,6 +499,11 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("hashing/useMemoryMapping", m_settings.useMemoryMapping);
     m_qsettings->setValue("hashing/maxConcurrent", m_settings.maxConcurrentHashes);
     m_qsettings->setValue("appearance/animations", m_settings.animationsEnabled);
+    m_qsettings->setValue("general/appModule", appModuleToString(m_settings.appModule));
+    m_qsettings->setValue("security/defaultVerificationProfile", verificationProfileToString(m_settings.defaultVerificationProfile));
+    m_qsettings->setValue("iso/scanDirectory", m_settings.isoScanDirectory);
+    m_qsettings->setValue("iso/autoVerify", m_settings.isoAutoVerifyOnScan);
+    m_qsettings->setValue("iso/autoVerifyOnUsbMount", m_settings.isoAutoVerifyOnUsbMount);
     m_qsettings->setValue("appearance/theme", FSStyle.themeName(FSStyle.currentTheme()));
     m_qsettings->setValue("window/geometry", saveGeometry());
     
@@ -709,7 +748,7 @@ void MainWindow::handleNewDevicePartition(const DeviceInfo& device)
     logMessage(QString("Device whitelisted: %1").arg(device.displayName()));
 
     if (m_settings.autoHashOnConnect) {
-        startHashing(device.deviceNode);
+        startDeviceVerification(device.deviceNode);
         hashAllPartitionsOnParent(device);
     }
 }
@@ -795,7 +834,7 @@ void MainWindow::handleKnownDevice(const DeviceInfo& device, const DeviceRecord&
     }
     
     if (m_settings.autoHashOnConnect) {
-        startHashing(device.deviceNode);
+        startDeviceVerification(device.deviceNode);
         hashAllPartitionsOnParent(device);
     }
 }
@@ -873,7 +912,7 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
     };
     
     if (record && !record->hash.isEmpty()) {
-        if (m_database->verifyHash(*deviceInfo, result.hash)) {
+        if (m_database->verifyHash(canonicalDeviceId(*deviceInfo), result.hash)) {
             logMessage(QString("Verified: %1 - hash matches").arg(deviceInfo->displayName()));
             
             if (card) {
@@ -895,14 +934,12 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
 
             m_trayIcon->notifyVerificationResult(deviceInfo->displayName(), VerificationStatus::Modified);
 
-            if (pending == PendingHashAction::MountAfterVerify) {
-                if (m_settings.requireConfirmationForModified) {
-                    showModifiedDeviceAlert(*deviceInfo, record->hash, result.hash, true);
-                } else if (!m_settings.blockModifiedDevices) {
-                    acceptFingerprintAndMount(*deviceInfo, result.hash, result.algorithm);
-                }
-            } else if (m_settings.requireConfirmationForModified) {
-                showModifiedDeviceAlert(*deviceInfo, record->hash, result.hash, false);
+            const bool offerMount = !deviceInfo->isMounted;
+            if (m_settings.requireConfirmationForModified) {
+                showModifiedDeviceAlert(*deviceInfo, record->hash, result.hash, offerMount);
+            } else if (pending == PendingHashAction::MountAfterVerify
+                       && !m_settings.blockModifiedDevices) {
+                acceptFingerprintAndMount(*deviceInfo, result.hash, result.algorithm);
             }
         }
     } else {
@@ -977,11 +1014,31 @@ void MainWindow::onHashCancelled(const QString& jobId)
 // Mount Events
 // ============================================================================
 
+void MainWindow::triggerIsoVerificationOnMount(const MountManager::MountResult& result)
+{
+    if (!m_isoWidget || result.mountPoint.isEmpty()) return;
+    if (!m_settings.isoAutoVerifyOnUsbMount && m_settings.appModule != AppModule::IsoVerifier) return;
+    QString label = result.deviceNode;
+    if (auto info = m_deviceMonitor->getDevice(result.deviceNode)) {
+        label = info->displayName();
+    }
+    logMessage(QStringLiteral("Auto ISO verification on %1 at %2").arg(label, result.mountPoint));
+    m_isoWidget->verifyMountPoint(result.mountPoint, result.deviceNode, label);
+    if (m_settings.appModule == AppModule::IsoVerifier) {
+        showAndRaise();
+    }
+}
+
 void MainWindow::onMountCompleted(const MountManager::MountResult& result)
 {
     if (result.success) {
         logMessage(QString("Mounted %1 at %2").arg(result.deviceNode, result.mountPoint));
         m_deviceMonitor->rescan();
+        if (m_pendingHashActions.value(result.deviceNode) == PendingHashAction::MountAfterVerify) {
+            m_pendingHashActions.remove(result.deviceNode);
+            startDeviceVerification(result.deviceNode);
+        }
+        triggerIsoVerificationOnMount(result);
     } else {
         logMessage(QString("Mount failed for %1: %2").arg(result.deviceNode, result.errorMessage), LogLevel::Error);
     }
@@ -1061,11 +1118,7 @@ void MainWindow::onMountRequested(const QString& deviceNode)
         if (!actual.isEmpty()) {
             auto record = m_database->getDevice(canonicalDeviceId(*deviceInfo));
             const QString expected = record ? record->hash : QString();
-            if (m_settings.requireConfirmationForModified || m_settings.blockModifiedDevices) {
-                showModifiedDeviceAlert(*deviceInfo, expected, actual, true);
-            } else {
-                acceptFingerprintAndMount(*deviceInfo, actual, m_settings.hashAlgorithm);
-            }
+            showModifiedDeviceAlert(*deviceInfo, expected, actual, !deviceInfo->isMounted);
             return;
         }
     }
@@ -1246,6 +1299,7 @@ void MainWindow::applySettings(const AppSettings& settings)
     m_trayIcon->setNotificationsEnabled(settings.showNotifications);
     m_hashWorker->setMaxConcurrent(settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(settings.animationsEnabled);
+    applyAppModule();
 }
 
 void MainWindow::updateStatusBar()
@@ -1274,6 +1328,7 @@ DeviceCard* MainWindow::addDeviceCard(const DeviceInfo& device)
     connect(card, &DeviceCard::unmountRequested, this, &MainWindow::onUnmountRequested);
     connect(card, &DeviceCard::ejectRequested, this, &MainWindow::onEjectRequested);
     connect(card, &DeviceCard::rehashRequested, this, &MainWindow::onRehashRequested);
+    connect(card, &DeviceCard::watchListRequested, this, &MainWindow::onWatchListRequested);
     connect(card, &DeviceCard::acceptFingerprintRequested,
             this, &MainWindow::onAcceptFingerprintRequested);
     connect(card, &DeviceCard::openMountPointRequested, this, &MainWindow::onOpenMountPointRequested);
@@ -1373,7 +1428,7 @@ void MainWindow::hashAllPartitionsOnParent(const DeviceInfo& device)
         if (m_hashJobDevices.values().contains(sibling.deviceNode)) {
             continue;
         }
-        startHashing(sibling.deviceNode);
+        startDeviceVerification(sibling.deviceNode);
     }
 }
 
@@ -1443,8 +1498,9 @@ void MainWindow::updateEmptyState()
     if (m_deviceCards.isEmpty()) {
         m_emptyStateLabel->setText(
             "💾\n\nNo USB devices connected\n\n"
-            "Connect a USB flash drive to get started.\n"
-            "FlashSentry will monitor and verify your devices."
+            "Connect a USB flash drive or switch to ISO Verify in Settings.\n\n"
+            "Recommended: watch selected folders (fast) or automatic ISO checks — "
+            "full-partition hashing is optional for advanced users."
         );
         m_contentStack->setCurrentIndex(1);  // Empty state
     } else {
@@ -1587,60 +1643,74 @@ void MainWindow::onAcceptFingerprintRequested(const QString& deviceNode)
     acceptFingerprint(*deviceInfo, actual, m_settings.hashAlgorithm, false);
 }
 
+void MainWindow::mountDespiteModification(const DeviceInfo& device)
+{
+    logMessage(QString("Mounting modified device without updating fingerprint: %1")
+                   .arg(device.displayName()),
+               LogLevel::Security);
+    m_mountManager->mount(device.deviceNode);
+}
+
 bool MainWindow::showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
                                          const QString& actual, bool offerMount)
 {
     logMessage(QString("Modified device detected: %1").arg(device.displayName()), LogLevel::Security);
 
     QMessageBox msgBox(this);
-    msgBox.setWindowTitle("Device Modified");
+    msgBox.setWindowTitle(QStringLiteral("Security Alert — Device May Be Tampered"));
     msgBox.setIcon(QMessageBox::Warning);
     msgBox.setTextFormat(Qt::RichText);
 
     QString body = QString(
-        "<b style='color: red;'>%1 was modified</b> since it was last trusted.<br><br>"
+        "<b style='color: red;'>%1 may have been tampered with.</b><br>"
+        "Its contents do not match the trusted fingerprint on file.<br><br>"
         "<b>Partition:</b> %2<br>"
         "<b>Expected:</b><br><code style='font-size:10px;'>%3</code><br>"
         "<b>Current:</b><br><code style='font-size:10px;'>%4</code><br><br>")
                          .arg(device.displayName(), device.deviceNode, expected, actual);
 
-    if (m_settings.blockModifiedDevices && offerMount) {
+    body += QStringLiteral(
+        "<b>Approve fingerprint</b> — save the new hash as trusted; do not mount.<br>"
+        "<b>Mount anyway</b> — mount now without changing the whitelist (device stays flagged).<br>");
+
+    if (offerMount && !device.isMounted) {
         body += QStringLiteral(
-            "<i>Automatic mounting of modified devices is disabled.</i><br>"
-            "You can still accept the new fingerprint below.");
-    } else if (offerMount) {
+            "<b>Approve and mount</b> — save the new hash and mount in one step.<br>");
+    }
+
+    if (m_settings.blockModifiedDevices) {
         body += QStringLiteral(
-            "Accept stores the current hash as trusted (no re-hash). "
-            "You can mount afterward or use <b>Accept &amp; Mount</b>.");
-    } else {
-        body += QStringLiteral(
-            "Accept stores the current hash as trusted (no re-hash).");
+            "<br><i>Automatic mounting of modified devices is disabled in settings.</i>");
     }
 
     msgBox.setText(body);
 
-    QPushButton* acceptBtn = msgBox.addButton(QStringLiteral("Accept fingerprint"),
-                                              QMessageBox::AcceptRole);
-    QPushButton* acceptMountBtn = nullptr;
+    QPushButton* approveBtn = msgBox.addButton(QStringLiteral("Approve fingerprint"),
+                                               QMessageBox::AcceptRole);
+    QPushButton* mountAnywayBtn = nullptr;
+    QPushButton* approveMountBtn = nullptr;
+
     if (offerMount && !device.isMounted) {
-        acceptMountBtn = msgBox.addButton(QStringLiteral("Accept & mount"),
-                                          QMessageBox::ActionRole);
-        if (m_settings.blockModifiedDevices) {
-            acceptMountBtn->setEnabled(false);
-            acceptMountBtn->setToolTip(
-                QStringLiteral("Disabled while \"Block modified devices\" is on. "
-                               "Accept the fingerprint first, then change the setting to mount."));
-        }
+        mountAnywayBtn = msgBox.addButton(QStringLiteral("Mount anyway"),
+                                          QMessageBox::DestructiveRole);
+        approveMountBtn = msgBox.addButton(QStringLiteral("Approve and mount"),
+                                           QMessageBox::ActionRole);
     }
+
     msgBox.addButton(QMessageBox::Cancel);
+    msgBox.setDefaultButton(QMessageBox::Cancel);
 
     msgBox.exec();
 
-    if (msgBox.clickedButton() == acceptBtn) {
+    if (msgBox.clickedButton() == approveBtn) {
         acceptFingerprint(device, actual, m_settings.hashAlgorithm, false);
         return true;
     }
-    if (acceptMountBtn && msgBox.clickedButton() == acceptMountBtn) {
+    if (mountAnywayBtn && msgBox.clickedButton() == mountAnywayBtn) {
+        mountDespiteModification(device);
+        return true;
+    }
+    if (approveMountBtn && msgBox.clickedButton() == approveMountBtn) {
         acceptFingerprintAndMount(device, actual, m_settings.hashAlgorithm);
         return true;
     }
@@ -1665,5 +1735,7 @@ void MainWindow::offerUnmountWithoutHash(const QString& deviceNode, const QStrin
         m_mountManager->unmount(deviceNode);
     }
 }
+
+
 
 } // namespace FlashSentry

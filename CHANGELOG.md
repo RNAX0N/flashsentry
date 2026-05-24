@@ -4,6 +4,8 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-05-24
+
 ### Added
 
 - **Manjaro** ISO publisher (per-file `.sha256` / `.sig` on download.manjaro.org)

@@ -4,6 +4,8 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-05-24
+
 ### Added
 
 - ISO publisher catalog: **Linux Mint**, **openSUSE Leap**, **openSUSE Tumbleweed**
@@ -12,6 +14,7 @@ All notable changes to FlashSentry are documented in this file.
 ### Fixed
 
 - `IsoVerifierWorker` stores `QFuture` from `QtConcurrent::run` (silences `-Wunused-result`)
+- Local sidecar detection for `sha256sum.txt` / `sha256sum.txt.gpg` (Linux Mint layout)
 
 ## [1.1.1] - 2026-05-24
 

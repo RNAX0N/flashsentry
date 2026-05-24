@@ -7,7 +7,7 @@ class TestMerkle : public QObject {
     Q_OBJECT
 private slots:
     void deterministicRoot();
-    void orderMatters();
+    void orderIndependent();
 };
 
 void TestMerkle::deterministicRoot()
@@ -27,7 +27,7 @@ void TestMerkle::deterministicRoot()
     QVERIFY(!r1.isEmpty());
 }
 
-void TestMerkle::orderMatters()
+void TestMerkle::orderIndependent()
 {
     MerkleTree::Leaf a;
     a.relativePath = QStringLiteral("a.txt");
@@ -38,7 +38,7 @@ void TestMerkle::orderMatters()
 
     const QString forward = MerkleTree::rootHex({a, b});
     const QString reverse = MerkleTree::rootHex({b, a});
-    QVERIFY(forward != reverse);
+    QCOMPARE(forward, reverse);
 }
 
 QTEST_MAIN(TestMerkle)

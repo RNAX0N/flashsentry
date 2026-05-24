@@ -7,12 +7,12 @@ class TestTypes : public QObject {
     Q_OBJECT
 
 private slots:
-    void uniqueIdIncludesPartition();
+    void partitionUniqueIdIncludesPartition();
     void legacyUniqueIdOmitsPartition();
     void deviceRecordJsonRoundTrip();
 };
 
-void TestTypes::uniqueIdIncludesPartition()
+void TestTypes::partitionUniqueIdIncludesPartition()
 {
     DeviceInfo info;
     info.serial = "ABC123";
@@ -20,7 +20,8 @@ void TestTypes::uniqueIdIncludesPartition()
     info.model = "Ultra";
     info.deviceNode = "/dev/sdb1";
 
-    QCOMPARE(info.uniqueId(), QString("ABC123_SanDisk_Ultra/sdb1"));
+    QCOMPARE(info.uniqueId(), QString("ABC123_SanDisk_Ultra"));
+    QCOMPARE(info.partitionUniqueId(), QString("ABC123_SanDisk_Ultra_sdb1"));
 }
 
 void TestTypes::legacyUniqueIdOmitsPartition()

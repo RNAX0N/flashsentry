@@ -67,7 +67,23 @@ QString DatabaseManager::databasePath() const
 bool DatabaseManager::hasDevice(const QString& uniqueId) const
 {
     QReadLocker locker(&m_lock);
-    return m_devices.contains(uniqueId);
+    if (m_devices.contains(uniqueId)) {
+        return true;
+    }
+
+    // Partition-aware id (SERIAL_Vendor_Model_sdb1) may match a legacy record
+    // stored without the partition suffix (SERIAL_Vendor_Model).
+    const int sep = uniqueId.lastIndexOf(QLatin1Char('_'));
+    if (sep > 0) {
+        const QString tail = uniqueId.mid(sep + 1);
+        if (tail.startsWith(QLatin1String("sd"))
+            || tail.startsWith(QLatin1String("mmcblk"))
+            || tail.startsWith(QLatin1String("nvme"))) {
+            return m_devices.contains(uniqueId.left(sep));
+        }
+    }
+
+    return false;
 }
 
 std::optional<DeviceRecord> DatabaseManager::getDevice(const QString& uniqueId) const
@@ -769,7 +785,7 @@ void DatabaseManager::markModified()
 
 bool DatabaseManager::hasDevice(const DeviceInfo& device) const
 {
-    return hasDevice(canonicalUniqueId(device));
+    return hasDevice(canonicalUniqueId(device)) || hasDevice(device.uniqueId());
 }
 
 QString DatabaseManager::canonicalUniqueId(const DeviceInfo& device) const

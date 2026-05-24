@@ -20,7 +20,7 @@ void IsoVerifierWorker::verifyMountPoint(const QString& mountPoint, const QStrin
     m_cancelled = false;
     emit verificationStarted(mountPoint, deviceNode);
 
-    QtConcurrent::run([this, mountPoint, deviceNode]() {
+    m_activeJob = QtConcurrent::run([this, mountPoint, deviceNode]() {
         if (m_cancelled) return;
         emit verificationProgress(QStringLiteral("Scanning %1 for ISO images…").arg(mountPoint));
 
@@ -39,7 +39,7 @@ void IsoVerifierWorker::verifyDirectory(const QString& directory, const QString&
     emit verificationStarted(directory, deviceNode);
     emit verificationProgress(QStringLiteral("Verifying ISOs in %1…").arg(directory));
 
-    QtConcurrent::run([this, directory, deviceNode]() {
+    m_activeJob = QtConcurrent::run([this, directory, deviceNode]() {
         QList<IsoVerifyResult> results = IsoVerifier::verifyDirectory(directory);
         for (IsoVerifyResult& r : results) {
             r.deviceNode = deviceNode;

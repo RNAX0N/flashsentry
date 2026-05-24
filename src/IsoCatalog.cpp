@@ -66,6 +66,59 @@ IsoPublisherMatch makeDebian(const QString& fileName, const QString& version)
     return m;
 }
 
+IsoPublisherMatch makeLinuxMint(const QString& fileName, const QString& majorVersion)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("linuxmint");
+    m.publisherName = QStringLiteral("Linux Mint");
+    m.releaseLabel = majorVersion;
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://mirrors.kernel.org/linuxmint/stable/%1/")
+                             .arg(majorVersion);
+    m.checksumUrl = base + QStringLiteral("sha256sum.txt");
+    m.signatureUrl = base + QStringLiteral("sha256sum.txt.gpg");
+    m.signingKeyIds = {QStringLiteral("0xA25BAE09")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("27DE B156 44C6 B3CF 3BD7 D291 300F 846B A25B AE09")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makeOpenSuseLeap(const QString& fileName, const QString& version)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("opensuse-leap");
+    m.publisherName = QStringLiteral("openSUSE Leap");
+    m.releaseLabel = version;
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://download.opensuse.org/distribution/leap/%1/iso/")
+                             .arg(version);
+    m.checksumUrl = base + QStringLiteral("SHA256SUMS");
+    m.signatureUrl = base + QStringLiteral("SHA256SUMS.sign");
+    m.signingKeyIds = {QStringLiteral("0x29d97ba47c215819")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("29D9 7BA4 7C21 8193 7701 6271 7370 352E 1C51 80BC")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makeOpenSuseTumbleweed(const QString& fileName)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("opensuse-tumbleweed");
+    m.publisherName = QStringLiteral("openSUSE Tumbleweed");
+    m.releaseLabel = QStringLiteral("Current");
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://download.opensuse.org/tumbleweed/iso/");
+    m.checksumUrl = base + QStringLiteral("SHA256SUMS");
+    m.signatureUrl = base + QStringLiteral("SHA256SUMS.sign");
+    m.signingKeyIds = {QStringLiteral("0x29d97ba47c215819")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("29D9 7BA4 7C21 8193 7701 6271 7370 352E 1C51 80BC")),
+    };
+    return m;
+}
+
 IsoPublisherMatch makeFedora(const QString& fileName, const QString& version)
 {
     IsoPublisherMatch m;
@@ -130,13 +183,43 @@ std::optional<IsoPublisherMatch> IsoCatalog::matchIso(const QString& isoPath)
         }
     }
 
+    {
+        static const QRegularExpression mintRe(
+            QStringLiteral("^linuxmint-(\\d+)(?:\\.\\d+)?-.+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = mintRe.match(name);
+        if (m.hasMatch()) {
+            return makeLinuxMint(name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression leapRe(
+            QStringLiteral("^openSUSE-Leap-(\\d+\\.\\d+).+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = leapRe.match(name);
+        if (m.hasMatch()) {
+            return makeOpenSuseLeap(name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression tumbleRe(
+            QStringLiteral("^openSUSE-Tumbleweed-.+\\.iso$"), QRegularExpression::CaseInsensitiveOption);
+        if (tumbleRe.match(name).hasMatch()) {
+            return makeOpenSuseTumbleweed(name);
+        }
+    }
+
     return std::nullopt;
 }
 
 QStringList IsoCatalog::knownPublisherIds()
 {
     return {QStringLiteral("archlinux"), QStringLiteral("ubuntu"),
-            QStringLiteral("debian"), QStringLiteral("fedora")};
+            QStringLiteral("debian"), QStringLiteral("fedora"),
+            QStringLiteral("linuxmint"), QStringLiteral("opensuse-leap"),
+            QStringLiteral("opensuse-tumbleweed")};
 }
 
 } // namespace FlashSentry

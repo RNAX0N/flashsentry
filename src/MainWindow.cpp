@@ -607,7 +607,7 @@ void MainWindow::onDeviceConnected(const DeviceInfo& device)
     logMessage(QString("Device connected: %1 (%2)").arg(device.displayName(), device.deviceNode));
     
     // Add device card
-    DeviceCard* card = addDeviceCard(device);
+    addDeviceCard(device);
     
     // Check if device is known
     if (m_database->hasDevice(device)) {
@@ -861,8 +861,8 @@ void MainWindow::onHashStarted(const QString& jobId, const QString& deviceNode)
     updateSidebarStats();
 }
 
-void MainWindow::onHashProgress(const QString& jobId, double progress, 
-                                 quint64 bytesProcessed, double speedMBps)
+void MainWindow::onHashProgress(const QString& jobId, double progress,
+                                 quint64 /*bytesProcessed*/, double speedMBps)
 {
     QString deviceNode = m_hashJobDevices.value(jobId);
     if (deviceNode.isEmpty()) return;

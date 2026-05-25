@@ -1,5 +1,6 @@
 #include "IsoVerifier.h"
 #include "IsoCatalog.h"
+#include "IsoChecksum.h"
 
 #include <openssl/evp.h>
 
@@ -51,29 +52,6 @@ QString hashFileSha256(const QString& path, QString* errorOut)
     return QByteArray(reinterpret_cast<char*>(hash), static_cast<int>(len)).toHex();
 }
 
-QString parseChecksumContent(const QString& content, const QString& isoBaseName, QString* errorOut)
-{
-    for (QString line : content.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-        line = line.trimmed();
-        if (line.startsWith(QLatin1Char('#'))) continue;
-        const int space = line.indexOf(QLatin1Char(' '));
-        if (space <= 0) continue;
-        QString hash = line.left(space);
-        QString name = line.mid(space).trimmed();
-        if (name.startsWith(QLatin1Char('*'))) name = name.mid(1);
-        if (name == isoBaseName || name.endsWith(QLatin1Char('/') + isoBaseName)) {
-            return normalizeHash(hash);
-        }
-    }
-    const QString trimmed = content.trimmed();
-    if (trimmed.size() == 64 && trimmed.indexOf(QLatin1Char(' ')) < 0) {
-        return normalizeHash(trimmed);
-    }
-
-    if (errorOut) *errorOut = QStringLiteral("ISO not listed in checksum file");
-    return {};
-}
-
 QString findChecksumSidecar(const QString& isoPath)
 {
     const QFileInfo iso(isoPath);
@@ -84,7 +62,6 @@ QString findChecksumSidecar(const QString& isoPath)
         iso.absolutePath() + QStringLiteral("/SHA256SUMS"),
         iso.absolutePath() + QStringLiteral("/sha256sums.txt"),
         iso.absolutePath() + QStringLiteral("/sha256sum.txt"),
-        iso.absoluteFilePath() + QStringLiteral(".sha256"),
     };
     for (const QString& c : candidates) {
         if (QFileInfo::exists(c)) return c;
@@ -371,7 +348,7 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
             }
 
             QString parseErr;
-            r.expectedSha256 = parseChecksumContent(QString::fromUtf8(sumsData), isoName, &parseErr);
+            r.expectedSha256 = IsoChecksum::parseSha256Content(QString::fromUtf8(sumsData), isoName, &parseErr);
             if (!r.expectedSha256.isEmpty()) {
                 r.hashMatches = normalizeHash(r.computedSha256) == normalizeHash(r.expectedSha256);
             } else if (!parseErr.isEmpty()) {
@@ -424,7 +401,7 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
             QFile f(checksumPath);
             if (f.open(QIODevice::ReadOnly)) {
                 QString parseErr;
-                r.expectedSha256 = parseChecksumContent(QString::fromUtf8(f.readAll()), isoName, &parseErr);
+                r.expectedSha256 = IsoChecksum::parseSha256Content(QString::fromUtf8(f.readAll()), isoName, &parseErr);
                 r.hashMatches = !r.expectedSha256.isEmpty()
                                 && normalizeHash(r.computedSha256) == normalizeHash(r.expectedSha256);
                 r.source = IsoVerifySource::LocalSidecar;

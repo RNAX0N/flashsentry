@@ -34,3 +34,8 @@ add_executable(test_autostart
 target_include_directories(test_autostart PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_autostart PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME test_autostart COMMAND test_autostart)
+
+add_executable(test_iso_checksum test_iso_checksum.cpp ${CMAKE_SOURCE_DIR}/src/IsoChecksum.cpp)
+target_include_directories(test_iso_checksum PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_iso_checksum PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_iso_checksum COMMAND test_iso_checksum)

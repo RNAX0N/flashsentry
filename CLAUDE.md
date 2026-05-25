@@ -43,6 +43,7 @@ flashsentry/
 │   ├── ManifestWorker.cpp          # Async manifest jobs
 │   ├── WatchListDialog.cpp
 │   ├── IsoCatalog.cpp              # Publisher URL + key metadata
+│   ├── IsoChecksum.cpp             # Parse SHA256SUMS / single-line .sha256
 │   ├── IsoVerifier.cpp             # ISO hash + remote + gpg
 │   ├── IsoVerifierWorker.cpp
 │   ├── IsoVerifierWidget.cpp

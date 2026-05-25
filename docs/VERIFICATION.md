@@ -68,7 +68,7 @@ For each `.iso` file:
 2. **Identify publisher** from filename (`IsoCatalog.cpp`).
 3. **Download** checksum and signature URLs for that publisher/release.
 4. **Hash** local ISO with OpenSSL EVP SHA-256.
-5. **Parse** checksum file for the ISO basename.
+5. **Parse** checksum file for the ISO basename (`IsoChecksum::parseSha256Content`).
 6. **Import** signing keys via `gpg --homedir ~/.cache/FlashSentry/iso-verify/gnupg --recv-keys`.
 7. **Verify** detached signature on the checksum file.
 8. **Extract** fingerprint from GPG output; compare to `trustedFingerprints` in catalog.
@@ -86,7 +86,7 @@ Sidecar OpenPGP on the ISO file itself is also attempted when no checksum-file s
 
 ### Per-file publisher layout (`perFileArtifacts`)
 
-Some publishers (e.g. **Manjaro**) ship `{iso}.sha256` and `{iso}.sig` instead of a combined `SHA256SUMS` file. Catalog entries set `perFileArtifacts = true` so that:
+Some publishers (e.g. **Manjaro**, **elementary OS**, **EndeavourOS**) ship `{iso}.sha256` and `{iso}.sig` (or `.asc`) instead of a combined `SHA256SUMS` file. Catalog entries set `perFileArtifacts = true` so that:
 
 1. The checksum URL points at the single hash file (often one 64-character hex line).
 2. GPG verifies the detached `.sig` against the **ISO file**, not against a sums file.
@@ -145,12 +145,20 @@ Legacy records without partition suffix may still resolve via `legacyUniqueId()`
 |----|----------------|
 | `archlinux` | `archlinux-*-x86_64.iso` |
 | `ubuntu` | `ubuntu-*-desktop-amd64.iso` |
+| `kubuntu` / `xubuntu` / `lubuntu` | `{flavor}-*-desktop-amd64.iso` (cdimage.ubuntu.com) |
+| `ubuntu-mate` / `ubuntustudio` | `ubuntu-mate-*`, `ubuntustudio-*` |
 | `debian` | `debian-*-amd64*.iso` |
 | `fedora` | `Fedora-*-*.iso` |
 | `linuxmint` | `linuxmint-{major}-*.iso` |
 | `opensuse-leap` | `openSUSE-Leap-*-*-Media.iso` |
 | `opensuse-tumbleweed` | `openSUSE-Tumbleweed-*.iso` |
-| `manjaro` | `manjaro-{edition}-{version}-*.iso` |
+| `manjaro` | `manjaro-{edition}-{version}-*.iso` (per-file `.sha256` / `.sig`) |
+| `kali` | `kali-linux-{version}-*.iso` |
+| `centos-stream` | `CentOS-Stream-{major}-x86_64*.iso` (`CHECKSUM`, parenthesis format) |
+| `rocky` / `almalinux` | `Rocky-*`, `AlmaLinux-*` (`CHECKSUM`) |
+| `elementary` | `elementaryos-{version}-amd64.iso` (per-file `.sha256`) |
+| `pop-os` | `pop-os_{version}_amd64_*.iso` |
+| `endeavouros` | `endeavouros-{date}-x86_64.iso` (GitHub release `.sha256` / `.asc`) |
 
 Run `test_iso_catalog` after editing `IsoCatalog.cpp`.
 

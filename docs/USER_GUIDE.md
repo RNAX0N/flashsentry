@@ -49,7 +49,7 @@ Open **Settings → Verification → Mode**.
 2. Insert the USB drive and wait for it to mount.
 3. FlashSentry will:
    - Find `.iso` files on the volume
-   - Match the filename to a known publisher (Arch, Ubuntu, Debian, Fedora)
+   - Match the filename to a known publisher (see [supported list](#supported-iso-publishers-automatic))
    - Download official `SHA256SUMS` (or equivalent) and signature files
    - Compute SHA-256 of your on-drive copy
    - Run `gpg --verify` in an isolated cache directory
@@ -191,12 +191,20 @@ Filename patterns (examples):
 |-----------|------------------|
 | Arch Linux | `archlinux-2024.11.01-x86_64.iso` |
 | Ubuntu | `ubuntu-24.04.2-desktop-amd64.iso` |
+| Kubuntu / Xubuntu / Lubuntu | `kubuntu-24.04-desktop-amd64.iso` |
+| Ubuntu MATE / Ubuntu Studio | `ubuntu-mate-24.04-desktop-amd64.iso` |
 | Debian | `debian-12.8.0-amd64-netinst.iso` |
 | Fedora | `Fedora-Workstation-Live-41-1.4.x86_64.iso` |
 | Linux Mint | `linuxmint-22.2-cinnamon-64bit.iso` |
 | openSUSE Leap | `openSUSE-Leap-15.6-DVD-x86_64-Media.iso` |
 | openSUSE Tumbleweed | `openSUSE-Tumbleweed-DVD-x86_64-Current.iso` |
 | Manjaro | `manjaro-kde-25.0.0-250527-linux612.iso` |
+| Kali Linux | `kali-linux-2024.4-live-amd64.iso` |
+| CentOS Stream | `CentOS-Stream-9-x86_64-dvd1.iso` |
+| Rocky Linux / AlmaLinux | `Rocky-9.4-x86_64-minimal.iso` |
+| elementary OS | `elementaryos-7.1-amd64.iso` |
+| Pop!_OS | `pop-os_22.04_amd64_intel_35.iso` |
+| EndeavourOS | `endeavouros-2024.12.18-x86_64.iso` |
 
 Publisher mirrors and keys are defined in the application; see [VERIFICATION.md](VERIFICATION.md) for technical detail.
 

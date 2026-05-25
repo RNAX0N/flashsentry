@@ -4,10 +4,19 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-05-21
+
+### Added
+
+- ISO publisher catalog: **Kali**, **Rocky Linux**, **AlmaLinux**, **Pop!_OS**, **EndeavourOS**, **CentOS Stream**, **elementary OS**
+- Ubuntu flavors: **Kubuntu**, **Xubuntu**, **Lubuntu**, **Ubuntu MATE**, **Ubuntu Studio**
+- Parse Rocky/Alma `CHECKSUM` parenthesis format (`SHA256 (file.iso) = …`)
+- Local sidecar lookup for `CHECKSUM` and `{iso}.CHECKSUM`
+- Unit tests for new catalog entries and Rocky checksum parsing
+
 ### Changed
 
-- HTTP User-Agent for ISO downloads includes app version from CMake
-- GitHub bug report issue template
+- [README.md](README.md), [docs/USER_GUIDE.md](docs/USER_GUIDE.md), [docs/VERIFICATION.md](docs/VERIFICATION.md): 20 automatic publishers
 
 ## [1.1.4] - 2026-05-25
 

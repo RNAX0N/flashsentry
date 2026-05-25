@@ -15,6 +15,13 @@ private slots:
     void unknownIsoReturnsNullopt();
     void knownPublisherIdsIncludesNewPublishers();
     void manjaroPerFileArtifacts();
+    void kaliMatches();
+    void rockyMatches();
+    void popOsMatches();
+    void kubuntuMatches();
+    void centosStreamMatches();
+    void elementaryPerFileArtifacts();
+    void knownPublisherIdsCount();
 };
 
 void TestIsoCatalog::archIsoMatches()
@@ -74,6 +81,10 @@ void TestIsoCatalog::knownPublisherIdsIncludesNewPublishers()
     QVERIFY(ids.contains(QStringLiteral("opensuse-leap")));
     QVERIFY(ids.contains(QStringLiteral("opensuse-tumbleweed")));
     QVERIFY(ids.contains(QStringLiteral("manjaro")));
+    QVERIFY(ids.contains(QStringLiteral("kali")));
+    QVERIFY(ids.contains(QStringLiteral("rocky")));
+    QVERIFY(ids.contains(QStringLiteral("centos-stream")));
+    QVERIFY(ids.contains(QStringLiteral("elementary")));
 }
 
 void TestIsoCatalog::manjaroPerFileArtifacts()
@@ -86,6 +97,64 @@ void TestIsoCatalog::manjaroPerFileArtifacts()
     QVERIFY(match->checksumUrl.endsWith(QStringLiteral(".iso.sha256")));
     QVERIFY(match->signatureUrl.endsWith(QStringLiteral(".iso.sig")));
     QVERIFY(match->checksumUrl.contains(QStringLiteral("/kde/")));
+}
+
+void TestIsoCatalog::kaliMatches()
+{
+    const auto match = IsoCatalog::matchIso(QStringLiteral("/usb/kali-linux-2024.4-live-amd64.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("kali"));
+    QVERIFY(match->checksumUrl.contains(QStringLiteral("kali-2024.4")));
+}
+
+void TestIsoCatalog::rockyMatches()
+{
+    const auto match = IsoCatalog::matchIso(QStringLiteral("/iso/Rocky-9.4-x86_64-minimal.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("rocky"));
+    QVERIFY(match->checksumUrl.contains(QStringLiteral("rocky/9.4")));
+    QVERIFY(match->checksumUrl.endsWith(QStringLiteral("CHECKSUM")));
+}
+
+void TestIsoCatalog::popOsMatches()
+{
+    const auto match = IsoCatalog::matchIso(
+        QStringLiteral("/usb/pop-os_22.04_amd64_intel_35.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("pop-os"));
+    QVERIFY(match->checksumUrl.contains(QStringLiteral("/intel/35/SHA256SUMS")));
+}
+
+void TestIsoCatalog::kubuntuMatches()
+{
+    const auto match = IsoCatalog::matchIso(QStringLiteral("/tmp/kubuntu-24.04-desktop-amd64.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("kubuntu"));
+    QVERIFY(match->checksumUrl.contains(QStringLiteral("cdimage.ubuntu.com/kubuntu")));
+}
+
+void TestIsoCatalog::centosStreamMatches()
+{
+    const auto match = IsoCatalog::matchIso(
+        QStringLiteral("/iso/CentOS-Stream-9-x86_64-dvd1.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("centos-stream"));
+    QVERIFY(match->checksumUrl.contains(QStringLiteral("9-stream/isos")));
+}
+
+void TestIsoCatalog::elementaryPerFileArtifacts()
+{
+    const auto match = IsoCatalog::matchIso(
+        QStringLiteral("/usb/elementaryos-7.1-amd64.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("elementary"));
+    QVERIFY(match->perFileArtifacts);
+    QVERIFY(match->checksumUrl.endsWith(QStringLiteral("elementaryos-7.1-amd64.iso.sha256")));
+}
+
+void TestIsoCatalog::knownPublisherIdsCount()
+{
+    QCOMPARE(IsoCatalog::knownPublisherIds().size(), 20);
 }
 
 QTEST_MAIN(TestIsoCatalog)

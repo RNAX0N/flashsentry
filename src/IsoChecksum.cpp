@@ -1,5 +1,6 @@
 #include "IsoChecksum.h"
 
+#include <QRegularExpression>
 #include <QStringList>
 
 namespace FlashSentry {
@@ -16,6 +17,18 @@ QString normalizeHash(const QString& h)
 QString IsoChecksum::parseSha256Content(const QString& content, const QString& isoBaseName,
                                         QString* errorOut)
 {
+    if (!isoBaseName.isEmpty()) {
+        static const QRegularExpression parenRe(
+            QStringLiteral("^SHA256 \\((.+?)\\) = ([0-9a-fA-F]{64})$"),
+            QRegularExpression::CaseInsensitiveOption);
+        for (QString line : content.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+            const QRegularExpressionMatch m = parenRe.match(line.trimmed());
+            if (m.hasMatch() && m.captured(1) == isoBaseName) {
+                return normalizeHash(m.captured(2));
+            }
+        }
+    }
+
     for (QString line : content.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
         line = line.trimmed();
         if (line.startsWith(QLatin1Char('#'))) {

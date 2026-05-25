@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
 #ifdef FLASHSENTRY_VERSION
     QApplication::setApplicationVersion(QLatin1String(FLASHSENTRY_VERSION));
 #else
-    QApplication::setApplicationVersion(QStringLiteral("1.1.4"));
+    QApplication::setApplicationVersion(QStringLiteral("1.1.5"));
 #endif
     QApplication::setOrganizationName("FlashSentry");
     QApplication::setOrganizationDomain("flashsentry.io");

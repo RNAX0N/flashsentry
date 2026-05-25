@@ -156,6 +156,179 @@ IsoPublisherMatch makeFedora(const QString& fileName, const QString& version)
     return m;
 }
 
+IsoPublisherMatch makeCdimageUbuntuFlavor(const QString& publisherId, const QString& publisherName,
+                                          const QString& cdimagePath, const QString& fileName,
+                                          const QString& version)
+{
+    IsoPublisherMatch m;
+    m.publisherId = publisherId;
+    m.publisherName = publisherName;
+    m.releaseLabel = version;
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://cdimage.ubuntu.com/%1/%2/release/")
+                             .arg(cdimagePath, version);
+    m.checksumUrl = base + QStringLiteral("SHA256SUMS");
+    m.signatureUrl = base + QStringLiteral("SHA256SUMS.gpg");
+    m.signingKeyIds = {QStringLiteral("0x843938DF")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("8439 38DF 228B 22A7 0FAC 1C9B 0C3A 2CEF 088A 431B")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makeKali(const QString& fileName, const QString& version)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("kali");
+    m.publisherName = QStringLiteral("Kali Linux");
+    m.releaseLabel = version;
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://cdimage.kali.org/kali-%1/").arg(version);
+    m.checksumUrl = base + QStringLiteral("SHA256SUMS");
+    m.signatureUrl = base + QStringLiteral("SHA256SUMS.gpg");
+    m.signingKeyIds = {QStringLiteral("0xED65462EC8D5E4C5")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("827C 8569 F251 8CC6 77FE CA1A ED65 462E C8D5 E4C5")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makeRocky(const QString& fileName, const QString& versionPath)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("rocky");
+    m.publisherName = QStringLiteral("Rocky Linux");
+    m.releaseLabel = versionPath;
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://download.rockylinux.org/pub/rocky/%1/isos/x86_64/")
+                             .arg(versionPath);
+    m.checksumUrl = base + QStringLiteral("CHECKSUM");
+    m.signatureUrl = base + QStringLiteral("CHECKSUM");
+    m.signingKeyIds = {QStringLiteral("0xB86B3716")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("BF18 AC28 7617 8908 D6E7 1267 D36C B86C B86B 3716")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makeAlmaLinux(const QString& fileName, const QString& versionPath)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("almalinux");
+    m.publisherName = QStringLiteral("AlmaLinux");
+    m.releaseLabel = versionPath;
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://repo.almalinux.org/almalinux/%1/isos/x86_64/")
+                             .arg(versionPath);
+    m.checksumUrl = base + QStringLiteral("CHECKSUM");
+    m.signatureUrl = base + QStringLiteral("CHECKSUM");
+    m.signingKeyIds = {QStringLiteral("0xB86B3716")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("BF18 AC28 7617 8908 D6E7 1267 D36C B86C B86B 3716")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makePopOs(const QString& fileName, const QString& version,
+                            const QString& variant, const QString& build)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("pop-os");
+    m.publisherName = QStringLiteral("Pop!_OS");
+    m.releaseLabel = QStringLiteral("%1 %2 build %3").arg(version, variant, build);
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://iso.pop-os.org/%1/amd64/%2/%3/")
+                             .arg(version, variant, build);
+    m.checksumUrl = base + QStringLiteral("SHA256SUMS");
+    m.signatureUrl = base + QStringLiteral("SHA256SUMS.gpg");
+    m.signingKeyIds = {QStringLiteral("0x204DD8AEC33A7AFF")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("63C4 6DF0 140D 7389 6142 9F4E 204D D8AE C33A 7AFF")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makePopOsSimple(const QString& fileName, const QString& version)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("pop-os");
+    m.publisherName = QStringLiteral("Pop!_OS");
+    m.releaseLabel = version;
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://iso.pop-os.org/%1/amd64/").arg(version);
+    m.checksumUrl = base + QStringLiteral("SHA256SUMS");
+    m.signatureUrl = base + QStringLiteral("SHA256SUMS.gpg");
+    m.signingKeyIds = {QStringLiteral("0x204DD8AEC33A7AFF")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("63C4 6DF0 140D 7389 6142 9F4E 204D D8AE C33A 7AFF")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makeCentOsStream(const QString& fileName, const QString& major)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("centos-stream");
+    m.publisherName = QStringLiteral("CentOS Stream");
+    m.releaseLabel = major;
+    m.isoFileName = fileName;
+    const QString versionPath = major + QStringLiteral("-stream");
+    const QString base = QStringLiteral("https://mirror.stream.centos.org/%1/isos/x86_64/")
+                             .arg(versionPath);
+    m.checksumUrl = base + QStringLiteral("CHECKSUM");
+    m.signatureUrl = base + QStringLiteral("CHECKSUM");
+    m.signingKeyIds = {QStringLiteral("0x8483C65D")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("BF18 AC28 7617 8908 D6E7 1267 D36C B86C B86B 3716")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makeElementary(const QString& fileName, const QString& version)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("elementary");
+    m.publisherName = QStringLiteral("elementary OS");
+    m.releaseLabel = version;
+    m.isoFileName = fileName;
+    m.perFileArtifacts = true;
+    const QString base = QStringLiteral("https://updates.elementary.io/stable/");
+    m.checksumUrl = base + fileName + QStringLiteral(".sha256");
+    m.signatureUrl = base + fileName + QStringLiteral(".asc");
+    m.signingKeyIds = {};
+    m.trustedFingerprints = {};
+    return m;
+}
+
+IsoPublisherMatch makeEndeavourOs(const QString& fileName, const QString& dateVersion)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("endeavouros");
+    m.publisherName = QStringLiteral("EndeavourOS");
+    m.releaseLabel = dateVersion;
+    m.isoFileName = fileName;
+    m.perFileArtifacts = true;
+    const QStringList parts = dateVersion.split(QLatin1Char('.'));
+    const QString tag = parts.size() >= 2
+        ? parts[0].mid(2) + QLatin1Char('-') + parts[1]
+        : dateVersion;
+    const QString base = QStringLiteral("https://github.com/endeavouros-team/ISO/releases/download/%1/")
+                             .arg(tag);
+    m.checksumUrl = base + fileName + QStringLiteral(".sha256");
+    m.signatureUrl = base + fileName + QStringLiteral(".asc");
+    m.signingKeyIds = {QStringLiteral("0x497F5E69B7440F2A")};
+    m.trustedFingerprints = {};
+    return m;
+}
+
+QString rockyAlmaVersionPath(const QString& major, const QString& minor)
+{
+    if (minor.isEmpty()) {
+        return major;
+    }
+    return major + QLatin1Char('.') + minor;
+}
+
 } // namespace
 
 std::optional<IsoPublisherMatch> IsoCatalog::matchIso(const QString& isoPath)
@@ -173,11 +346,144 @@ std::optional<IsoPublisherMatch> IsoCatalog::matchIso(const QString& isoPath)
     }
 
     {
+        static const QRegularExpression ubuntuMateRe(
+            QStringLiteral("^ubuntu-mate-(\\d+\\.\\d+(?:\\.\\d+)?).+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = ubuntuMateRe.match(name);
+        if (m.hasMatch()) {
+            return makeCdimageUbuntuFlavor(QStringLiteral("ubuntu-mate"), QStringLiteral("Ubuntu MATE"),
+                                           QStringLiteral("ubuntu-mate/releases"), name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression ubuntuStudioRe(
+            QStringLiteral("^ubuntustudio-(\\d+\\.\\d+(?:\\.\\d+)?).+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = ubuntuStudioRe.match(name);
+        if (m.hasMatch()) {
+            return makeCdimageUbuntuFlavor(QStringLiteral("ubuntustudio"), QStringLiteral("Ubuntu Studio"),
+                                           QStringLiteral("ubuntustudio/releases"), name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression kubuntuRe(
+            QStringLiteral("^kubuntu-(\\d+\\.\\d+(?:\\.\\d+)?).+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = kubuntuRe.match(name);
+        if (m.hasMatch()) {
+            return makeCdimageUbuntuFlavor(QStringLiteral("kubuntu"), QStringLiteral("Kubuntu"),
+                                           QStringLiteral("kubuntu/releases"), name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression xubuntuRe(
+            QStringLiteral("^xubuntu-(\\d+\\.\\d+(?:\\.\\d+)?).+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = xubuntuRe.match(name);
+        if (m.hasMatch()) {
+            return makeCdimageUbuntuFlavor(QStringLiteral("xubuntu"), QStringLiteral("Xubuntu"),
+                                           QStringLiteral("xubuntu/releases"), name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression lubuntuRe(
+            QStringLiteral("^lubuntu-(\\d+\\.\\d+(?:\\.\\d+)?).+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = lubuntuRe.match(name);
+        if (m.hasMatch()) {
+            return makeCdimageUbuntuFlavor(QStringLiteral("lubuntu"), QStringLiteral("Lubuntu"),
+                                           QStringLiteral("lubuntu/releases"), name, m.captured(1));
+        }
+    }
+
+    {
         static const QRegularExpression ubuntuRe(
             QStringLiteral("^ubuntu-(\\d+\\.\\d+(?:\\.\\d+)?).+\\.iso$"), QRegularExpression::CaseInsensitiveOption);
         const QRegularExpressionMatch m = ubuntuRe.match(name);
         if (m.hasMatch()) {
             return makeUbuntu(name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression kaliRe(
+            QStringLiteral("^kali-linux-(\\d+\\.\\d+).+\\.iso$"), QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = kaliRe.match(name);
+        if (m.hasMatch()) {
+            return makeKali(name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression centosStreamRe(
+            QStringLiteral("^CentOS-Stream-(\\d+)-x86_64.+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = centosStreamRe.match(name);
+        if (m.hasMatch()) {
+            return makeCentOsStream(name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression elementaryRe(
+            QStringLiteral("^elementaryos-(\\d+\\.\\d+)-amd64\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = elementaryRe.match(name);
+        if (m.hasMatch()) {
+            return makeElementary(name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression rockyRe(
+            QStringLiteral("^Rocky-(\\d+)(?:\\.(\\d+))?-x86_64.+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = rockyRe.match(name);
+        if (m.hasMatch()) {
+            return makeRocky(name, rockyAlmaVersionPath(m.captured(1), m.captured(2)));
+        }
+    }
+
+    {
+        static const QRegularExpression almaRe(
+            QStringLiteral("^AlmaLinux-(\\d+)(?:\\.(\\d+))?-x86_64.+\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = almaRe.match(name);
+        if (m.hasMatch()) {
+            return makeAlmaLinux(name, rockyAlmaVersionPath(m.captured(1), m.captured(2)));
+        }
+    }
+
+    {
+        static const QRegularExpression popFullRe(
+            QStringLiteral("^pop-os_(\\d+\\.\\d+)_amd64_([a-z]+)_(\\d+)\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = popFullRe.match(name);
+        if (m.hasMatch()) {
+            return makePopOs(name, m.captured(1), m.captured(2), m.captured(3));
+        }
+    }
+
+    {
+        static const QRegularExpression popSimpleRe(
+            QStringLiteral("^pop-os_(\\d+\\.\\d+)_amd64\\.iso$"), QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = popSimpleRe.match(name);
+        if (m.hasMatch()) {
+            return makePopOsSimple(name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression endeavourRe(
+            QStringLiteral("^endeavouros-(\\d+\\.\\d+\\.\\d+)-x86_64\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = endeavourRe.match(name);
+        if (m.hasMatch()) {
+            return makeEndeavourOs(name, m.captured(1));
         }
     }
 
@@ -246,10 +552,16 @@ std::optional<IsoPublisherMatch> IsoCatalog::matchIso(const QString& isoPath)
 
 QStringList IsoCatalog::knownPublisherIds()
 {
-    return {QStringLiteral("archlinux"), QStringLiteral("ubuntu"),
-            QStringLiteral("debian"), QStringLiteral("fedora"),
-            QStringLiteral("linuxmint"), QStringLiteral("opensuse-leap"),
-            QStringLiteral("opensuse-tumbleweed"), QStringLiteral("manjaro")};
+    return {QStringLiteral("archlinux"),       QStringLiteral("ubuntu"),
+            QStringLiteral("kubuntu"),           QStringLiteral("xubuntu"),
+            QStringLiteral("lubuntu"),           QStringLiteral("ubuntu-mate"),
+            QStringLiteral("ubuntustudio"),      QStringLiteral("debian"),
+            QStringLiteral("fedora"),            QStringLiteral("linuxmint"),
+            QStringLiteral("opensuse-leap"),     QStringLiteral("opensuse-tumbleweed"),
+            QStringLiteral("manjaro"),           QStringLiteral("kali"),
+            QStringLiteral("centos-stream"),     QStringLiteral("rocky"),
+            QStringLiteral("almalinux"),         QStringLiteral("elementary"),
+            QStringLiteral("pop-os"),            QStringLiteral("endeavouros")};
 }
 
 } // namespace FlashSentry

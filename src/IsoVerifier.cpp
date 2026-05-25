@@ -62,6 +62,8 @@ QString findChecksumSidecar(const QString& isoPath)
         iso.absolutePath() + QStringLiteral("/SHA256SUMS"),
         iso.absolutePath() + QStringLiteral("/sha256sums.txt"),
         iso.absolutePath() + QStringLiteral("/sha256sum.txt"),
+        iso.absolutePath() + QStringLiteral("/CHECKSUM"),
+        iso.absoluteFilePath() + QStringLiteral(".CHECKSUM"),
     };
     for (const QString& c : candidates) {
         if (QFileInfo::exists(c)) return c;
@@ -102,7 +104,12 @@ QByteArray httpGet(const QString& url, QString* errorOut, int timeoutMs = 90000)
     QNetworkRequest req{QUrl(url)};
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
-    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("FlashSentry/1.1"));
+#ifdef FLASHSENTRY_VERSION
+    req.setHeader(QNetworkRequest::UserAgentHeader,
+                  QStringLiteral("FlashSentry/" FLASHSENTRY_VERSION));
+#else
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("FlashSentry/1.1.5"));
+#endif
 
     QNetworkReply* reply = nam.get(req);
     QEventLoop loop;

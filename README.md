@@ -183,8 +183,10 @@ Optional tests:
 
 ```bash
 cmake -DFLASHSENTRY_BUILD_TESTS=ON ..
-cmake --build . && ctest --output-on-failure
+cmake --build . && ctest --test-dir build --output-on-failure
 ```
+
+Six tests: `test_types`, `test_database_manager`, `test_merkle`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`.
 
 Install (binary, polkit policy, udev rules, and docs under `/usr/share/doc/flashsentry/`):
 

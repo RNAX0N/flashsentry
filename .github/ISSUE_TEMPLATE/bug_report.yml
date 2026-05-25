@@ -1,0 +1,32 @@
+name: Bug report
+description: Something is broken or incorrect
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Mount USB with ...
+        2. Open FlashSentry ...
+  - type: input
+    id: version
+    attributes:
+      label: FlashSentry version
+      placeholder: "1.1.4 (flashsentry --version)"
+  - type: input
+    id: distro
+    attributes:
+      label: Arch / kernel / DE
+      placeholder: "Arch, linux-zen, KDE Plasma 6"

@@ -4,15 +4,17 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-05-25
+
 ### Added
 
 - `IsoChecksum` helper and `test_iso_checksum` for SHA-256 SUMS parsing
+- GitHub pull request template
 
 ### Changed
 
-- Application version from CMake `PROJECT_VERSION` (fixes stale `1.0.0` in CLI)
-- README: CI and release badges
-- Docs: Ventoy / multi-ISO guide, `perFileArtifacts` and publisher table in [VERIFICATION.md](docs/VERIFICATION.md)
+- Application version from CMake `PROJECT_VERSION` (fixes stale `1.0.0` in CLI and About dialog)
+- Compiler warning cleanup; six unit tests in CI
 
 ## [1.1.3] - 2026-05-24
 
@@ -25,6 +27,11 @@ All notable changes to FlashSentry are documented in this file.
 
 - Parse single-line `.iso.sha256` checksum files (Manjaro and local sidecars)
 - OpenPGP verify per-ISO `.sig` when `perFileArtifacts` is set on catalog entry
+
+### Changed
+
+- README: CI and release badges; Ventoy / multi-ISO documentation
+- [VERIFICATION.md](docs/VERIFICATION.md): publisher table and `perFileArtifacts`
 
 ## [1.1.2] - 2026-05-24
 

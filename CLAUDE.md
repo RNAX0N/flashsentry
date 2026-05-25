@@ -87,8 +87,9 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md) for algorithms.
 - `buildGroup()` / `verifyManifest()` on mount paths
 - `ManifestWorker` runs jobs on `QtConcurrent`, signals `manifestCompleted` etc.
 
-### IsoVerifier / IsoCatalog
+### IsoVerifier / IsoCatalog / IsoChecksum
 - `IsoCatalog::matchIso()` → publisher URLs + trusted fingerprints
+- `IsoChecksum::parseSha256Content()` → SUMS file or 64-hex line parsing
 - HTTP fetch (Qt Network) + `gpg --homedir` in `~/.cache/FlashSentry/iso-verify/`
 - `verifyMountPoint()` for automation on USB mount (`triggerIsoVerificationOnMount`)
 

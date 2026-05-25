@@ -18,7 +18,8 @@ jobs:
           sudo apt-get install -y \
             cmake g++ pkg-config \
             qt6-base-dev libqt6test6 \
-            libudev-dev libssl-dev
+            libudev-dev libssl-dev \
+            libnotify-dev
 
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DFLASHSENTRY_BUILD_TESTS=ON
@@ -27,4 +28,6 @@ jobs:
         run: cmake --build build -j$(nproc)
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: |
+          ctest --test-dir build --output-on-failure
+          echo "Tests completed: $(ctest --test-dir build -N | grep -c 'Test #')"

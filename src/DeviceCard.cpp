@@ -182,7 +182,7 @@ void DeviceCard::setupUi()
     m_actionsLayout->setContentsMargins(0, 8, 0, 0);
     m_actionsLayout->setSpacing(8);
     
-    auto createActionButton = [this](const QString& text, const QString& tooltip) -> QPushButton* {
+    auto createActionButton = [](const QString& text, const QString& tooltip) -> QPushButton* {
         QPushButton* btn = new QPushButton(text);
         btn->setToolTip(tooltip);
         btn->setCursor(Qt::PointingHandCursor);

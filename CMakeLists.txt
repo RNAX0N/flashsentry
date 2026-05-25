@@ -38,6 +38,7 @@ set(SOURCES
     src/ManifestService.cpp
     src/ManifestWorker.cpp
     src/IsoCatalog.cpp
+    src/IsoChecksum.cpp
     src/IsoVerifier.cpp
     src/IsoVerifierWorker.cpp
     src/WatchListDialog.cpp
@@ -60,6 +61,7 @@ set(HEADERS
     include/ManifestService.h
     include/ManifestWorker.h
     include/IsoCatalog.h
+    include/IsoChecksum.h
     include/IsoVerifier.h
     include/IsoVerifierWorker.h
     include/WatchListDialog.h
@@ -101,6 +103,7 @@ set(FLASHSENTRY_HELPER_RELDIR "${CMAKE_INSTALL_LIBDIR}/flashsentry")
 set(FLASHSENTRY_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper")
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     FLASHSENTRY_READ_HELPER_PATH="${FLASHSENTRY_READ_HELPER}"
+    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
 )
 
 configure_file(
@@ -115,6 +118,9 @@ add_executable(flashsentry-read-helper
 )
 target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
 target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
+target_compile_definitions(flashsentry-read-helper PRIVATE
+    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 

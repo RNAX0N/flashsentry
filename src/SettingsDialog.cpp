@@ -569,7 +569,8 @@ QWidget* SettingsDialog::createAboutTab()
     layout->addWidget(nameLabel);
     
     // Version
-    QLabel* versionLabel = new QLabel("Version 1.0.0");
+    QLabel* versionLabel = new QLabel(
+        QStringLiteral("Version %1").arg(QApplication::applicationVersion()));
     versionLabel->setAlignment(Qt::AlignCenter);
     versionLabel->setStyleSheet(QString("color: %1;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));

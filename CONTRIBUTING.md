@@ -26,7 +26,7 @@ ctest --output-on-failure
 1. Fork and create a feature branch from `main`
 2. Keep changes focused; match existing code style
 3. Update [CHANGELOG.md](CHANGELOG.md) and docs if behavior changes
-4. Ensure `cmake --build . --target flashsentry` succeeds and `ctest` passes when tests are enabled
+4. Ensure `cmake --build . --target flashsentry` succeeds and all `ctest` targets pass (6 tests: types, database, merkle, iso catalog, iso checksum, autostart)
 5. Open a PR with a clear description of user-visible impact
 
 Optional: add UI screenshots under `docs/images/` (see README Screenshots section).

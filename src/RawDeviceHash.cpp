@@ -45,7 +45,7 @@ void reportProgress(const Options& options, uint64_t value)
     }
 }
 
-HashResult hashReadLoop(int fd, const Options& options, uint64_t deviceSize)
+HashResult hashReadLoop(int fd, const Options& options, uint64_t /*deviceSize*/)
 {
     HashResult result;
     result.deviceNode = options.deviceNode;

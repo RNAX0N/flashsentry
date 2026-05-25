@@ -4,6 +4,11 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- HTTP User-Agent for ISO downloads includes app version from CMake
+- GitHub bug report issue template
+
 ## [1.1.4] - 2026-05-25
 
 ### Added

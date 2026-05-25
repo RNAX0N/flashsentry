@@ -114,7 +114,7 @@ void printVersion()
 #ifdef FLASHSENTRY_VERSION
     std::cout << "FlashSentry v" << FLASHSENTRY_VERSION << std::endl;
 #else
-    std::cout << "FlashSentry v1.1.3" << std::endl;
+    std::cout << "FlashSentry (version unknown)" << std::endl;
 #endif
     std::cout << "USB Flash Drive Security Monitor" << std::endl;
     std::cout << "Built with Qt " << qVersion() << std::endl;
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
 #ifdef FLASHSENTRY_VERSION
     QApplication::setApplicationVersion(QLatin1String(FLASHSENTRY_VERSION));
 #else
-    QApplication::setApplicationVersion(QStringLiteral("1.1.3"));
+    QApplication::setApplicationVersion(QStringLiteral("1.1.4"));
 #endif
     QApplication::setOrganizationName("FlashSentry");
     QApplication::setOrganizationDomain("flashsentry.io");

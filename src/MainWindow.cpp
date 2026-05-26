@@ -15,6 +15,7 @@
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
+#include <QHeaderView>
 #include <QDateTime>
 #include <QStandardPaths>
 #include <QFileInfo>
@@ -23,6 +24,7 @@
 #include <QScreen>
 #include <QStyle>
 #include <QGraphicsDropShadowEffect>
+#include <QRegularExpression>
 
 namespace FlashSentry {
 
@@ -100,14 +102,14 @@ MainWindow::~MainWindow()
 void MainWindow::setupUi()
 {
     setWindowTitle("FlashSentry");
-    setMinimumSize(900, 600);
+    setMinimumSize(1024, 680);
     
     // Center on screen
     if (auto* screen = QApplication::primaryScreen()) {
         QRect screenGeometry = screen->availableGeometry();
-        int x = (screenGeometry.width() - 1100) / 2;
-        int y = (screenGeometry.height() - 700) / 2;
-        setGeometry(x, y, 1100, 700);
+        int x = (screenGeometry.width() - 1180) / 2;
+        int y = (screenGeometry.height() - 760) / 2;
+        setGeometry(x, y, 1180, 760);
     }
     
     // Central widget
@@ -117,13 +119,78 @@ void MainWindow::setupUi()
     m_mainLayout = new QVBoxLayout(m_centralWidget);
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setSpacing(0);
-    
-    // Add header
-    m_mainLayout->addWidget(createHeader());
-    
+
+    auto* shell = new QHBoxLayout;
+    shell->setContentsMargins(0, 0, 0, 0);
+    shell->setSpacing(0);
+
+    auto* nav = new QWidget;
+    nav->setObjectName(QStringLiteral("DashboardNav"));
+    nav->setFixedWidth(224);
+    auto* navLayout = new QVBoxLayout(nav);
+    navLayout->setContentsMargins(12, 16, 12, 12);
+    navLayout->setSpacing(8);
+
+    auto* brand = new QLabel(QStringLiteral("🛡  FlashSentry"));
+    brand->setObjectName(QStringLiteral("DashboardBrand"));
+    brand->setFont(FSFont(Heading2));
+    navLayout->addWidget(brand);
+    navLayout->addSpacing(16);
+
+    auto addNavButton = [this, navLayout](const QString& text, int index, const QString& tip = {}) {
+        auto* button = new QPushButton(text);
+        button->setObjectName(QStringLiteral("NavButton"));
+        button->setCheckable(true);
+        button->setCursor(Qt::PointingHandCursor);
+        button->setMinimumHeight(42);
+        button->setToolTip(tip);
+        connect(button, &QPushButton::clicked, this, [this, index]() {
+            if (index >= 0) {
+                onModeTabChanged(index);
+            } else {
+                onSettingsClicked();
+            }
+        });
+        m_navButtons.append(button);
+        navLayout->addWidget(button);
+    };
+
+    addNavButton(QStringLiteral("▣  USB Monitor"), 0);
+    addNavButton(QStringLiteral("◴  Device History"), 0, QStringLiteral("Recent events are shown on the dashboard"));
+    addNavButton(QStringLiteral("☑  Allow / Block List"), 0, QStringLiteral("Allow/block management is integrated with device prompts"));
+    addNavButton(QStringLiteral("⚠  Alerts"), 2, QStringLiteral("BadUSB and behavior alerts"));
+    addNavButton(QStringLiteral("▤  Reports"), 1, QStringLiteral("ISO verification and reports"));
+    addNavButton(QStringLiteral("⚙  Settings"), -1);
+    addNavButton(QStringLiteral("ⓘ  About"), -1);
+    navLayout->addStretch();
+
+    auto* protection = new QLabel(QStringLiteral("🛡  Protection Active\nAll systems are protected."));
+    protection->setObjectName(QStringLiteral("ProtectionCard"));
+    protection->setWordWrap(true);
+    protection->setMinimumHeight(72);
+    navLayout->addWidget(protection);
+
+    auto* version = new QLabel(QStringLiteral("FlashSentry %1").arg(QApplication::applicationVersion()));
+    version->setObjectName(QStringLiteral("NavFooter"));
+    navLayout->addWidget(version);
+    shell->addWidget(nav);
+
+    auto* contentShell = new QWidget;
+    contentShell->setObjectName(QStringLiteral("DashboardContentShell"));
+    auto* contentLayout = new QVBoxLayout(contentShell);
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+    contentLayout->setSpacing(0);
+
     m_appModeStack = new QStackedWidget;
-    m_splitter = nullptr;
     m_appModeStack->addWidget(createMainContent());
+
+    m_modeTabBar = new QTabBar(this);
+    m_modeTabBar->addTab(QStringLiteral("USB devices"));
+    m_modeTabBar->addTab(QStringLiteral("ISO verify"));
+    m_modeTabBar->addTab(QStringLiteral("BadUSB"));
+    m_modeTabBar->hide();
+    connect(m_modeTabBar, &QTabBar::currentChanged, this, &MainWindow::onModeTabChanged);
+
     m_isoWidget = new IsoVerifierWidget;
     connect(m_isoWidget, &IsoVerifierWidget::logMessageRequested,
             this, &MainWindow::onIsoLogMessage);
@@ -158,13 +225,44 @@ void MainWindow::setupUi()
         }
     });
     m_appModeStack->addWidget(m_badUsbWidget);
-    m_mainLayout->addWidget(m_appModeStack, 1);
-    
-    // Create status bar
-    createStatusBar();
+    contentLayout->addWidget(m_appModeStack, 1);
+
+    auto* footer = new QWidget;
+    footer->setObjectName(QStringLiteral("DashboardFooter"));
+    auto* footerLayout = new QHBoxLayout(footer);
+    footerLayout->setContentsMargins(16, 6, 16, 6);
+    m_statusLabel = new QLabel(QStringLiteral("Ready"));
+    m_footerUserLabel = new QLabel(QStringLiteral("User: Local"));
+    m_footerPolicyLabel = new QLabel(QStringLiteral("Policy: Default Policy"));
+    m_footerDatabaseLabel = new QLabel(QStringLiteral("●  Database: Connected"));
+    m_hashStatusLabel = new QLabel;
+    m_catalogStatusBtn = new QPushButton;
+    m_catalogStatusBtn->setFlat(true);
+    m_catalogStatusBtn->setCursor(Qt::PointingHandCursor);
+    connect(m_catalogStatusBtn, &QPushButton::clicked, this, [this]() {
+        onModeTabChanged(1);
+        if (m_isoWidget) {
+            m_isoWidget->refreshCatalogStatus();
+        }
+    });
+    footerLayout->addWidget(m_statusLabel, 1);
+    footerLayout->addWidget(m_footerUserLabel);
+    footerLayout->addSpacing(28);
+    footerLayout->addWidget(m_footerPolicyLabel);
+    footerLayout->addSpacing(28);
+    footerLayout->addWidget(m_catalogStatusBtn);
+    footerLayout->addSpacing(28);
+    footerLayout->addWidget(m_hashStatusLabel);
+    footerLayout->addSpacing(28);
+    footerLayout->addWidget(m_footerDatabaseLabel);
+    contentLayout->addWidget(footer);
+
+    shell->addWidget(contentShell, 1);
+    m_mainLayout->addLayout(shell, 1);
     
     // Update empty state
     updateEmptyState();
+    updateNavigationState(0);
 }
 
 QWidget* MainWindow::createHeader()
@@ -237,20 +335,152 @@ QWidget* MainWindow::createHeader()
 
 QWidget* MainWindow::createMainContent()
 {
-    m_splitter = new QSplitter(Qt::Horizontal);
-    m_splitter->setHandleWidth(1);
-    m_splitter->setChildrenCollapsible(false);
-    
-    // Left side - Device list
-    m_splitter->addWidget(createDeviceListArea());
-    
-    // Right side - Sidebar
-    m_splitter->addWidget(createSidebar());
-    
-    // Set splitter sizes
-    m_splitter->setSizes({700, SIDEBAR_WIDTH});
-    
-    return m_splitter;
+    auto* scroll = new QScrollArea;
+    scroll->setObjectName(QStringLiteral("DashboardScroll"));
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+
+    auto* page = new QWidget;
+    page->setObjectName(QStringLiteral("UsbDashboardPage"));
+    auto* layout = new QVBoxLayout(page);
+    layout->setContentsMargins(18, 18, 18, 18);
+    layout->setSpacing(16);
+
+    auto* header = new QHBoxLayout;
+    auto* titleBlock = new QVBoxLayout;
+    auto* title = new QLabel(QStringLiteral("▣  USB Monitor"));
+    title->setObjectName(QStringLiteral("PageTitle"));
+    title->setFont(FSFont(Heading1));
+    auto* subtitle = new QLabel(QStringLiteral("Real-time monitoring of USB devices and storage activities."));
+    subtitle->setObjectName(QStringLiteral("PageSubtitle"));
+    titleBlock->addWidget(title);
+    titleBlock->addWidget(subtitle);
+    header->addLayout(titleBlock, 1);
+
+    m_refreshBtn = new QPushButton(QStringLiteral("⟳  Refresh"));
+    m_refreshBtn->setObjectName(QStringLiteral("DashboardButton"));
+    m_refreshBtn->setCursor(Qt::PointingHandCursor);
+    connect(m_refreshBtn, &QPushButton::clicked, this, &MainWindow::onRefreshClicked);
+    header->addWidget(m_refreshBtn);
+
+    m_monitoringStatusLabel = new QLabel(QStringLiteral("●  Monitoring Active"));
+    m_monitoringStatusLabel->setObjectName(QStringLiteral("MonitoringPill"));
+    header->addWidget(m_monitoringStatusLabel);
+    layout->addLayout(header);
+
+    auto* cards = new QHBoxLayout;
+    cards->setSpacing(14);
+    auto makeCard = [this](const QString& icon, const QString& title, const QString& detail,
+                           QLabel*& value, const QString& accent) {
+        auto* card = new QWidget;
+        card->setObjectName(QStringLiteral("StatCard"));
+        card->setProperty("accent", accent);
+        auto* cardLayout = new QHBoxLayout(card);
+        cardLayout->setContentsMargins(18, 16, 18, 14);
+        cardLayout->setSpacing(14);
+        auto* iconLabel = new QLabel(icon);
+        iconLabel->setObjectName(QStringLiteral("StatIcon"));
+        iconLabel->setAlignment(Qt::AlignCenter);
+        iconLabel->setFixedSize(48, 48);
+        cardLayout->addWidget(iconLabel);
+        auto* text = new QVBoxLayout;
+        value = new QLabel(QStringLiteral("0"));
+        value->setObjectName(QStringLiteral("StatValue"));
+        value->setFont(FSFont(Heading1));
+        auto* label = new QLabel(title);
+        label->setObjectName(QStringLiteral("StatTitle"));
+        auto* sub = new QLabel(detail);
+        sub->setObjectName(QStringLiteral("StatDetail"));
+        text->addWidget(value);
+        text->addWidget(label);
+        text->addWidget(sub);
+        cardLayout->addLayout(text, 1);
+        return card;
+    };
+    cards->addWidget(makeCard(QStringLiteral("USB"), QStringLiteral("Connected"),
+                              QStringLiteral("USB device(s)"), m_connectedCountLabel,
+                              QStringLiteral("blue")));
+    cards->addWidget(makeCard(QStringLiteral("✓"), QStringLiteral("Allowed"),
+                              QStringLiteral("This session"), m_whitelistedCountLabel,
+                              QStringLiteral("green")));
+    cards->addWidget(makeCard(QStringLiteral("!"), QStringLiteral("Blocked"),
+                              QStringLiteral("This session"), m_blockedCountLabel,
+                              QStringLiteral("orange")));
+    cards->addWidget(makeCard(QStringLiteral("▤"), QStringLiteral("Total Events"),
+                              QStringLiteral("This session"), m_totalEventsLabel,
+                              QStringLiteral("purple")));
+    layout->addLayout(cards);
+
+    auto makePanelTitle = [](const QString& text) {
+        auto* label = new QLabel(text);
+        label->setObjectName(QStringLiteral("PanelTitle"));
+        return label;
+    };
+
+    auto* devicePanel = new QWidget;
+    devicePanel->setObjectName(QStringLiteral("DashboardPanel"));
+    auto* devicePanelLayout = new QVBoxLayout(devicePanel);
+    devicePanelLayout->setContentsMargins(0, 0, 0, 0);
+    devicePanelLayout->setSpacing(0);
+    devicePanelLayout->addWidget(makePanelTitle(QStringLiteral("Connected Devices")));
+
+    m_deviceTable = new QTableWidget(0, 7);
+    m_deviceTable->setObjectName(QStringLiteral("DashboardTable"));
+    m_deviceTable->setHorizontalHeaderLabels({
+        QStringLiteral("Device Name"),
+        QStringLiteral("Type"),
+        QStringLiteral("Status"),
+        QStringLiteral("Capacity"),
+        QStringLiteral("Vendor / Model"),
+        QStringLiteral("Connected At"),
+        QStringLiteral("Actions"),
+    });
+    m_deviceTable->verticalHeader()->setVisible(false);
+    m_deviceTable->horizontalHeader()->setStretchLastSection(true);
+    m_deviceTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_deviceTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_deviceTable->setMinimumHeight(180);
+    devicePanelLayout->addWidget(m_deviceTable);
+    layout->addWidget(devicePanel);
+
+    auto* eventsPanel = new QWidget;
+    eventsPanel->setObjectName(QStringLiteral("DashboardPanel"));
+    auto* eventsLayout = new QVBoxLayout(eventsPanel);
+    eventsLayout->setContentsMargins(0, 0, 0, 0);
+    eventsLayout->setSpacing(0);
+    eventsLayout->addWidget(makePanelTitle(QStringLiteral("Recent Events")));
+
+    m_eventTable = new QTableWidget(0, 6);
+    m_eventTable->setObjectName(QStringLiteral("DashboardTable"));
+    m_eventTable->setHorizontalHeaderLabels({
+        QStringLiteral("Time"),
+        QStringLiteral("Event"),
+        QStringLiteral("Device"),
+        QStringLiteral("Type"),
+        QStringLiteral("Result"),
+        QStringLiteral("Details"),
+    });
+    m_eventTable->verticalHeader()->setVisible(false);
+    m_eventTable->horizontalHeader()->setStretchLastSection(true);
+    m_eventTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_eventTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_eventTable->setMinimumHeight(210);
+    eventsLayout->addWidget(m_eventTable);
+    layout->addWidget(eventsPanel, 1);
+
+    m_logList = new QListWidget;
+    m_logList->hide();
+    m_deviceListWidget = new QWidget;
+    m_deviceListLayout = new QVBoxLayout(m_deviceListWidget);
+    m_deviceListLayout->addStretch();
+    m_contentStack = new QStackedWidget;
+    m_emptyStateLabel = new QLabel;
+    m_contentStack->addWidget(m_deviceListWidget);
+    m_contentStack->addWidget(m_emptyStateLabel);
+
+    scroll->setWidget(page);
+    m_splitter = scroll;
+    return scroll;
 }
 
 QWidget* MainWindow::createDeviceListArea()
@@ -685,35 +915,145 @@ void MainWindow::saveSettings()
 
 void MainWindow::applyStyle()
 {
-    setStyleSheet(FSStyle.mainWindowStyleSheet());
-    
-    // Header styling
-    m_headerWidget->setStyleSheet(QString(R"(
-        QWidget#HeaderWidget {
-            background-color: %1;
-            border-bottom: 1px solid %2;
+    const QString bg = FSStyle.colorCss(StyleManager::ColorRole::Background);
+    const QString bgAlt = FSStyle.colorCss(StyleManager::ColorRole::BackgroundAlt);
+    const QString surface = FSStyle.colorCss(StyleManager::ColorRole::Surface);
+    const QString hover = FSStyle.colorCss(StyleManager::ColorRole::SurfaceHover);
+    const QString border = FSStyle.colorCss(StyleManager::ColorRole::Border);
+    const QString text = FSStyle.colorCss(StyleManager::ColorRole::TextPrimary);
+    const QString muted = FSStyle.colorCss(StyleManager::ColorRole::TextMuted);
+    const QString secondary = FSStyle.colorCss(StyleManager::ColorRole::TextSecondary);
+    const QString accent = FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary);
+    const QString success = FSStyle.colorCss(StyleManager::ColorRole::Success);
+    const QString warning = FSStyle.colorCss(StyleManager::ColorRole::Warning);
+
+    setStyleSheet(QString(R"(
+        QMainWindow, QWidget#DashboardContentShell, QWidget#UsbDashboardPage {
+            background: %1;
+            color: %6;
         }
-    )").arg(FSStyle.colorCss(StyleManager::ColorRole::BackgroundAlt))
-       .arg(FSStyle.colorCss(StyleManager::ColorRole::Border)));
-    
-    // Search field styling
-    m_searchEdit->setStyleSheet(FSStyle.inputFieldStyleSheet());
-    
-    // Button styling
-    m_refreshBtn->setStyleSheet(FSStyle.buttonStyleSheet());
-    m_settingsBtn->setStyleSheet(FSStyle.buttonStyleSheet());
-    
-    // Sidebar styling
-    m_sidebarWidget->setStyleSheet(QString(R"(
-        QWidget#SidebarWidget {
-            background-color: %1;
-            border-left: 1px solid %2;
+        QWidget#DashboardNav {
+            background: #0a111a;
+            border-right: 1px solid %5;
         }
-    )").arg(FSStyle.colorCss(StyleManager::ColorRole::BackgroundAlt))
-       .arg(FSStyle.colorCss(StyleManager::ColorRole::Border)));
-    
-    // Scroll area styling
-    m_deviceScrollArea->setStyleSheet(FSStyle.scrollAreaStyleSheet());
+        QLabel#DashboardBrand {
+            color: %6;
+            font-weight: 700;
+            padding: 4px 6px;
+        }
+        QLabel#NavFooter {
+            color: %7;
+            padding: 8px 4px;
+        }
+        QLabel#ProtectionCard {
+            background: rgba(36, 48, 60, 0.75);
+            border: 1px solid %5;
+            border-radius: 8px;
+            color: %10;
+            padding: 12px;
+        }
+        QPushButton#NavButton {
+            text-align: left;
+            padding: 10px 12px;
+            border: 0;
+            border-radius: 7px;
+            color: %8;
+            background: transparent;
+        }
+        QPushButton#NavButton:hover {
+            background: %4;
+            color: %6;
+        }
+        QPushButton#NavButton:checked {
+            background: #0d6efd;
+            color: white;
+            font-weight: 600;
+        }
+        QLabel#PageTitle {
+            color: %6;
+        }
+        QLabel#PageSubtitle {
+            color: %8;
+        }
+        QPushButton#DashboardButton {
+            background: %3;
+            border: 1px solid %5;
+            border-radius: 8px;
+            padding: 8px 14px;
+            color: %6;
+        }
+        QLabel#MonitoringPill {
+            color: %10;
+            font-weight: 600;
+            padding: 8px 10px;
+        }
+        QWidget#StatCard {
+            background: %3;
+            border: 1px solid %5;
+            border-radius: 8px;
+            border-bottom: 3px solid %9;
+        }
+        QLabel#StatIcon {
+            background: rgba(13, 110, 253, 0.22);
+            border-radius: 24px;
+            color: %9;
+            font-weight: 700;
+        }
+        QLabel#StatValue {
+            color: %6;
+        }
+        QLabel#StatTitle {
+            color: %6;
+            font-weight: 600;
+        }
+        QLabel#StatDetail {
+            color: %7;
+        }
+        QWidget#DashboardPanel {
+            background: %3;
+            border: 1px solid %5;
+            border-radius: 8px;
+        }
+        QLabel#PanelTitle {
+            color: %6;
+            font-weight: 700;
+            padding: 12px 14px;
+            border-bottom: 1px solid %5;
+        }
+        QTableWidget#DashboardTable {
+            background: transparent;
+            border: 0;
+            gridline-color: %5;
+            color: %8;
+            selection-background-color: rgba(13, 110, 253, 0.25);
+        }
+        QTableWidget#DashboardTable::item {
+            padding: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        QHeaderView::section {
+            background: %2;
+            color: %8;
+            border: 0;
+            border-bottom: 1px solid %5;
+            padding: 8px;
+            font-weight: 600;
+        }
+        QWidget#DashboardFooter {
+            background: %2;
+            border-top: 1px solid %5;
+            color: %8;
+        }
+        QScrollArea#DashboardScroll {
+            border: 0;
+            background: %1;
+        }
+    )").arg(bg, bgAlt, surface, hover, border, text, muted, secondary, accent, success, warning));
+
+    if (m_logList) {
+        m_logList->setStyleSheet(FSStyle.listWidgetStyleSheet());
+    }
+    updateNavigationState(m_modeTabBar ? m_modeTabBar->currentIndex() : 0);
 }
 
 bool MainWindow::shouldMinimizeToTray() const
@@ -1546,6 +1886,7 @@ void MainWindow::updateStatusBar()
         m_catalogStatusBtn->setStyleSheet(QString("color: %1; text-align: left;")
                                               .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     }
+    refreshDeviceTable();
 }
 
 void MainWindow::syncModeTabFromSettings()
@@ -1567,6 +1908,7 @@ void MainWindow::syncModeTabFromSettings()
     if (m_searchEdit) {
         m_searchEdit->setVisible(index == 0);
     }
+    updateNavigationState(index);
 }
 
 void MainWindow::onModeTabChanged(int index)
@@ -1581,6 +1923,7 @@ void MainWindow::onModeTabChanged(int index)
     if (m_searchEdit) {
         m_searchEdit->setVisible(index == 0);
     }
+    updateNavigationState(index);
     applyAppModule();
     saveSettings();
 }
@@ -1611,6 +1954,9 @@ DeviceCard* MainWindow::addDeviceCard(const DeviceInfo& device)
     // Insert before the stretch
     m_deviceListLayout->insertWidget(m_deviceListLayout->count() - 1, card);
     m_deviceCards[device.deviceNode] = card;
+    m_deviceConnectedAt.insert(device.deviceNode, QDateTime::currentDateTime());
+    card->hide(); // Dashboard table is the primary UI; cards remain as state/action adapters.
+    refreshDeviceTable();
     
     // Note: Don't use FSStyle.applyFadeIn(card) here as DeviceCard 
     // already has its own graphics effect (m_glowEffect) which would be replaced
@@ -1624,8 +1970,10 @@ void MainWindow::removeDeviceCard(const QString& deviceNode)
     if (it != m_deviceCards.end()) {
         DeviceCard* card = it.value();
         m_deviceCards.erase(it);
+        m_deviceConnectedAt.remove(deviceNode);
         card->deleteLater();
     }
+    refreshDeviceTable();
 }
 
 DeviceCard* MainWindow::getDeviceCard(const QString& deviceNode)
@@ -1639,6 +1987,7 @@ void MainWindow::updateDeviceCard(const DeviceInfo& device)
     if (card) {
         card->setDevice(device);
     }
+    refreshDeviceTable();
 }
 
 void MainWindow::startHashing(const QString& deviceNode, bool skipUnmount)
@@ -1754,21 +2103,27 @@ void MainWindow::logMessage(const QString& message, LogLevel level)
     
     QString logText = QString("[%1] %2").arg(timestamp, message);
     
-    QListWidgetItem* item = new QListWidgetItem(logText);
-    item->setForeground(QColor(color));
-    m_logList->addItem(item);
-    m_logList->scrollToBottom();
-    
-    // Keep log size reasonable
-    while (m_logList->count() > 500) {
-        delete m_logList->takeItem(0);
+    if (m_logList) {
+        QListWidgetItem* item = new QListWidgetItem(logText);
+        item->setForeground(QColor(color));
+        m_logList->addItem(item);
+        m_logList->scrollToBottom();
+
+        // Keep log size reasonable
+        while (m_logList->count() > 500) {
+            delete m_logList->takeItem(0);
+        }
     }
+    appendEventRow(prefix, QString(), QString(), prefix, message, level);
     
     qDebug() << QString("[%1] %2").arg(prefix, message);
 }
 
 void MainWindow::updateEmptyState()
 {
+    if (!m_contentStack || !m_emptyStateLabel) {
+        return;
+    }
     if (m_deviceCards.isEmpty()) {
         m_emptyStateLabel->setText(
             "💾\n\nNo USB devices connected\n\n"
@@ -1784,11 +2139,130 @@ void MainWindow::updateEmptyState()
 
 void MainWindow::updateSidebarStats()
 {
-    m_connectedCountLabel->setText(QString::number(m_deviceCards.size()));
-    m_whitelistedCountLabel->setText(QString::number(m_database->deviceCount()));
-    m_hashingCountLabel->setText(QString::number(m_activeHashCount));
+    if (m_connectedCountLabel) {
+        m_connectedCountLabel->setText(QString::number(m_deviceCards.size()));
+    }
+    if (m_whitelistedCountLabel) {
+        m_whitelistedCountLabel->setText(QString::number(m_database ? m_database->deviceCount() : 0));
+    }
+    if (m_hashingCountLabel) {
+        m_hashingCountLabel->setText(QString::number(m_activeHashCount));
+    }
+    if (m_blockedCountLabel) {
+        m_blockedCountLabel->setText(QString::number(m_rejectedDrives.size()));
+    }
+    if (m_totalEventsLabel) {
+        m_totalEventsLabel->setText(QString::number(m_totalEventCount));
+    }
     
     m_trayIcon->setDeviceCount(m_deviceCards.size(), m_database->deviceCount());
+    refreshDeviceTable();
+}
+
+void MainWindow::refreshDeviceTable()
+{
+    if (!m_deviceTable) {
+        return;
+    }
+    m_deviceTable->setRowCount(0);
+    const QList<DeviceCard*> cards = m_deviceCards.values();
+    for (DeviceCard* card : cards) {
+        const DeviceInfo device = card->device();
+        const int row = m_deviceTable->rowCount();
+        m_deviceTable->insertRow(row);
+
+        const QString type = device.fsType.isEmpty()
+            ? QStringLiteral("USB Device")
+            : QStringLiteral("Mass Storage");
+        const QString status = verificationStatusToString(card->verificationStatus());
+        const QString capacity = device.sizeBytes > 0
+            ? QStringLiteral("%1 GB").arg(static_cast<double>(device.sizeBytes) / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1)
+            : QStringLiteral("—");
+        const QString vendorModel = QStringList{device.vendor, device.model}
+            .filter(QRegularExpression(QStringLiteral(".+"))).join(QStringLiteral("\n"));
+        const QString connectedAt = m_deviceConnectedAt.value(device.deviceNode, QDateTime::currentDateTime())
+                                        .toString(QStringLiteral("M/d/yyyy h:mm:ss AP"));
+
+        auto setItem = [this, row](int column, const QString& text, const QColor& foreground = QColor()) {
+            auto* item = new QTableWidgetItem(text);
+            item->setToolTip(text);
+            if (foreground.isValid()) {
+                item->setForeground(foreground);
+            }
+            m_deviceTable->setItem(row, column, item);
+        };
+        setItem(0, device.displayName() + QStringLiteral("\n") + device.deviceNode);
+        setItem(1, type);
+        QColor statusColor = FSStyle.color(StyleManager::ColorRole::TextSecondary);
+        if (card->verificationStatus() == VerificationStatus::Verified) {
+            statusColor = FSStyle.color(StyleManager::ColorRole::Success);
+        } else if (card->verificationStatus() == VerificationStatus::Modified
+                   || card->verificationStatus() == VerificationStatus::Error) {
+            statusColor = FSStyle.color(StyleManager::ColorRole::Error);
+        } else if (card->verificationStatus() == VerificationStatus::NewDevice) {
+            statusColor = FSStyle.color(StyleManager::ColorRole::Warning);
+        }
+        setItem(2, status, statusColor);
+        setItem(3, capacity);
+        setItem(4, vendorModel.isEmpty() ? QStringLiteral("—") : vendorModel);
+        setItem(5, connectedAt);
+        setItem(6, QStringLiteral("Actions ▾"));
+    }
+    m_deviceTable->resizeRowsToContents();
+}
+
+void MainWindow::appendEventRow(const QString& event, const QString& device, const QString& type,
+                                const QString& result, const QString& details, LogLevel level)
+{
+    if (!m_eventTable) {
+        return;
+    }
+    ++m_totalEventCount;
+    if (m_totalEventsLabel) {
+        m_totalEventsLabel->setText(QString::number(m_totalEventCount));
+    }
+    const int row = 0;
+    m_eventTable->insertRow(row);
+    const QString time = QDateTime::currentDateTime().toString(QStringLiteral("M/d/yyyy h:mm:ss AP"));
+    const QStringList values = {
+        time,
+        event,
+        device,
+        type,
+        result,
+        details,
+    };
+    QColor color = FSStyle.color(StyleManager::ColorRole::TextSecondary);
+    if (level == LogLevel::Security || level == LogLevel::Error) {
+        color = FSStyle.color(StyleManager::ColorRole::Error);
+    } else if (level == LogLevel::Warning) {
+        color = FSStyle.color(StyleManager::ColorRole::Warning);
+    } else if (level == LogLevel::Info) {
+        color = FSStyle.color(StyleManager::ColorRole::AccentPrimary);
+    }
+    for (int column = 0; column < values.size(); ++column) {
+        auto* item = new QTableWidgetItem(values.at(column));
+        if (column == 1 || column == 4) {
+            item->setForeground(color);
+        }
+        item->setToolTip(values.at(column));
+        m_eventTable->setItem(row, column, item);
+    }
+    while (m_eventTable->rowCount() > 100) {
+        m_eventTable->removeRow(m_eventTable->rowCount() - 1);
+    }
+}
+
+void MainWindow::updateNavigationState(int index)
+{
+    for (int i = 0; i < m_navButtons.size(); ++i) {
+        // The first nav item maps to USB, fourth to BadUSB, fifth to Reports/ISO.
+        const bool active =
+            (index == 0 && i <= 2)
+            || (index == 2 && i == 3)
+            || (index == 1 && i == 4);
+        m_navButtons.at(i)->setChecked(active);
+    }
 }
 
 bool MainWindow::showNewDriveDialog(const DeviceInfo& device)

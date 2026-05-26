@@ -10,6 +10,7 @@
 #include <QStackedWidget>
 #include <QSplitter>
 #include <QListWidget>
+#include <QTableWidget>
 #include <QTimer>
 #include <QTabBar>
 #include <QPushButton>
@@ -265,6 +266,10 @@ private:
      * @brief Update sidebar statistics
      */
     void updateSidebarStats();
+    void refreshDeviceTable();
+    void appendEventRow(const QString& event, const QString& device, const QString& type,
+                        const QString& result, const QString& details, LogLevel level);
+    void updateNavigationState(int index);
 
     /**
      * @brief Show the new device dialog
@@ -334,7 +339,7 @@ private:
     // UI - Main structure
     QWidget* m_centralWidget = nullptr;
     QVBoxLayout* m_mainLayout = nullptr;
-    QSplitter* m_splitter = nullptr;
+    QWidget* m_splitter = nullptr;
 
     // UI - Header
     QWidget* m_headerWidget = nullptr;
@@ -343,12 +348,19 @@ private:
     QLineEdit* m_searchEdit = nullptr;
     QPushButton* m_refreshBtn = nullptr;
     QPushButton* m_settingsBtn = nullptr;
+    QList<QPushButton*> m_navButtons;
 
     // UI - Sidebar
     QWidget* m_sidebarWidget = nullptr;
     QLabel* m_connectedCountLabel = nullptr;
     QLabel* m_whitelistedCountLabel = nullptr;
     QLabel* m_hashingCountLabel = nullptr;
+    QLabel* m_blockedCountLabel = nullptr;
+    QLabel* m_totalEventsLabel = nullptr;
+    QLabel* m_monitoringStatusLabel = nullptr;
+    QLabel* m_footerUserLabel = nullptr;
+    QLabel* m_footerPolicyLabel = nullptr;
+    QLabel* m_footerDatabaseLabel = nullptr;
     QListWidget* m_logList = nullptr;
 
     // UI - Device list
@@ -357,6 +369,9 @@ private:
     QVBoxLayout* m_deviceListLayout = nullptr;
     QLabel* m_emptyStateLabel = nullptr;
     QStackedWidget* m_contentStack = nullptr;
+    QTableWidget* m_deviceTable = nullptr;
+    QTableWidget* m_eventTable = nullptr;
+    int m_totalEventCount = 0;
 
     // UI - Status bar
     QLabel* m_statusLabel = nullptr;
@@ -376,6 +391,7 @@ private:
 
     QHash<QString, PendingHashAction> m_pendingHashActions;
     QHash<QString, QString> m_lastVerificationHashes;
+    QHash<QString, QDateTime> m_deviceConnectedAt;
     QSet<QString> m_drivePromptInProgress;
     QSet<QString> m_rejectedDrives;
     QSet<QString> m_unmountBeforeHash;

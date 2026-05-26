@@ -77,13 +77,46 @@ After `sudo cmake --install build --prefix /usr`, open the installed guides unde
 
 ## Installation
 
-### From source (Arch)
+### Arch package via pacman
+
+FlashSentry ships Arch packaging metadata under [`packaging/`](packaging/). Build a local
+`.pkg.tar.zst` package with `makepkg`, then install it with `pacman`:
 
 ```bash
 git clone https://github.com/RNAX0N/flashsentry.git
-cd flashsentry/packaging
-makepkg -si
+cd flashsentry
+
+# Install build/runtime dependencies declared by the PKGBUILD and build the package.
+cd packaging
+makepkg -s --cleanbuild
+
+# Install the generated package with pacman.
+sudo pacman -U ./flashsentry-*.pkg.tar.zst
 ```
+
+Shortcut: `makepkg -si` builds the package and immediately installs it through pacman.
+
+Upgrade after pulling newer source:
+
+```bash
+git pull
+cd packaging
+makepkg -s --cleanbuild
+sudo pacman -U ./flashsentry-*.pkg.tar.zst
+```
+
+Remove:
+
+```bash
+sudo pacman -R flashsentry
+```
+
+Your user data under `~/.config/flashsentry/`, `~/.config/FlashSentry/`, and
+`~/.cache/FlashSentry/` is preserved unless you remove it manually.
+
+> Developer note: the default `PKGBUILD` builds the tagged release matching `pkgver`. For packaging
+> an untagged local checkout, adjust `source` in `packaging/PKGBUILD` to use the local tree (the file
+> includes a commented `git+file://...` example), then run the same `makepkg` / `pacman -U` commands.
 
 ### Runtime dependencies
 
@@ -188,7 +221,10 @@ cmake -DFLASHSENTRY_BUILD_TESTS=ON ..
 cmake --build . && ctest --test-dir build --output-on-failure
 ```
 
-Ten tests: `test_types`, `test_database_manager`, `test_merkle`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`, `test_verify_report`, `test_iso_verify_integration`, `test_iso_verify_publisher_mock`, `test_iso_http_mock` (fixtures under `tests/fixtures/`).
+Thirteen tests: `test_types`, `test_database_manager`, `test_merkle`, `test_badusb_analyzer`,
+`test_badusb_baseline`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`,
+`test_iso_scan_rules`, `test_verify_report`, `test_iso_verify_integration`,
+`test_iso_verify_publisher_mock`, `test_iso_http_mock` (fixtures under `tests/fixtures/`).
 
 Install (binary, polkit policy, udev rules, and docs under `/usr/share/doc/flashsentry/`):
 

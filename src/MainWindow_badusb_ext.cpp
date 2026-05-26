@@ -1,6 +1,7 @@
 #include "MainWindow.h"
 #include "AuditLog.h"
 #include "BadUsbAnalyzer.h"
+#include "Platform.h"
 
 #include <QDateTime>
 #include <QMessageBox>
@@ -9,18 +10,24 @@ namespace FlashSentry {
 
 void MainWindow::configureBadUsbMonitoring()
 {
+    const bool supported = Platform::capabilities().badUsbMonitoring;
+    const bool enabled = m_settings.badUsbEnabled && supported;
     if (m_badUsbWidget) {
-        m_badUsbWidget->setMonitoringEnabled(m_settings.badUsbEnabled);
+        m_badUsbWidget->setMonitoringEnabled(enabled);
         if (m_badUsbBaselineStore) {
             m_badUsbWidget->setBaselineCount(m_badUsbBaselineStore->allDevices().size());
+        }
+        if (m_settings.badUsbEnabled && !supported) {
+            m_badUsbWidget->setCaptureStatus(
+                QStringLiteral("BadUSB HID monitoring is not implemented on Windows yet"));
         }
     }
     if (!m_hidMonitor) {
         return;
     }
-    if (m_settings.badUsbEnabled && !m_hidMonitor->isMonitoring()) {
+    if (enabled && !m_hidMonitor->isMonitoring()) {
         m_hidMonitor->startMonitoring();
-    } else if (!m_settings.badUsbEnabled && m_hidMonitor->isMonitoring()) {
+    } else if (!enabled && m_hidMonitor->isMonitoring()) {
         m_hidMonitor->stopMonitoring();
     }
 }

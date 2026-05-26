@@ -13,7 +13,7 @@ namespace FlashSentry {
  */
 class AutostartManager {
 public:
-    enum class Backend { None, Systemd, Xdg };
+    enum class Backend { None, Systemd, Xdg, WindowsRegistry };
 
     static bool isAvailable();
     static Backend backend();

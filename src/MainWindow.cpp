@@ -5,6 +5,7 @@
 #include "SettingsProfiles.h"
 #include "WelcomeWizard.h"
 #include "BadUsbAnalyzer.h"
+#include "Platform.h"
 
 #include <QApplication>
 #include <QMessageBox>

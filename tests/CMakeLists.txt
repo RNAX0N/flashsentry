@@ -3,6 +3,8 @@ find_package(Qt6 REQUIRED COMPONENTS Test)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
+set(FLASHSENTRY_TEST_FIXTURES_DIR "${CMAKE_SOURCE_DIR}/tests/fixtures")
+
 add_executable(test_types test_types.cpp)
 target_include_directories(test_types PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_types PRIVATE Qt6::Test)
@@ -53,13 +55,35 @@ target_include_directories(test_iso_checksum PRIVATE ${CMAKE_SOURCE_DIR}/include
 target_link_libraries(test_iso_checksum PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME test_iso_checksum COMMAND test_iso_checksum)
 
+add_executable(test_iso_scan_rules
+    test_iso_scan_rules.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoScanRules.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifier.cpp
+    ${ISO_CATALOG_SOURCES}
+    ${CMAKE_SOURCE_DIR}/src/IsoCatalogManifest.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoHttpClient.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoChecksum.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifyCache.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifyReport.cpp
+    ${CMAKE_SOURCE_DIR}/src/AuditLog.cpp
+)
+target_include_directories(test_iso_scan_rules PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_iso_scan_rules PRIVATE
+    Qt6::Test Qt6::Core Qt6::Concurrent Qt6::Network ${OPENSSL_LIBRARIES})
+target_compile_definitions(test_iso_scan_rules PRIVATE
+    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+    FLASHSENTRY_TEST_FIXTURES_DIR="${FLASHSENTRY_TEST_FIXTURES_DIR}"
+)
+target_sources(test_iso_scan_rules PRIVATE ${CMAKE_SOURCE_DIR}/resources/resources.qrc)
+add_test(NAME test_iso_scan_rules COMMAND test_iso_scan_rules)
+
 add_executable(test_verify_report test_verify_report.cpp ${CMAKE_SOURCE_DIR}/src/IsoVerifyReport.cpp)
 target_include_directories(test_verify_report PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_verify_report PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME test_verify_report COMMAND test_verify_report)
 
-set(FLASHSENTRY_TEST_FIXTURES_DIR "${CMAKE_SOURCE_DIR}/tests/fixtures")
 set(ISO_VERIFY_TEST_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/IsoScanRules.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoVerifier.cpp
     ${ISO_CATALOG_SOURCES}
     ${CMAKE_SOURCE_DIR}/src/IsoCatalogManifest.cpp

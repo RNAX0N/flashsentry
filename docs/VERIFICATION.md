@@ -96,6 +96,19 @@ Some publishers (e.g. **Manjaro**, **elementary OS**, **EndeavourOS**) ship `{is
 
 `verifyMountPoint()` calls `findIsoFiles()` recursively on the mounted path (`.iso`, `.img.xz`, `.img`, `.zip`). A Ventoy data partition with many images produces **one `IsoVerifyResult` per file**; results are independent (one failure does not block others).
 
+**Coexistence with Ventoy, Easy2Boot, and similar tools**
+
+| Concern | FlashSentry behavior |
+|---------|---------------------|
+| Ventoy `ventoy/` config tree | **Not scanned** — avoids touching plugins, `ventoy.json`, or reserved paths |
+| Ventoy EFI / small boot partition | Auto-verify **skipped** when no user images are present |
+| Desktop already mounted the stick | Verification runs on the **existing** mount (no remount fight with GNOME/KDE) |
+| `noexec,nosuid,nodev` mount defaults | Read-only hashing of image files still works; does not break Ventoy boot |
+| One ISO fails | Others still verify; Ventoy profile disables **block mount on verify failure** |
+| Full-disk hash on connect | Off in **Ventoy / multi-ISO** settings profile (slow and unnecessary) |
+
+Place `.iso` files on the **data** partition (same as for Ventoy itself), not inside `ventoy/` or `EFI/`.
+
 ### Bootable stick without `.iso`
 
 `scanMountPoint()` sets `looksLikeDdIsoStick` when:

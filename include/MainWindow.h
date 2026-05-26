@@ -279,6 +279,8 @@ private:
 
     void applyIsoVerifyOptions();
     void warnIfCatalogIntegrityFailed();
+    void maybeTriggerIsoVerifyForMountedDevice(const DeviceInfo& device);
+    void clearIsoVerifyDedupForDevice(const DeviceInfo& device);
     void handleIsoVerificationReport(const QString& deviceNode, const QList<IsoVerifyResult>& results);
 
     bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
@@ -353,6 +355,7 @@ private:
     QSet<QString> m_drivePromptInProgress;
     QSet<QString> m_rejectedDrives;
     QSet<QString> m_unmountBeforeHash;
+    QSet<QString> m_isoVerifyTriggeredMounts;
 
     // State
     bool m_isClosing = false;

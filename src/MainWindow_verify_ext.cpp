@@ -4,6 +4,7 @@
 #include "IsoVerifyReport.h"
 #include "IsoVerifySettingsLoader.h"
 #include "IsoCatalogManifest.h"
+#include "IsoScanRules.h"
 #include "SettingsProfiles.h"
 #include <QMessageBox>
 
@@ -276,6 +277,51 @@ void MainWindow::applyIsoVerifyOptions()
     opt.verifyDecompressed = m_settings.isoVerifyDecompressed;
     opt.preferOfflineSidecars = m_settings.isoPreferOfflineSidecars;
     IsoVerifier::setVerifyOptions(opt);
+}
+
+void MainWindow::maybeTriggerIsoVerifyForMountedDevice(const DeviceInfo& device)
+{
+    if (!m_isoWidget || device.mountPoint.isEmpty() || !device.isMounted) {
+        return;
+    }
+    if (!m_settings.isoAutoVerifyOnUsbMount && m_settings.appModule != AppModule::IsoVerifier) {
+        return;
+    }
+    if (m_isoVerifyTriggeredMounts.contains(device.mountPoint)) {
+        return;
+    }
+
+    const IsoVerifier::MountScanResult scan = IsoVerifier::scanMountPoint(device.mountPoint);
+    if (IsoScanRules::shouldSkipAutoVerifyPartition(device.mountPoint, device.sizeBytes,
+                                                    scan.isoPaths.size())) {
+        if (!scan.layoutNote.isEmpty()) {
+            logMessage(scan.layoutNote, LogLevel::Info);
+        }
+        return;
+    }
+    if (scan.isoPaths.isEmpty() && !scan.looksLikeDdIsoStick) {
+        return;
+    }
+
+    MountManager::MountResult synthetic;
+    synthetic.success = true;
+    synthetic.deviceNode = device.deviceNode;
+    synthetic.mountPoint = device.mountPoint;
+    triggerIsoVerificationOnMount(synthetic);
+}
+
+void MainWindow::clearIsoVerifyDedupForDevice(const DeviceInfo& device)
+{
+    if (!device.mountPoint.isEmpty()) {
+        m_isoVerifyTriggeredMounts.remove(device.mountPoint);
+    }
+    for (const DeviceInfo& d : m_deviceMonitor->connectedDevices()) {
+        if (d.parentDevice == device.parentDevice || d.deviceNode == device.parentDevice) {
+            if (!d.mountPoint.isEmpty()) {
+                m_isoVerifyTriggeredMounts.remove(d.mountPoint);
+            }
+        }
+    }
 }
 
 void MainWindow::warnIfCatalogIntegrityFailed()

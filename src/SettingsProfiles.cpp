@@ -35,6 +35,8 @@ void SettingsProfiles::applyProfile(const QString& profileId, AppSettings& setti
         settings.autoHashOnConnect = false;
         settings.isoVerifyParallel = 2;
         settings.blockMountOnIsoVerifyFailure = false;
+        settings.isoPreferOfflineSidecars = true;
+        settings.blockModifiedDevices = false;
         return;
     }
     if (profileId == QStringLiteral("work_usb")) {

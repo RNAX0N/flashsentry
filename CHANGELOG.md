@@ -4,6 +4,21 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-05-21
+
+### Added
+
+- **Multiboot compatibility** (`IsoScanRules`): skip `ventoy/`, `EFI/`, Easy2Boot `_ISO/`, and other reserved trees when scanning
+- Ventoy data-partition detection and coexistence notes in scan reports
+- Auto ISO verify when the **desktop already mounted** the stick (Ventoy-friendly; no remount fight)
+- Skip auto-verify on small EFI-only Ventoy boot partitions
+- Tests: `test_iso_scan_rules`, ventoy fixture with reserved `ventoy/` tree
+
+### Changed
+
+- **Ventoy** settings profile: prefer offline sidecars, no block-on-failure, no full-disk hash on connect
+- [VERIFICATION.md](docs/VERIFICATION.md) and [USER_GUIDE.md](docs/USER_GUIDE.md): Ventoy / Easy2Boot coexistence tables
+
 ## [1.3.2] - 2026-05-21
 
 ### Added

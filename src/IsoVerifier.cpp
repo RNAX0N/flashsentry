@@ -1,4 +1,5 @@
 #include "IsoVerifier.h"
+#include "IsoScanRules.h"
 #include "AuditLog.h"
 #include "IsoCatalog.h"
 #include "IsoCatalogManifest.h"
@@ -317,19 +318,56 @@ QString buildReport(const IsoVerifyResult& r)
 
 } // namespace
 
+namespace {
+
+void collectIsoFilesRecursive(const QString& directory, QStringList* out, int depth = 0)
+{
+    if (!out || depth > 64) {
+        return;
+    }
+    QDir dir(directory);
+    if (!dir.exists()) {
+        return;
+    }
+    const QFileInfoList entries =
+        dir.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const QFileInfo& entry : entries) {
+        if (entry.isDir()) {
+            if (IsoScanRules::isReservedMultibootDirectory(entry.fileName())) {
+                continue;
+            }
+            collectIsoFilesRecursive(entry.absoluteFilePath(), out, depth + 1);
+        } else if (IsoCatalog::isVerifiableImageFileName(entry.fileName())) {
+            const QString path = entry.absoluteFilePath();
+            if (!IsoScanRules::isExcludedImagePath(path)) {
+                out->append(path);
+            }
+        }
+    }
+}
+
+} // namespace
+
 IsoVerifier::MountScanResult IsoVerifier::scanMountPoint(const QString& mountPoint)
 {
     MountScanResult scan;
     scan.mountPoint = mountPoint;
     scan.isoPaths = findIsoFiles(mountPoint);
 
+    const MultibootLayout multiboot = IsoScanRules::detectMultibootLayout(mountPoint);
     const QDir root(mountPoint);
     const bool hasArchiso = root.exists(QStringLiteral("arch"));
     const bool hasDiskInfo = root.exists(QStringLiteral(".disk/info"));
     const bool hasEfi = root.exists(QStringLiteral("EFI"));
     scan.looksLikeDdIsoStick = scan.isoPaths.isEmpty() && (hasArchiso || hasDiskInfo) && hasEfi;
 
-    if (scan.looksLikeDdIsoStick) {
+    if (!multiboot.summary.isEmpty() && !scan.isoPaths.isEmpty()) {
+        const QString note = IsoScanRules::coexistenceNote(multiboot.tool);
+        scan.layoutNote = multiboot.summary
+                          + (note.isEmpty() ? QString() : QStringLiteral(" — ") + note);
+    } else if (!multiboot.summary.isEmpty() && multiboot.espOrBootOnly) {
+        scan.layoutNote = multiboot.summary;
+    } else if (scan.looksLikeDdIsoStick) {
         scan.layoutNote = QStringLiteral(
             "Bootable live-USB layout detected (dd/hybrid write). No loose .iso file — "
             "use full-partition verification or copy the original .iso onto the drive for automated checks.");
@@ -340,13 +378,7 @@ IsoVerifier::MountScanResult IsoVerifier::scanMountPoint(const QString& mountPoi
 QStringList IsoVerifier::findIsoFiles(const QString& directory)
 {
     QStringList result;
-    QDirIterator it(directory, QDir::Files, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        const QString path = it.next();
-        if (IsoCatalog::isVerifiableImageFileName(QFileInfo(path).fileName())) {
-            result.append(path);
-        }
-    }
+    collectIsoFilesRecursive(directory, &result);
     result.sort();
     return result;
 }

@@ -294,7 +294,13 @@ Each `.iso` on the mounted Ventoy partition can be verified when the volume moun
 | No `.iso` files found | You may have booted from the stick or only have a `dd`-written layout — see [dd / live USB without a loose file](#dd-or-rufus-iso-mode-without-a-loose-file) |
 | Ventoy copy + publisher checksum files | Copy `SHA256SUMS`, `.gpg`, or per-ISO `.sha256` / `.sig` beside the ISO; local sidecars are used if download fails |
 
-Ventoy does not require a separate mode — use **USB drive monitor** with ISO auto-verify on mount.
+Ventoy does not require a separate mode — use **Settings → Verification profile → Ventoy / multi-ISO** (recommended) or **USB drive monitor** with ISO auto-verify on mount.
+
+**Will FlashSentry break Ventoy?** No. FlashSentry only **reads** image files for hashing. It skips the `ventoy/` configuration folder and the small EFI boot partition. It does not rewrite the Ventoy boot loader, `ventoy.json`, or partition tables. If your desktop already mounted the stick, FlashSentry verifies in place instead of forcing its own mount.
+
+**Similar tools:** Easy2Boot (`_ISO/`, `e2b/`) and common GRUB multiboot `boot/` trees are also excluded from scans. Keep distro images outside those reserved directories.
+
+**Automount:** You can leave GNOME/KDE automount enabled; FlashSentry detects mounts via `/proc/mounts` and verifies when the data partition appears. Disable automount only if you want FlashSentry alone to control mount timing (see install notes).
 
 ---
 

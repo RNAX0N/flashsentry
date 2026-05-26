@@ -660,11 +660,15 @@ void MainWindow::onDeviceConnected(const DeviceInfo& device)
     updateSidebarStats();
     updateEmptyState();
     m_trayIcon->updateDeviceList(m_deviceMonitor->connectedDevices());
+    maybeTriggerIsoVerifyForMountedDevice(device);
 }
 
 void MainWindow::onDeviceDisconnected(const QString& deviceNode)
 {
     DeviceCard* card = getDeviceCard(deviceNode);
+    if (card) {
+        clearIsoVerifyDedupForDevice(card->device());
+    }
     QString deviceName = card ? card->device().displayName() : deviceNode;
     QString drive;
     if (card) {
@@ -709,6 +713,7 @@ void MainWindow::onDeviceDisconnected(const QString& deviceNode)
 void MainWindow::onDeviceChanged(const DeviceInfo& device)
 {
     updateDeviceCard(device);
+    maybeTriggerIsoVerifyForMountedDevice(device);
 }
 
 void MainWindow::onInitialScanComplete(int deviceCount)
@@ -716,6 +721,9 @@ void MainWindow::onInitialScanComplete(int deviceCount)
     logMessage(QString("Initial scan complete: %1 device(s) found").arg(deviceCount), LogLevel::Info);
     updateSidebarStats();
     updateEmptyState();
+    for (const DeviceInfo& device : m_deviceMonitor->connectedDevices()) {
+        maybeTriggerIsoVerifyForMountedDevice(device);
+    }
 }
 
 void MainWindow::handleNewDevice(const DeviceInfo& device)
@@ -1057,6 +1065,10 @@ void MainWindow::triggerIsoVerificationOnMount(const MountManager::MountResult& 
 {
     if (!m_isoWidget || result.mountPoint.isEmpty()) return;
     if (!m_settings.isoAutoVerifyOnUsbMount && m_settings.appModule != AppModule::IsoVerifier) return;
+    if (m_isoVerifyTriggeredMounts.contains(result.mountPoint)) {
+        return;
+    }
+    m_isoVerifyTriggeredMounts.insert(result.mountPoint);
     QString label = result.deviceNode;
     if (auto info = m_deviceMonitor->getDevice(result.deviceNode)) {
         label = info->displayName();

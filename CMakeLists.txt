@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(flashsentry
-    VERSION 1.3.2
+    VERSION 1.3.3
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )
@@ -50,6 +50,7 @@ set(SOURCES
     src/IsoVerifySettingsLoader.cpp
     src/SettingsProfiles.cpp
     src/WelcomeWizard.cpp
+    src/IsoScanRules.cpp
     src/IsoVerifier.cpp
     src/IsoVerifierWorker.cpp
     src/WatchListDialog.cpp
@@ -84,6 +85,7 @@ set(HEADERS
     include/IsoVerifySettingsLoader.h
     include/SettingsProfiles.h
     include/WelcomeWizard.h
+    include/IsoScanRules.h
     include/IsoVerifier.h
     include/IsoVerifierWorker.h
     include/WatchListDialog.h

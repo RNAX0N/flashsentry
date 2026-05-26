@@ -282,6 +282,9 @@ void TestIsoCatalog::verifiableImageExtensions()
 
 void TestIsoCatalog::embeddedManifestIntegrity()
 {
+#ifdef Q_OS_WIN
+    QSKIP("Embedded catalog OpenPGP integrity test is skipped on Windows until Gpg4win support is validated");
+#endif
     IsoCatalogManifest::reload();
     QVERIFY(IsoCatalogManifest::lastEmbeddedSha256Ok());
     QVERIFY(IsoCatalogManifest::entryCount() >= 4);

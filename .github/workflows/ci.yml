@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
+  linux-build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,3 +34,51 @@ jobs:
         run: |
           ctest --test-dir build --output-on-failure
           echo "Tests completed: $(ctest --test-dir build -N | grep -c 'Test #')"
+
+  windows-build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.3'
+          arch: 'win64_msvc2019_64'
+          modules: 'qt5compat'
+          cache: true
+
+      - name: Install OpenSSL
+        shell: pwsh
+        run: choco install openssl -y --no-progress
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          $opensslRoot = "C:/Program Files/OpenSSL"
+          if (-not (Test-Path $opensslRoot)) {
+            $opensslRoot = "C:/Program Files/OpenSSL-Win64"
+          }
+          cmake -B build -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DFLASHSENTRY_BUILD_TESTS=ON `
+            -DOPENSSL_ROOT_DIR="$opensslRoot"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Package portable ZIP
+        shell: pwsh
+        run: |
+          cmake --install build --config Release --prefix "$pwd/stage"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Compress-Archive -Path stage/* -DestinationPath artifacts/FlashSentry-windows-portable.zip
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlashSentry-windows-portable
+          path: artifacts/FlashSentry-windows-portable.zip

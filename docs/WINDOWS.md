@@ -44,6 +44,39 @@ ctest --test-dir build-windows --output-on-failure
 If using vcpkg, prefer a normal CMake toolchain invocation with `qtbase` and `openssl` installed
 for the selected triplet.
 
+## Portable package
+
+The Windows CI job installs the app into a staging directory and uploads a portable ZIP artifact.
+This is the first distribution format because it avoids installer elevation and makes dependency
+issues visible early.
+
+For a local portable package:
+
+```powershell
+cmake --install build-windows --config Release --prefix .\stage
+Compress-Archive -Path .\stage\* -DestinationPath FlashSentry-windows-portable.zip
+```
+
+When `windeployqt` is available, the `deploy-windows-runtime` target can copy Qt runtime DLLs next
+to the executable before packaging:
+
+```powershell
+cmake --build build-windows --config Release --target deploy-windows-runtime
+```
+
+## Installer scaffold
+
+CMake configures CPack with ZIP and NSIS generators on Windows. After NSIS is installed, an
+experimental installer can be produced with:
+
+```powershell
+cmake --build build-windows --config Release
+cpack --config build-windows\CPackConfig.cmake -G NSIS
+```
+
+Treat the NSIS output as a developer preview until native Windows device features, upgrade behavior,
+icons, signing, and dependency bundling are verified.
+
 ## Roadmap
 
 1. Native removable-volume hotplug and richer device identity via Windows device notifications,
@@ -51,4 +84,4 @@ for the selected triplet.
 2. Native full-partition hashing using Windows storage APIs and a UAC-elevated helper.
 3. BadUSB HID monitoring using SetupAPI/HID APIs with baseline/anomaly rules shared with Linux.
 4. Optional USBPcap capture integration.
-5. Windows installer packaging.
+5. Windows installer packaging, then MSI/WiX and code signing.

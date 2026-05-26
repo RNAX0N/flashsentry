@@ -125,6 +125,12 @@ set(HEADERS
 set(RESOURCES resources/resources.qrc)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${RESOURCES})
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        WIN32_EXECUTABLE TRUE
+        OUTPUT_NAME "FlashSentry"
+    )
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -221,6 +227,38 @@ install(DIRECTORY packaging/iso-catalog.d/
     DESTINATION ${CMAKE_INSTALL_DATADIR}/flashsentry/iso-catalog.d
     FILES_MATCHING PATTERN "*.md" PATTERN "*.json")
 
+if(WIN32)
+    install(FILES resources/iso-catalog/embedded-manifest.json
+        DESTINATION iso-catalog)
+    install(DIRECTORY packaging/iso-catalog.d/
+        DESTINATION iso-catalog.d
+        FILES_MATCHING PATTERN "*.md" PATTERN "*.json")
+
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt
+        HINTS "${Qt6_DIR}/../../../bin" "$ENV{Qt6_DIR}/../../../bin")
+    if(WINDEPLOYQT_EXECUTABLE)
+        add_custom_target(deploy-windows-runtime
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                    --release
+                    --compiler-runtime
+                    --no-translations
+                    "$<TARGET_FILE:${PROJECT_NAME}>"
+            DEPENDS ${PROJECT_NAME}
+            COMMENT "Deploying Qt runtime with windeployqt")
+    endif()
+
+    set(CPACK_GENERATOR "NSIS;ZIP")
+    set(CPACK_PACKAGE_NAME "FlashSentry")
+    set(CPACK_PACKAGE_VENDOR "FlashSentry")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "USB and ISO security monitor")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "FlashSentry")
+    set(CPACK_NSIS_DISPLAY_NAME "FlashSentry")
+    set(CPACK_NSIS_PACKAGE_NAME "FlashSentry")
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    set(CPACK_NSIS_MODIFY_PATH OFF)
+    set(CPACK_PACKAGE_EXECUTABLES "FlashSentry" "FlashSentry")
+endif()
+
 if(NOT TARGET uninstall)
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
@@ -246,3 +284,7 @@ message(STATUS "  libnotify:     ${LIBNOTIFY_FOUND}")
 message(STATUS "  Install to:    ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "  Read helper:   ${FLASHSENTRY_READ_HELPER}")
 message(STATUS "")
+
+if(WIN32)
+    include(CPack)
+endif()

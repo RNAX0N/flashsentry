@@ -64,7 +64,7 @@ For each `.iso` file:
 
 ### Steps (`IsoVerifier.cpp`)
 
-1. **Scan** mount point for `*.iso` (recursive).
+1. **Scan** mount point recursively for `.iso`, `.img.xz`, `.img`, and `.zip` (`IsoCatalog::isVerifiableImageFileName`).
 2. **Identify publisher** from filename (`IsoCatalog.cpp`).
 3. **Download** checksum and signature URLs for that publisher/release.
 4. **Hash** local ISO with OpenSSL EVP SHA-256.
@@ -129,6 +129,47 @@ Legacy records without partition suffix may still resolve via `legacyUniqueId()`
 }
 ```
 
+## Performance and offline options (1.2+)
+
+| Feature | Behavior |
+|---------|----------|
+| **Parallel verify** | `iso/verifyParallel` (default 2) — `QtConcurrent` over multiple images on one mount |
+| **Hash cache** | Session cache keyed by path, size, mtime (always on for GUI/CLI) |
+| **Decompressed `.img.xz`** | `iso/verifyDecompressed` — pipes through `xz -dc` before hashing (needs `xz` in PATH) |
+| **Offline-first** | `iso/preferOfflineSidecars` — try local sidecars before HTTPS |
+| **Mirror fallbacks** | Arch `geo.` → `mirror.`; Rocky `download.` → `dl.` |
+
+## Manifest extensions (1.2+)
+
+Load order (later overrides earlier for matching filenames):
+
+1. Embedded `embedded-manifest.json` (SHA-256 checked against `.sha256` sidecar at build/CI time)
+2. Cached remote manifest (`~/.cache/FlashSentry/iso-catalog-manifest.json`)
+3. `/usr/share/flashsentry/iso-catalog.d/*.json`
+4. `~/.config/flashsentry/iso-catalog.d/*.json`
+5. User TOFU file `~/.config/flashsentry/user-iso-hashes.json`
+
+`IsoCatalogManifest::trustUserHash()` and CLI `--trust-hash file:hex` append to the user TOFU store.
+
+## Audit log and reports
+
+- **Audit:** `~/.config/flashsentry/audit.log` — one JSON object per line after each verify
+- **Reports:** `IsoVerifyReport` — plain text, CSV, HTML; CLI `--export-report PATH --report-format csv`
+
+## Command-line interface
+
+```bash
+flashsentry --list-publishers
+flashsentry --verify-iso /path/to/file.iso
+flashsentry --verify-mount /run/media/$USER/Ventoy
+flashsentry --verify-dir ~/Downloads/isos
+flashsentry --update-catalog
+flashsentry --export-report /path --report-format html
+flashsentry --trust-hash Win11.iso:41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54
+```
+
+Exit codes: `0` pass, `1` verify failure, `2` error. ISO options are read from `FlashSentry.conf` (`iso/verifyParallel`, etc.); use `-c /path/to/FlashSentry.conf` to override.
+
 ## Configuration keys (QSettings)
 
 | Key | Purpose |
@@ -139,6 +180,10 @@ Legacy records without partition suffix may still resolve via `legacyUniqueId()`
 | `iso/autoVerify` | ISO scan auto-run |
 | `iso/autoVerifyOnUsbMount` | ISO check on mount |
 | `iso/scanDirectory` | Default ISO folder |
+| `iso/verifyParallel` | Max parallel image hashes (default 2) |
+| `iso/verifyDecompressed` | Hash decompressed `.img.xz` stream |
+| `iso/preferOfflineSidecars` | Prefer local checksum files before download |
+| `iso/blockMountOnFailure` | Block mount when verify fails on USB insert |
 
 ## Supported automatic publishers
 

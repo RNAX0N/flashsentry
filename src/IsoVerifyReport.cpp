@@ -9,26 +9,32 @@ static QString csvEscape(QString value)
     return value.replace(QLatin1Char('"'), QStringLiteral("\"\""));
 }
 
-QString IsoVerifyReport::summaryLine(const QList<IsoVerifyResult>& results)
+IsoVerifyReport::SummaryCounts IsoVerifyReport::countSummary(const QList<IsoVerifyResult>& results)
 {
-    int passed = 0;
-    int needsSidecar = 0;
+    SummaryCounts counts;
+    counts.total = results.size();
     for (const IsoVerifyResult& r : results) {
         const bool computedOnly =
             r.hashChecked && r.expectedSha256.isEmpty() && !r.isoPath.isEmpty();
         if (computedOnly) {
-            ++needsSidecar;
+            ++counts.needsSidecar;
         } else if (r.passed()) {
-            ++passed;
+            ++counts.passed;
         }
     }
-    if (needsSidecar > 0) {
+    return counts;
+}
+
+QString IsoVerifyReport::summaryLine(const QList<IsoVerifyResult>& results)
+{
+    const SummaryCounts counts = countSummary(results);
+    if (counts.needsSidecar > 0) {
         return QStringLiteral("%1/%2 passed (%3 need checksum/sidecar)")
-            .arg(passed)
-            .arg(results.size())
-            .arg(needsSidecar);
+            .arg(counts.passed)
+            .arg(counts.total)
+            .arg(counts.needsSidecar);
     }
-    return QStringLiteral("%1/%2 passed").arg(passed).arg(results.size());
+    return QStringLiteral("%1/%2 passed").arg(counts.passed).arg(counts.total);
 }
 
 QString IsoVerifyReport::buildPlainText(const QList<IsoVerifyResult>& results)

@@ -4,6 +4,20 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-05-21
+
+### Added
+
+- CLI: `--list-publishers`, `--trust-hash file:hex`, `--report-format` for `--export-report`
+- `IsoVerifySettingsLoader` — CLI reads `iso/*` settings from FlashSentry.conf (respects `-c`)
+- `IsoCatalog::isVerifiableImageFileName()` for shared extension checks
+- Packaged `iso-catalog.d` README and example fragment under `/usr/share/flashsentry/`
+
+### Changed
+
+- `IsoVerifyReport::countSummary()` shared by GUI tray summaries and report text
+- VERIFICATION.md documents parallel verify, manifest drop-ins, audit log, and CLI
+
 ## [1.2.0] - 2026-05-21
 
 ### Added

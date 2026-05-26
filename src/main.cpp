@@ -179,12 +179,18 @@ int main(int argc, char* argv[])
     QCommandLineOption verifyMountOption(QStringLiteral("verify-mount"), QStringLiteral("Verify images on mount point and exit"), QStringLiteral("path"));
     QCommandLineOption verifyDirOption(QStringLiteral("verify-dir"), QStringLiteral("Verify images in directory and exit"), QStringLiteral("path"));
     QCommandLineOption updateCatalogOption(QStringLiteral("update-catalog"), QStringLiteral("Refresh ISO catalog manifest from remote"));
-    QCommandLineOption exportReportOption(QStringLiteral("export-report"), QStringLiteral("Verify path and print report (text|csv|html)"), QStringLiteral("format"));
+    QCommandLineOption exportReportOption(QStringLiteral("export-report"), QStringLiteral("Verify path and print report"), QStringLiteral("path"));
+    QCommandLineOption reportFormatOption(QStringLiteral("report-format"), QStringLiteral("Report format: text, csv, or html"), QStringLiteral("format"), QStringLiteral("text"));
+    QCommandLineOption listPublishersOption(QStringLiteral("list-publishers"), QStringLiteral("List built-in ISO publisher IDs and exit"));
+    QCommandLineOption trustHashOption(QStringLiteral("trust-hash"), QStringLiteral("Save user-trusted SHA-256 for a filename (TOFU)"), QStringLiteral("file:hash"));
     parser.addOption(verifyIsoOption);
     parser.addOption(verifyMountOption);
     parser.addOption(verifyDirOption);
     parser.addOption(updateCatalogOption);
     parser.addOption(exportReportOption);
+    parser.addOption(reportFormatOption);
+    parser.addOption(listPublishersOption);
+    parser.addOption(trustHashOption);
 
     QApplication::setHighDpiScaleFactorRoundingPolicy(
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
@@ -193,6 +199,22 @@ int main(int argc, char* argv[])
     qInstallMessageHandler(messageHandler);
     parser.process(app);
 
+    if (parser.isSet(configOption)) {
+        VerifyCli::setConfigFilePath(parser.value(configOption));
+    }
+
+    if (parser.isSet(listPublishersOption)) {
+        return VerifyCli::runListPublishers();
+    }
+    if (parser.isSet(trustHashOption)) {
+        const QString spec = parser.value(trustHashOption);
+        const int colon = spec.indexOf(QLatin1Char(':'));
+        if (colon <= 0) {
+            std::cerr << "trust-hash format: Win11.iso:abcdef...64hex\n";
+            return VerifyCli::ExitError;
+        }
+        return VerifyCli::runTrustHash(spec.left(colon), spec.mid(colon + 1));
+    }
     if (parser.isSet(updateCatalogOption)) {
         return VerifyCli::runUpdateCatalog(true);
     }
@@ -206,12 +228,8 @@ int main(int argc, char* argv[])
         return VerifyCli::runVerifyDir(parser.value(verifyDirOption));
     }
     if (parser.isSet(exportReportOption)) {
-        const QString fmt = parser.value(exportReportOption);
-        const QString path = parser.positionalArguments().value(0);
-        if (path.isEmpty()) {
-            std::cerr << "export-report requires a path argument.\n";
-            return VerifyCli::ExitError;
-        }
+        const QString path = parser.value(exportReportOption);
+        const QString fmt = parser.value(reportFormatOption);
         return VerifyCli::runExportReport(path, fmt);
     }
 

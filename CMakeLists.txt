@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(flashsentry
-    VERSION 1.2.0
+    VERSION 1.2.1
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )
@@ -44,6 +44,7 @@ set(SOURCES
     src/IsoVerifyReport.cpp
     src/AuditLog.cpp
     src/VerifyCli.cpp
+    src/IsoVerifySettingsLoader.cpp
     src/SettingsProfiles.cpp
     src/WelcomeWizard.cpp
     src/IsoVerifier.cpp
@@ -75,6 +76,7 @@ set(HEADERS
     include/IsoVerifyReport.h
     include/AuditLog.h
     include/VerifyCli.h
+    include/IsoVerifySettingsLoader.h
     include/SettingsProfiles.h
     include/WelcomeWizard.h
     include/IsoVerifier.h
@@ -174,6 +176,9 @@ install(
 install(FILES docs/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME docs-README.md)
 install(FILES resources/iso-catalog/embedded-manifest.json
     DESTINATION ${CMAKE_INSTALL_DATADIR}/flashsentry/iso-catalog)
+install(DIRECTORY packaging/iso-catalog.d/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/flashsentry/iso-catalog.d
+    FILES_MATCHING PATTERN "*.md" PATTERN "*.json")
 
 if(NOT TARGET uninstall)
     configure_file(

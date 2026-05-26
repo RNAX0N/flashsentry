@@ -1,14 +1,28 @@
 #include "VerifyCli.h"
 
+#include "IsoCatalog.h"
 #include "IsoCatalogManifest.h"
 #include "IsoVerifier.h"
 #include "IsoVerifyReport.h"
+#include "IsoVerifySettingsLoader.h"
 
 #include <QFile>
 #include <QFileInfo>
 #include <iostream>
 
 namespace FlashSentry {
+
+static QString s_configFilePath;
+
+void VerifyCli::setConfigFilePath(const QString& path)
+{
+    s_configFilePath = path;
+}
+
+void VerifyCli::applyUserSettings()
+{
+    IsoVerifySettingsLoader::applyToVerifier(s_configFilePath);
+}
 
 static int resultsToExitCode(const QList<IsoVerifyResult>& results)
 {
@@ -31,6 +45,7 @@ static void printResults(const QList<IsoVerifyResult>& results)
 
 int VerifyCli::runVerifyIso(const QString& path)
 {
+    applyUserSettings();
     IsoCatalogManifest::ensureLoaded();
     const IsoVerifyResult r = IsoVerifier::verifyIsoAutomated(path);
     printResults({r});
@@ -39,6 +54,7 @@ int VerifyCli::runVerifyIso(const QString& path)
 
 int VerifyCli::runVerifyMount(const QString& mountPoint)
 {
+    applyUserSettings();
     IsoCatalogManifest::ensureLoaded();
     IsoCatalogManifest::refreshRemoteIfStale();
     const QList<IsoVerifyResult> results = IsoVerifier::verifyMountPoint(mountPoint);
@@ -48,6 +64,7 @@ int VerifyCli::runVerifyMount(const QString& mountPoint)
 
 int VerifyCli::runVerifyDir(const QString& directory)
 {
+    applyUserSettings();
     IsoCatalogManifest::ensureLoaded();
     const QList<IsoVerifyResult> results = IsoVerifier::verifyDirectory(directory);
     printResults(results);
@@ -56,7 +73,6 @@ int VerifyCli::runVerifyDir(const QString& directory)
 
 int VerifyCli::runUpdateCatalog(bool force)
 {
-    Q_UNUSED(force)
     IsoCatalogManifest::ensureLoaded();
     const bool ok = IsoCatalogManifest::refreshRemoteIfStale(force ? 0 : 7 * 24 * 3600);
     if (ok) {
@@ -69,6 +85,7 @@ int VerifyCli::runUpdateCatalog(bool force)
 
 int VerifyCli::runExportReport(const QString& path, const QString& format)
 {
+    applyUserSettings();
     IsoCatalogManifest::ensureLoaded();
     QList<IsoVerifyResult> results;
     if (QFileInfo(path).isDir()) {
@@ -89,6 +106,38 @@ int VerifyCli::runExportReport(const QString& path, const QString& format)
 
     std::cout << content.toStdString();
     return resultsToExitCode(results);
+}
+
+int VerifyCli::runListPublishers()
+{
+    IsoCatalogManifest::ensureLoaded();
+    const QStringList ids = IsoCatalog::knownPublisherIds();
+    std::cout << "Built-in publisher IDs (" << ids.size() << "):\n";
+    for (const QString& id : ids) {
+        std::cout << "  " << id.toStdString() << '\n';
+    }
+    std::cout << "Manifest entries: " << IsoCatalogManifest::entryCount() << '\n';
+    if (!IsoCatalogManifest::lastEmbeddedIntegrityOk()) {
+        std::cerr << "Warning: embedded manifest SHA-256 integrity check failed.\n";
+        return ExitError;
+    }
+    return ExitOk;
+}
+
+int VerifyCli::runTrustHash(const QString& fileName, const QString& sha256Hex)
+{
+    IsoCatalogManifest::ensureLoaded();
+    const QString base = QFileInfo(fileName).fileName();
+    if (base.isEmpty() || sha256Hex.size() != 64) {
+        std::cerr << "Usage: trust-hash requires a filename and 64-character SHA-256 hex.\n";
+        return ExitError;
+    }
+    if (!IsoCatalogManifest::trustUserHash(base, sha256Hex)) {
+        std::cerr << "Failed to save trusted hash.\n";
+        return ExitError;
+    }
+    std::cout << "Trusted hash saved for " << base.toStdString() << '\n';
+    return ExitOk;
 }
 
 } // namespace FlashSentry

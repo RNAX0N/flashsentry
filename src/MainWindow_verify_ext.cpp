@@ -2,6 +2,7 @@
 #include "WatchListDialog.h"
 #include "IsoVerifier.h"
 #include "IsoVerifyReport.h"
+#include "IsoVerifySettingsLoader.h"
 #include "IsoCatalogManifest.h"
 #include "SettingsProfiles.h"
 #include <QMessageBox>
@@ -270,8 +271,7 @@ void MainWindow::acceptManifestBaseline(const DeviceInfo& device, const WatchMan
 
 void MainWindow::applyIsoVerifyOptions()
 {
-    IsoVerifyOptions opt;
-    opt.useHashCache = true;
+    IsoVerifyOptions opt = IsoVerifySettingsLoader::load();
     opt.maxParallel = qMax(1, m_settings.isoVerifyParallel);
     opt.verifyDecompressed = m_settings.isoVerifyDecompressed;
     opt.preferOfflineSidecars = m_settings.isoPreferOfflineSidecars;
@@ -281,16 +281,9 @@ void MainWindow::applyIsoVerifyOptions()
 void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
                                              const QList<IsoVerifyResult>& results)
 {
-    int passed = 0;
-    int needsSidecar = 0;
-    for (const IsoVerifyResult& r : results) {
-        if (r.passed()) {
-            ++passed;
-        } else if (r.hashChecked && r.expectedSha256.isEmpty() && !r.isoPath.isEmpty()) {
-            ++needsSidecar;
-        }
-    }
-
+    const IsoVerifyReport::SummaryCounts counts = IsoVerifyReport::countSummary(results);
+    const int passed = counts.passed;
+    const int needsSidecar = counts.needsSidecar;
     const QString summary = IsoVerifyReport::summaryLine(results);
     logMessage(QStringLiteral("ISO verify (%1): %2")
                    .arg(deviceNode.isEmpty() ? QStringLiteral("manual") : deviceNode, summary),

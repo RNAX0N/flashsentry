@@ -33,6 +33,9 @@ public:
     static std::optional<IsoPublisherMatch> matchIso(const QString& isoPath);
 
     static QStringList knownPublisherIds();
+
+    /** True for .iso, .img.xz, .img, .zip (case-insensitive). */
+    static bool isVerifiableImageFileName(const QString& fileName);
 };
 
 } // namespace FlashSentry

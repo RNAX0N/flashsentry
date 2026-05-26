@@ -391,20 +391,13 @@ IsoVerifier::MountScanResult IsoVerifier::scanMountPoint(const QString& mountPoi
     return scan;
 }
 
-bool isVerifiableImageFile(const QString& fileName)
-{
-    static const QRegularExpression re(
-        QStringLiteral("\\.(iso|img\\.xz|img|zip)$"), QRegularExpression::CaseInsensitiveOption);
-    return re.match(fileName).hasMatch();
-}
-
 QStringList IsoVerifier::findIsoFiles(const QString& directory)
 {
     QStringList result;
     QDirIterator it(directory, QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         const QString path = it.next();
-        if (isVerifiableImageFile(QFileInfo(path).fileName())) {
+        if (IsoCatalog::isVerifiableImageFileName(QFileInfo(path).fileName())) {
             result.append(path);
         }
     }

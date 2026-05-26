@@ -821,6 +821,13 @@ std::optional<IsoPublisherMatch> IsoCatalog::matchIso(const QString& isoPath)
     return std::nullopt;
 }
 
+bool IsoCatalog::isVerifiableImageFileName(const QString& fileName)
+{
+    static const QRegularExpression re(
+        QStringLiteral("\\.(iso|img\\.xz|img|zip)$"), QRegularExpression::CaseInsensitiveOption);
+    return re.match(fileName).hasMatch();
+}
+
 QStringList IsoCatalog::knownPublisherIds()
 {
     return {QStringLiteral("archlinux"),       QStringLiteral("ubuntu"),

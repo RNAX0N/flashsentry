@@ -9,6 +9,7 @@ class TestVerifyReport : public QObject {
 private slots:
     void summaryCountsSidecarNeeded();
     void csvContainsHeader();
+    void countSummaryMatchesSummaryLine();
 };
 
 void TestVerifyReport::summaryCountsSidecarNeeded()
@@ -34,6 +35,23 @@ void TestVerifyReport::csvContainsHeader()
 {
     const QString csv = IsoVerifyReport::buildCsv({});
     QVERIFY(csv.startsWith(QStringLiteral("file,publisher")));
+}
+
+void TestVerifyReport::countSummaryMatchesSummaryLine()
+{
+    IsoVerifyResult ok;
+    ok.success = true;
+    ok.hashChecked = true;
+    ok.hashMatches = true;
+    ok.expectedSha256 = QStringLiteral("ab");
+    ok.isoPath = QStringLiteral("/a.iso");
+
+    const QList<IsoVerifyResult> results = {ok};
+    const auto counts = IsoVerifyReport::countSummary(results);
+    QCOMPARE(counts.passed, 1);
+    QCOMPARE(counts.total, 1);
+    QCOMPARE(counts.needsSidecar, 0);
+    QVERIFY(IsoVerifyReport::summaryLine(results).contains(QStringLiteral("1/1")));
 }
 
 QTEST_MAIN(TestVerifyReport)

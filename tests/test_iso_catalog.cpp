@@ -1,5 +1,6 @@
 #include <QtTest>
 #include "IsoCatalog.h"
+#include "IsoCatalogManifest.h"
 
 using namespace FlashSentry;
 
@@ -30,6 +31,8 @@ private slots:
     void windowsManifestEmbedded();
     void windowsManifestHintOnly();
     void armbianMatches();
+    void verifiableImageExtensions();
+    void embeddedManifestIntegrity();
 };
 
 void TestIsoCatalog::archIsoMatches()
@@ -243,6 +246,23 @@ void TestIsoCatalog::armbianMatches()
     QVERIFY(match.has_value());
     QCOMPARE(match->publisherId, QStringLiteral("armbian"));
     QVERIFY(match->checksumUrl.isEmpty());
+}
+
+void TestIsoCatalog::verifiableImageExtensions()
+{
+    QVERIFY(IsoCatalog::isVerifiableImageFileName(QStringLiteral("debian.iso")));
+    QVERIFY(IsoCatalog::isVerifiableImageFileName(QStringLiteral("pi.img.xz")));
+    QVERIFY(IsoCatalog::isVerifiableImageFileName(QStringLiteral("disk.img")));
+    QVERIFY(IsoCatalog::isVerifiableImageFileName(QStringLiteral("legacy.zip")));
+    QVERIFY(!IsoCatalog::isVerifiableImageFileName(QStringLiteral("notes.txt")));
+    QVERIFY(!IsoCatalog::isVerifiableImageFileName(QStringLiteral("image.iso.txt")));
+}
+
+void TestIsoCatalog::embeddedManifestIntegrity()
+{
+    IsoCatalogManifest::ensureLoaded();
+    QVERIFY(IsoCatalogManifest::lastEmbeddedIntegrityOk());
+    QVERIFY(IsoCatalogManifest::entryCount() >= 4);
 }
 
 QTEST_MAIN(TestIsoCatalog)

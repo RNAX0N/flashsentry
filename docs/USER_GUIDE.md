@@ -227,7 +227,9 @@ flashsentry --verify-iso /path/to/debian-12.5.0-amd64-netinst.iso
 flashsentry --verify-mount /run/media/$USER/Ventoy
 flashsentry --verify-dir ~/Downloads/isos
 flashsentry --update-catalog
-flashsentry --export-report /run/media/$USER/Ventoy --format csv
+flashsentry --export-report /run/media/$USER/Ventoy --report-format csv
+flashsentry --list-publishers
+flashsentry --trust-hash Win11_24H2_English_x64.iso:41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54
 ```
 
 Reports can be plain text (default), `csv`, or `html`. Use **Settings → Verification** profiles (Default, Ventoy, Work USB, Paranoid) for quick presets.

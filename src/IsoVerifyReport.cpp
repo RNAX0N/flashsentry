@@ -1,6 +1,9 @@
 #include "IsoVerifyReport.h"
 
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 namespace FlashSentry {
 
@@ -65,6 +68,55 @@ QString IsoVerifyReport::buildCsv(const QList<IsoVerifyResult>& results)
         out += line;
     }
     return out;
+}
+
+static QJsonObject isoResultToJson(const IsoVerifyResult& r)
+{
+    const QString file = r.isoPath.isEmpty() ? r.layoutNote : QFileInfo(r.isoPath).fileName();
+    QJsonObject obj;
+    obj.insert(QStringLiteral("file"), file);
+    obj.insert(QStringLiteral("path"), r.isoPath);
+    obj.insert(QStringLiteral("publisher_id"), r.publisherId);
+    obj.insert(QStringLiteral("publisher"), r.publisherName);
+    obj.insert(QStringLiteral("release"), r.releaseLabel);
+    obj.insert(QStringLiteral("passed"), r.passed());
+    obj.insert(QStringLiteral("success"), r.success);
+    obj.insert(QStringLiteral("hash_checked"), r.hashChecked);
+    obj.insert(QStringLiteral("hash_matches"), r.hashMatches);
+    obj.insert(QStringLiteral("expected_sha256"), r.expectedSha256);
+    obj.insert(QStringLiteral("computed_sha256"), r.computedSha256);
+    obj.insert(QStringLiteral("pgp_checked"), r.pgpChecked);
+    obj.insert(QStringLiteral("pgp_valid"), r.pgpValid);
+    obj.insert(QStringLiteral("fingerprint_trusted"), r.fingerprintTrusted);
+    obj.insert(QStringLiteral("signing_key_fingerprint"), r.signingKeyFingerprint);
+    obj.insert(QStringLiteral("source"), static_cast<int>(r.source));
+    if (!r.errorMessage.isEmpty()) {
+        obj.insert(QStringLiteral("error"), r.errorMessage);
+    }
+    if (!r.layoutNote.isEmpty() && r.isoPath.isEmpty()) {
+        obj.insert(QStringLiteral("layout_note"), r.layoutNote);
+    }
+    return obj;
+}
+
+QString IsoVerifyReport::buildJson(const QList<IsoVerifyResult>& results)
+{
+    const SummaryCounts counts = countSummary(results);
+    QJsonObject root;
+    QJsonObject summary;
+    summary.insert(QStringLiteral("passed"), counts.passed);
+    summary.insert(QStringLiteral("total"), counts.total);
+    summary.insert(QStringLiteral("needs_sidecar"), counts.needsSidecar);
+    root.insert(QStringLiteral("summary"), summary);
+    root.insert(QStringLiteral("summary_line"), summaryLine(results));
+
+    QJsonArray items;
+    for (const IsoVerifyResult& r : results) {
+        items.append(isoResultToJson(r));
+    }
+    root.insert(QStringLiteral("results"), items);
+
+    return QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Compact));
 }
 
 QString IsoVerifyReport::buildHtml(const QList<IsoVerifyResult>& results)

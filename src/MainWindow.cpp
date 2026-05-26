@@ -1,5 +1,7 @@
 #include "MainWindow.h"
 #include "AutostartManager.h"
+#include "AuditLog.h"
+#include "IsoCatalogManifest.h"
 #include "WelcomeWizard.h"
 
 #include <QApplication>
@@ -60,6 +62,9 @@ MainWindow::MainWindow(QWidget* parent)
     }
     
     logMessage("FlashSentry started", LogLevel::Info);
+
+    IsoCatalogManifest::ensureLoaded();
+    QTimer::singleShot(0, this, [this]() { warnIfCatalogIntegrityFailed(); });
 }
 
 MainWindow::~MainWindow()
@@ -434,6 +439,13 @@ void MainWindow::connectSignals()
             this, &MainWindow::onQuitRequested);
     connect(m_trayIcon.get(), &TrayIcon::settingsRequested,
             this, &MainWindow::onSettingsRequested);
+    connect(m_trayIcon.get(), &TrayIcon::auditLogOpenRequested, this, [this]() {
+        const QString path = AuditLog::logPath();
+        if (!QFileInfo::exists(path)) {
+            logMessage(QStringLiteral("Audit log not created yet: %1").arg(path), LogLevel::Info);
+        }
+        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    });
     connect(m_trayIcon.get(), &TrayIcon::deviceEjectRequested,
             this, &MainWindow::onEjectRequested);
 }

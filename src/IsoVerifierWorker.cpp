@@ -23,6 +23,7 @@ void IsoVerifierWorker::verifyMountPoint(const QString& mountPoint, const QStrin
     IsoVerifyOptions opt = IsoVerifier::verifyOptions();
     opt.cancelled = &m_cancelledFlag;
     opt.progress = [this](int current, int total, const QString& file) {
+        emit verificationFileProgress(current, total, file);
         emit verificationProgress(
             QStringLiteral("Verifying %1 (%2/%3)…").arg(file).arg(current).arg(total));
     };
@@ -50,6 +51,7 @@ void IsoVerifierWorker::verifyDirectory(const QString& directory, const QString&
     IsoVerifyOptions opt = IsoVerifier::verifyOptions();
     opt.cancelled = &m_cancelledFlag;
     opt.progress = [this](int current, int total, const QString& file) {
+        emit verificationFileProgress(current, total, file);
         emit verificationProgress(
             QStringLiteral("Verifying %1 (%2/%3)…").arg(file).arg(current).arg(total));
     };

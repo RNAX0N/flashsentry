@@ -330,7 +330,10 @@ void TrayIcon::createMenu()
     // Settings
     m_settingsAction = m_menu->addAction("⚙️ Settings");
     connect(m_settingsAction, &QAction::triggered, this, &TrayIcon::settingsRequested);
-    
+
+    QAction* auditLogAction = m_menu->addAction(QStringLiteral("📋 Open audit log"));
+    connect(auditLogAction, &QAction::triggered, this, &TrayIcon::auditLogOpenRequested);
+
     m_menu->addSeparator();
     
     // Quit

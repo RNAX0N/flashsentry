@@ -8,15 +8,40 @@
 
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <iostream>
 
 namespace FlashSentry {
 
 static QString s_configFilePath;
+static bool s_jsonOutput = false;
+static bool s_quietOutput = false;
 
 void VerifyCli::setConfigFilePath(const QString& path)
 {
     s_configFilePath = path;
+}
+
+void VerifyCli::setJsonOutput(bool enabled)
+{
+    s_jsonOutput = enabled;
+}
+
+void VerifyCli::setQuietOutput(bool enabled)
+{
+    s_quietOutput = enabled;
+}
+
+bool VerifyCli::jsonOutput()
+{
+    return s_jsonOutput;
+}
+
+bool VerifyCli::quietOutput()
+{
+    return s_quietOutput;
 }
 
 void VerifyCli::applyUserSettings()
@@ -27,7 +52,9 @@ void VerifyCli::applyUserSettings()
 static int resultsToExitCode(const QList<IsoVerifyResult>& results)
 {
     if (results.isEmpty()) {
-        std::cerr << "No images found to verify.\n";
+        if (!VerifyCli::jsonOutput()) {
+            std::cerr << "No images found to verify.\n";
+        }
         return VerifyCli::ExitError;
     }
     for (const IsoVerifyResult& r : results) {
@@ -40,6 +67,14 @@ static int resultsToExitCode(const QList<IsoVerifyResult>& results)
 
 static void printResults(const QList<IsoVerifyResult>& results)
 {
+    if (VerifyCli::jsonOutput()) {
+        std::cout << IsoVerifyReport::buildJson(results).toStdString() << '\n';
+        return;
+    }
+    if (VerifyCli::quietOutput()) {
+        std::cout << IsoVerifyReport::summaryLine(results).toStdString() << '\n';
+        return;
+    }
     std::cout << IsoVerifyReport::buildPlainText(results).toStdString();
 }
 
@@ -75,12 +110,18 @@ int VerifyCli::runUpdateCatalog(bool force)
 {
     IsoCatalogManifest::ensureLoaded();
     const bool ok = IsoCatalogManifest::refreshRemoteIfStale(force ? 0 : 7 * 24 * 3600);
-    if (ok) {
+    if (jsonOutput()) {
+        QJsonObject obj;
+        obj.insert(QStringLiteral("ok"), ok);
+        obj.insert(QStringLiteral("entry_count"), IsoCatalogManifest::entryCount());
+        obj.insert(QStringLiteral("embedded_integrity_ok"), IsoCatalogManifest::lastEmbeddedIntegrityOk());
+        std::cout << QJsonDocument(obj).toJson(QJsonDocument::Compact).toStdString() << '\n';
+    } else if (ok) {
         std::cout << "ISO catalog updated (" << IsoCatalogManifest::entryCount() << " entries).\n";
-        return VerifyCli::ExitOk;
+    } else {
+        std::cerr << "Failed to refresh ISO catalog manifest.\n";
     }
-    std::cerr << "Failed to refresh ISO catalog manifest.\n";
-    return VerifyCli::ExitError;
+    return ok ? VerifyCli::ExitOk : VerifyCli::ExitError;
 }
 
 int VerifyCli::runExportReport(const QString& path, const QString& format)
@@ -96,15 +137,22 @@ int VerifyCli::runExportReport(const QString& path, const QString& format)
 
     QString content;
     const QString fmt = format.toLower();
-    if (fmt == QStringLiteral("html")) {
+    if (jsonOutput() || fmt == QStringLiteral("json")) {
+        content = IsoVerifyReport::buildJson(results);
+    } else if (fmt == QStringLiteral("html")) {
         content = IsoVerifyReport::buildHtml(results);
     } else if (fmt == QStringLiteral("csv")) {
         content = IsoVerifyReport::buildCsv(results);
+    } else if (quietOutput()) {
+        content = IsoVerifyReport::summaryLine(results);
     } else {
         content = IsoVerifyReport::buildPlainText(results);
     }
 
     std::cout << content.toStdString();
+    if (!content.isEmpty() && !content.endsWith(QLatin1Char('\n'))) {
+        std::cout << '\n';
+    }
     return resultsToExitCode(results);
 }
 
@@ -112,13 +160,30 @@ int VerifyCli::runListPublishers()
 {
     IsoCatalogManifest::ensureLoaded();
     const QStringList ids = IsoCatalog::knownPublisherIds();
-    std::cout << "Built-in publisher IDs (" << ids.size() << "):\n";
-    for (const QString& id : ids) {
-        std::cout << "  " << id.toStdString() << '\n';
+    const bool integrityOk = IsoCatalogManifest::lastEmbeddedIntegrityOk();
+
+    if (jsonOutput()) {
+        QJsonObject root;
+        QJsonArray pub;
+        for (const QString& id : ids) {
+            pub.append(id);
+        }
+        root.insert(QStringLiteral("publishers"), pub);
+        root.insert(QStringLiteral("manifest_entries"), IsoCatalogManifest::entryCount());
+        root.insert(QStringLiteral("embedded_integrity_ok"), integrityOk);
+        std::cout << QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString() << '\n';
+    } else {
+        std::cout << "Built-in publisher IDs (" << ids.size() << "):\n";
+        for (const QString& id : ids) {
+            std::cout << "  " << id.toStdString() << '\n';
+        }
+        std::cout << "Manifest entries: " << IsoCatalogManifest::entryCount() << '\n';
     }
-    std::cout << "Manifest entries: " << IsoCatalogManifest::entryCount() << '\n';
-    if (!IsoCatalogManifest::lastEmbeddedIntegrityOk()) {
-        std::cerr << "Warning: embedded manifest SHA-256 integrity check failed.\n";
+
+    if (!integrityOk) {
+        if (!jsonOutput()) {
+            std::cerr << "Warning: embedded manifest integrity check failed.\n";
+        }
         return ExitError;
     }
     return ExitOk;
@@ -129,15 +194,23 @@ int VerifyCli::runTrustHash(const QString& fileName, const QString& sha256Hex)
     IsoCatalogManifest::ensureLoaded();
     const QString base = QFileInfo(fileName).fileName();
     if (base.isEmpty() || sha256Hex.size() != 64) {
-        std::cerr << "Usage: trust-hash requires a filename and 64-character SHA-256 hex.\n";
+        if (!jsonOutput()) {
+            std::cerr << "Usage: trust-hash requires a filename and 64-character SHA-256 hex.\n";
+        }
         return ExitError;
     }
-    if (!IsoCatalogManifest::trustUserHash(base, sha256Hex)) {
+    const bool ok = IsoCatalogManifest::trustUserHash(base, sha256Hex);
+    if (jsonOutput()) {
+        QJsonObject obj;
+        obj.insert(QStringLiteral("ok"), ok);
+        obj.insert(QStringLiteral("file"), base);
+        std::cout << QJsonDocument(obj).toJson(QJsonDocument::Compact).toStdString() << '\n';
+    } else if (ok) {
+        std::cout << "Trusted hash saved for " << base.toStdString() << '\n';
+    } else if (!quietOutput()) {
         std::cerr << "Failed to save trusted hash.\n";
-        return ExitError;
     }
-    std::cout << "Trusted hash saved for " << base.toStdString() << '\n';
-    return ExitOk;
+    return ok ? ExitOk : ExitError;
 }
 
 } // namespace FlashSentry

@@ -146,6 +146,9 @@ signals:
      */
     void settingsRequested();
 
+    /** Open the ISO verification audit log in the default viewer. */
+    void auditLogOpenRequested();
+
     /**
      * @brief Emitted when user clicks on a notification
      */

@@ -1,4 +1,7 @@
 #include <QtTest>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include "IsoVerifyReport.h"
 
 using namespace FlashSentry;
@@ -10,6 +13,7 @@ private slots:
     void summaryCountsSidecarNeeded();
     void csvContainsHeader();
     void countSummaryMatchesSummaryLine();
+    void jsonContainsSummaryAndResults();
 };
 
 void TestVerifyReport::summaryCountsSidecarNeeded()
@@ -52,6 +56,28 @@ void TestVerifyReport::countSummaryMatchesSummaryLine()
     QCOMPARE(counts.total, 1);
     QCOMPARE(counts.needsSidecar, 0);
     QVERIFY(IsoVerifyReport::summaryLine(results).contains(QStringLiteral("1/1")));
+}
+
+void TestVerifyReport::jsonContainsSummaryAndResults()
+{
+    IsoVerifyResult r;
+    r.success = true;
+    r.hashChecked = true;
+    r.hashMatches = true;
+    r.expectedSha256 = QStringLiteral("ab");
+    r.isoPath = QStringLiteral("/tmp/test.iso");
+    r.publisherName = QStringLiteral("Debian");
+
+    const QJsonDocument doc =
+        QJsonDocument::fromJson(IsoVerifyReport::buildJson({r}).toUtf8());
+    QVERIFY(doc.isObject());
+    const QJsonObject root = doc.object();
+    QVERIFY(root.contains(QStringLiteral("summary")));
+    QVERIFY(root.contains(QStringLiteral("results")));
+    const QJsonArray items = root.value(QStringLiteral("results")).toArray();
+    QCOMPARE(items.size(), 1);
+    QCOMPARE(items.at(0).toObject().value(QStringLiteral("file")).toString(),
+             QStringLiteral("test.iso"));
 }
 
 QTEST_MAIN(TestVerifyReport)

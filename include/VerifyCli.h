@@ -22,6 +22,15 @@ public:
     /** Optional FlashSentry.conf path for subsequent CLI verify commands. */
     static void setConfigFilePath(const QString& path);
 
+    /** Machine-readable stdout for verify/export commands. */
+    static void setJsonOutput(bool enabled);
+
+    /** Print only summary lines (no per-file report body). */
+    static void setQuietOutput(bool enabled);
+
+    static bool jsonOutput();
+    static bool quietOutput();
+
     /** Apply ISO verify keys from QSettings (uses setConfigFilePath when set). */
     static void applyUserSettings();
 };

@@ -19,6 +19,8 @@ public:
     static QString buildPlainText(const QList<IsoVerifyResult>& results);
     static QString buildCsv(const QList<IsoVerifyResult>& results);
     static QString buildHtml(const QList<IsoVerifyResult>& results);
+    /** Compact JSON for scripting (`--json`). */
+    static QString buildJson(const QList<IsoVerifyResult>& results);
     static QString summaryLine(const QList<IsoVerifyResult>& results);
 };
 

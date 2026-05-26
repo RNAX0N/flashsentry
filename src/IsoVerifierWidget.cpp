@@ -99,7 +99,19 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
     connect(m_worker, &IsoVerifierWorker::verificationStarted, this, [this]() {
         m_progress->setVisible(true);
         m_progress->setRange(0, 0);
+        m_progress->setValue(0);
     });
+    connect(m_worker, &IsoVerifierWorker::verificationFileProgress, this,
+            [this](int current, int total, const QString& file) {
+                if (total > 0) {
+                    m_progress->setRange(0, total);
+                    m_progress->setValue(current);
+                }
+                const QString msg =
+                    QStringLiteral("Verifying %1 (%2/%3)…").arg(file).arg(current).arg(total);
+                m_summaryLabel->setText(msg);
+                emit logMessageRequested(msg);
+            });
     connect(m_worker, &IsoVerifierWorker::verificationProgress, this, [this](const QString& msg) {
         m_summaryLabel->setText(msg);
         emit logMessageRequested(msg);

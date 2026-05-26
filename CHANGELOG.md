@@ -4,6 +4,16 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-05-21
+
+### Added
+
+- CLI: `--json` and `--quiet` for verify, export, catalog update, list-publishers, and trust-hash
+- `IsoVerifyReport::buildJson()` for machine-readable verification output
+- Tray menu: **Open audit log** (opens `~/.config/FlashSentry/audit.log`)
+- GUI warning when embedded ISO catalog integrity (SHA-256 / OpenPGP) fails at startup
+- Determinate progress bar during multi-file ISO verification
+
 ## [1.3.0] - 2026-05-21
 
 ### Added

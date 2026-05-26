@@ -183,6 +183,8 @@ int main(int argc, char* argv[])
     QCommandLineOption reportFormatOption(QStringLiteral("report-format"), QStringLiteral("Report format: text, csv, or html"), QStringLiteral("format"), QStringLiteral("text"));
     QCommandLineOption listPublishersOption(QStringLiteral("list-publishers"), QStringLiteral("List built-in ISO publisher IDs and exit"));
     QCommandLineOption trustHashOption(QStringLiteral("trust-hash"), QStringLiteral("Save user-trusted SHA-256 for a filename (TOFU)"), QStringLiteral("file:hash"));
+    QCommandLineOption jsonOption(QStringLiteral("json"), QStringLiteral("Machine-readable JSON on stdout (verify/export commands)"));
+    QCommandLineOption quietOption(QStringLiteral("quiet"), QStringLiteral("Print summary only (no per-file report body)"));
     parser.addOption(verifyIsoOption);
     parser.addOption(verifyMountOption);
     parser.addOption(verifyDirOption);
@@ -191,6 +193,8 @@ int main(int argc, char* argv[])
     parser.addOption(reportFormatOption);
     parser.addOption(listPublishersOption);
     parser.addOption(trustHashOption);
+    parser.addOption(jsonOption);
+    parser.addOption(quietOption);
 
     QApplication::setHighDpiScaleFactorRoundingPolicy(
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
@@ -201,6 +205,12 @@ int main(int argc, char* argv[])
 
     if (parser.isSet(configOption)) {
         VerifyCli::setConfigFilePath(parser.value(configOption));
+    }
+    if (parser.isSet(jsonOption)) {
+        VerifyCli::setJsonOutput(true);
+    }
+    if (parser.isSet(quietOption)) {
+        VerifyCli::setQuietOutput(true);
     }
 
     if (parser.isSet(listPublishersOption)) {

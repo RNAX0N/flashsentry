@@ -307,10 +307,10 @@ QWidget* SettingsDialog::createVerificationTab()
     isoForm->addRow(QStringLiteral("Scan folder:"), m_isoDirEdit);
     m_isoAutoVerifyCheck = new QCheckBox(QStringLiteral("Verify ISOs automatically after scan"));
     m_isoAutoVerifyOnUsbMountCheck = new QCheckBox(
-        QStringLiteral("Automatically verify ISOs when a USB drive is mounted (Ventoy, Rufus, etc.)"));
+        QStringLiteral("Automatically verify images when a USB drive is mounted"));
     m_isoAutoVerifyOnUsbMountCheck->setToolTip(
         QStringLiteral("Works with desktop automount: verifies the existing mount without remounting. "
-                       "Skips Ventoy EFI and ventoy/ config folders."));
+                       "Skips boot-loader and multiboot config folders (EFI, vendor trees)."));
     m_isoAutoVerifyOnUsbMountCheck->setChecked(true);
     connect(m_isoAutoVerifyOnUsbMountCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     connect(m_isoAutoVerifyCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);

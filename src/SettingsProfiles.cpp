@@ -13,7 +13,7 @@ QStringList SettingsProfiles::profileIds()
 QString SettingsProfiles::profileDisplayName(const QString& profileId)
 {
     if (profileId == QStringLiteral("ventoy")) {
-        return QStringLiteral("Ventoy / multi-ISO");
+        return QStringLiteral("Multi-image USB (several ISOs on one stick)");
     }
     if (profileId == QStringLiteral("work_usb")) {
         return QStringLiteral("Work USB (watch folders)");

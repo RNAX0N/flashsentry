@@ -41,7 +41,7 @@ Open **Settings → Verification → Mode**.
 - Arch Linux with FlashSentry installed
 - `gpg` package (`sudo pacman -S gnupg`)
 - Internet access when verifying (to download official checksums)
-- A USB stick with a `.iso` file on it — typical after **Rufus**, **Ventoy**, or copying the file manually
+- A USB stick with an image file on it — after **Rufus**, **`dd`**, a manual copy, or any similar method
 
 ### Steps
 
@@ -232,15 +232,15 @@ Headless checks exit with `0` on full pass, `1` if any image fails, `2` on usage
 
 ```bash
 flashsentry --verify-iso /path/to/debian-12.5.0-amd64-netinst.iso
-flashsentry --verify-mount /run/media/$USER/Ventoy
+flashsentry --verify-mount /run/media/$USER/USB
 flashsentry --verify-dir ~/Downloads/isos
 flashsentry --update-catalog
-flashsentry --export-report /run/media/$USER/Ventoy --report-format csv
+flashsentry --export-report /run/media/$USER/USB --report-format csv
 flashsentry --list-publishers
 flashsentry --trust-hash Win11_24H2_English_x64.iso:41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54
 ```
 
-Reports can be plain text (default), `csv`, or `html`. Use **Settings → Verification** profiles (Default, Ventoy, Work USB, Paranoid) for quick presets.
+Reports can be plain text (default), `csv`, or `html`. Use **Settings → Verification** profiles (Default, Multi-image USB, Work USB, Paranoid) for quick presets.
 
 ---
 
@@ -272,39 +272,37 @@ Yes. Set **Mode** to **Automatic ISO verification** and use folder scan or mount
 **Why is full-disk hashing off by default?**  
 It is slow and confusing for most people. Watch folders and ISO checks cover common needs faster.
 
-**Ventoy with multiple ISOs?**  
-Each `.iso` on the mounted Ventoy partition can be verified when the volume mounts.
+**Several images on one stick?**  
+Each supported file on the mounted volume is verified independently when auto-verify on mount is enabled.
 
 ---
 
 ## Switching views
 
-Use the **USB devices** / **ISO verify** tabs in the window header to jump between drive monitoring and image verification. The same tabs mirror **Settings → Mode**; Ventoy users can stay on **USB devices** with auto-verify on mount, or use **ISO verify** for manual folder scans.
+Use the **USB devices** / **ISO verify** tabs in the window header to jump between drive monitoring and image verification. The same tabs mirror **Settings → Mode**.
 
-## Ventoy and multi-ISO USB sticks
+## Images on USB (any preparation method)
 
-[Ventoy](https://www.ventoy.net/) exposes a normal data partition that holds many `.iso` files. FlashSentry treats that like any other mounted volume:
+FlashSentry verifies **files on a mounted volume** — it does not care whether you used `dd`, Rufus, `cp`, a multiboot stick, or something else:
 
-1. Plug in the stick and let your desktop (or FlashSentry) mount the **data** partition — not the small Ventoy EFI area unless you only care about that layout.
-2. Keep **Automatically verify ISOs when a USB drive is mounted** enabled (default).
-3. FlashSentry scans **all** `*.iso` files under the mount point (recursive) and runs publisher checks for each supported filename.
+| Method | What we verify |
+|--------|----------------|
+| Loose `.iso` / `.img.xz` on a mounted partition | Each file (publisher hash + optional PGP) |
+| `dd` or Rufus “ISO mode” live stick | No loose file — see [dd / live USB without a loose file](#dd-or-rufus-iso-mode-without-a-loose-file); use full-partition hash or add a copy of the `.iso` |
+| Multiboot stick with many images | Same as loose files on the **data** partition; boot/config folders are skipped automatically |
 
 **Tips:**
 
 | Situation | What to do |
 |-----------|------------|
-| Several distros on one stick | Wait for the log panel / notifications; each ISO gets its own pass/fail line |
-| One ISO fails, others pass | Normal — check filename matches a [supported publisher](#supported-iso-publishers-automatic) or add sidecars next to that ISO |
-| No `.iso` files found | You may have booted from the stick or only have a `dd`-written layout — see [dd / live USB without a loose file](#dd-or-rufus-iso-mode-without-a-loose-file) |
-| Ventoy copy + publisher checksum files | Copy `SHA256SUMS`, `.gpg`, or per-ISO `.sha256` / `.sig` beside the ISO; local sidecars are used if download fails |
+| Several distros on one stick | Each image gets its own pass/fail line in the ISO tab or notifications |
+| One image fails, others pass | Normal — check filename against [supported publishers](#supported-iso-publishers-automatic) or add sidecars |
+| No image files found | Often a `dd`-written layout or the small boot partition only — mount the main data partition or see the dd section above |
+| Offline verification | Copy `SHA256SUMS`, `.gpg`, or per-file `.sha256` / `.sig` next to the image |
 
-Ventoy does not require a separate mode — use **Settings → Verification profile → Ventoy / multi-ISO** (recommended) or **USB drive monitor** with ISO auto-verify on mount.
+Use **Settings → Verification profile → Multi-image USB** when the stick usually holds several ISOs (auto-verify on mount, no full-disk hash on connect). Otherwise **Default** is fine.
 
-**Will FlashSentry break Ventoy?** No. FlashSentry only **reads** image files for hashing. It skips the `ventoy/` configuration folder and the small EFI boot partition. It does not rewrite the Ventoy boot loader, `ventoy.json`, or partition tables. If your desktop already mounted the stick, FlashSentry verifies in place instead of forcing its own mount.
-
-**Similar tools:** Easy2Boot (`_ISO/`, `e2b/`) and common GRUB multiboot `boot/` trees are also excluded from scans. Keep distro images outside those reserved directories.
-
-**Automount:** You can leave GNOME/KDE automount enabled; FlashSentry detects mounts via `/proc/mounts` and verifies when the data partition appears. Disable automount only if you want FlashSentry alone to control mount timing (see install notes).
+**Compatibility:** FlashSentry only **reads** image files. Vendor boot trees (`EFI/`, `ventoy/`, Easy2Boot `_ISO/`, etc.) are not scanned or modified. Desktop automount is supported — verification runs on the mount your session already has.
 
 ---
 

@@ -92,22 +92,26 @@ Some publishers (e.g. **Manjaro**, **elementary OS**, **EndeavourOS**) ship `{is
 1. The checksum URL points at the single hash file (often one 64-character hex line).
 2. GPG verifies the detached `.sig` against the **ISO file**, not against a sums file.
 
-### Ventoy / multi-ISO volumes
+### Many images on one USB volume
 
-`verifyMountPoint()` calls `findIsoFiles()` recursively on the mounted path (`.iso`, `.img.xz`, `.img`, `.zip`). A Ventoy data partition with many images produces **one `IsoVerifyResult` per file**; results are independent (one failure does not block others).
+`verifyMountPoint()` calls `findIsoFiles()` recursively on the mounted path (`.iso`, `.img.xz`, `.img`, `.zip`). Each matching file gets **one `IsoVerifyResult`**; results are independent (one failure does not block others). This applies whether images were copied manually, written with Rufus, or stored on a multiboot stick.
 
-**Coexistence with Ventoy, Easy2Boot, and similar tools**
+### `dd` / hybrid live USB (no loose `.iso`)
+
+`scanMountPoint()` sets `looksLikeDdIsoStick` when there are no scannable image files but typical live-USB markers exist (e.g. `.disk/info`, `EFI`, `arch/`). Use full-partition verification or keep a copy of the original `.iso` on the stick for automated checks.
+
+**Coexistence with multiboot tools** (Ventoy, Easy2Boot, GRUB ISO folders, etc.)
 
 | Concern | FlashSentry behavior |
 |---------|---------------------|
-| Ventoy `ventoy/` config tree | **Not scanned** — avoids touching plugins, `ventoy.json`, or reserved paths |
-| Ventoy EFI / small boot partition | Auto-verify **skipped** when no user images are present |
-| Desktop already mounted the stick | Verification runs on the **existing** mount (no remount fight with GNOME/KDE) |
-| `noexec,nosuid,nodev` mount defaults | Read-only hashing of image files still works; does not break Ventoy boot |
-| One ISO fails | Others still verify; Ventoy profile disables **block mount on verify failure** |
-| Full-disk hash on connect | Off in **Ventoy / multi-ISO** settings profile (slow and unnecessary) |
+| Vendor config trees (`ventoy/`, `EFI/`, `_ISO/`, …) | **Not scanned** — read-only checks target user images only |
+| Small boot-only partition | Auto-verify **skipped** when no image files are present |
+| Desktop already mounted the volume | Verification uses the **existing** mount (no remount fight with GNOME/KDE) |
+| `noexec,nosuid,nodev` mount defaults | Read-only hashing still works |
+| One image fails | Others still verify; **Multi-image USB** profile disables block-on-failure |
+| Full-disk hash on connect | Off in that profile (slow and usually unnecessary for ISO checks) |
 
-Place `.iso` files on the **data** partition (same as for Ventoy itself), not inside `ventoy/` or `EFI/`.
+Place images on the **data** area of the stick, not inside boot-loader config directories.
 
 ### Bootable stick without `.iso`
 
@@ -177,7 +181,7 @@ flashsentry --list-publishers
 flashsentry --list-publishers --json
 flashsentry --verify-iso /path/to/file.iso
 flashsentry --verify-dir ~/Downloads/isos --json
-flashsentry --verify-mount /run/media/$USER/Ventoy --quiet
+flashsentry --verify-mount /run/media/$USER/USB --quiet
 flashsentry --update-catalog
 flashsentry --export-report /path --report-format json
 flashsentry --export-report /path --json
@@ -264,7 +268,7 @@ After downloading from Microsoft, copy the hash from the download page into a si
 
 `findIsoFiles()` scans recursively for:
 
-- `*.iso` — PC installers, Ventoy
+- `*.iso` — PC installers, copied images
 - `*.img.xz` — Raspberry Pi OS, Ubuntu for Pi, Armbian
 - `*.img` — raw images
 - `*.zip` — legacy Raspberry Pi OS zip releases

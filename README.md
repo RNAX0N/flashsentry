@@ -57,7 +57,7 @@ Built with Qt6 for Arch Linux: tray integration, polkit for safe mounting, and a
 
 ## Who is this for?
 
-- **Anyone who copies Linux ISOs to USB** (Rufus, Ventoy, `cp`, etc.) and wants a clear pass/fail report
+- **Anyone who puts Linux/Windows images on USB** (`dd`, Rufus, `cp`, multiboot sticks, etc.) and wants a clear pass/fail report
 - **Users who care about specific folders** on a stick (documents, `EFI`, a project tree) without hashing every sector
 - **Power users** who still want full-disk fingerprints or custom hash algorithms
 
@@ -120,7 +120,7 @@ Log out and back in after adding the `storage` group.
 3. Plug in a stick that contains a supported `.iso` (e.g. `archlinux-*-x86_64.iso`, `ubuntu-*-desktop-amd64.iso`).
 4. Read the report in the log panel, or switch **Mode** to **Automatic ISO verification** for the full ISO UI.
 
-Supported publisher matching (by filename): **Arch Linux**, **Ubuntu** (including **Ubuntu for Raspberry Pi** `.img.xz`), **Kubuntu**, **Xubuntu**, **Lubuntu**, **Ubuntu MATE**, **Ubuntu Studio**, **Debian**, **Fedora**, **Linux Mint**, **openSUSE**, **Manjaro**, **Kali**, **Rocky/Alma/CentOS Stream**, **elementary**, **Pop!_OS**, **EndeavourOS**, **Garuda**, **CachyOS**, **Nobara**, **Raspberry Pi OS**, **Alpine**, **Void Linux**, **Armbian**, **NixOS**, and **Microsoft Windows** (embedded catalog + `.sha256` sidecars). Ventoy sticks can hold `.iso`, `.img.xz`, or `.zip` images. FlashSentry skips `ventoy/` and EFI boot areas, verifies on the data partition only, and coexists with desktop automount — see [docs/VERIFICATION.md](docs/VERIFICATION.md).
+Supported publisher matching (by filename): **Arch Linux**, **Ubuntu** (including **Ubuntu for Raspberry Pi** `.img.xz`), **Kubuntu**, **Xubuntu**, **Lubuntu**, **Ubuntu MATE**, **Ubuntu Studio**, **Debian**, **Fedora**, **Linux Mint**, **openSUSE**, **Manjaro**, **Kali**, **Rocky/Alma/CentOS Stream**, **elementary**, **Pop!_OS**, **EndeavourOS**, **Garuda**, **CachyOS**, **Nobara**, **Raspberry Pi OS**, **Alpine**, **Void Linux**, **Armbian**, **NixOS**, and **Microsoft Windows** (embedded catalog + `.sha256` sidecars). Scans `.iso`, `.img.xz`, `.img`, and `.zip` on mounted volumes; skips boot-loader config trees and works with desktop automount — see [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ### Verify specific folders on a USB stick
 

@@ -65,9 +65,9 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
     layout->addWidget(m_catalogBanner);
 
     m_introLabel = new QLabel(
-        QStringLiteral("Check images on USB sticks — Ventoy, Rufus, or copied "
-                       "<code>.iso</code> / <code>.img.xz</code> files. Publisher checksums and "
-                       "signatures are verified automatically."));
+        QStringLiteral("Verify <code>.iso</code>, <code>.img.xz</code>, and related images on any USB "
+                       "volume — whether you used <code>dd</code>, Rufus, a file copy, or another "
+                       "tool. Publisher checksums and signatures are checked automatically."));
     m_introLabel->setWordWrap(true);
     m_introLabel->setObjectName(QStringLiteral("IsoIntroLabel"));
     layout->addWidget(m_introLabel);
@@ -106,7 +106,7 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
     auto* dirRow = new QHBoxLayout;
     m_dirEdit = new QLineEdit;
     m_dirEdit->setPlaceholderText(
-        QStringLiteral("/run/media/you/Ventoy — filled automatically when USB mounts"));
+        QStringLiteral("/run/media/you/USB — filled when a removable drive mounts"));
     connect(m_dirEdit, &QLineEdit::textChanged, this, &IsoVerifierWidget::onScanPathEdited);
     auto* browseBtn = new QPushButton(QStringLiteral("Browse…"));
     browseBtn->setCursor(Qt::PointingHandCursor);

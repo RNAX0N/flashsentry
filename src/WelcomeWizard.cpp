@@ -16,7 +16,7 @@ WelcomeWizard::WelcomeWizard(QWidget* parent)
     layout->addWidget(new QLabel(QStringLiteral(
         "<h2>Verify USB images with confidence</h2>"
         "<p><b>ISO / image verify</b> — Drop Linux ISOs, Windows installers, or Raspberry Pi "
-        "<code>.img.xz</code> files on a stick (or use Ventoy). FlashSentry matches publisher "
+        "<code>.img.xz</code> files on a stick (any copy method). FlashSentry matches publisher "
         "checksums and signatures automatically.</p>"
         "<p><b>Watch folders</b> — Pick folders on a drive and save a Merkle baseline. "
         "Later connects compare only those paths (fast).</p>"

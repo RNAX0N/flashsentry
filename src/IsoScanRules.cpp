@@ -101,7 +101,7 @@ MultibootLayout IsoScanRules::detectMultibootLayout(const QString& mountPoint)
     if (ventoyJson || (ventoyDir && root.exists(QStringLiteral("ventoy/ventoy.json")))) {
         layout.tool = MultibootTool::Ventoy;
         layout.dataPartition = true;
-        layout.summary = QStringLiteral("Ventoy data partition");
+        layout.summary = QStringLiteral("Multiboot data partition");
         return layout;
     }
 
@@ -124,7 +124,7 @@ MultibootLayout IsoScanRules::detectMultibootLayout(const QString& mountPoint)
     if ((hasEfi || hasBoot) && ventoyDir && !ventoyJson) {
         layout.tool = MultibootTool::Ventoy;
         layout.espOrBootOnly = true;
-        layout.summary = QStringLiteral("Ventoy EFI/boot partition (no ISO scan)");
+        layout.summary = QStringLiteral("Boot partition only (no loose images to scan)");
     }
 
     return layout;
@@ -156,9 +156,8 @@ QString IsoScanRules::coexistenceNote(MultibootTool tool)
     switch (tool) {
         case MultibootTool::Ventoy:
             return QStringLiteral(
-                "Ventoy: FlashSentry only reads image files on the data partition. It does not "
-                "modify ventoy/ config, boot menus, or the EFI partition. Mount options "
-                "(noexec) do not affect Ventoy booting.");
+                "Multiboot stick: only image files outside boot/config folders are read. "
+                "Boot menus and vendor config are not modified.");
         case MultibootTool::Easy2Boot:
             return QStringLiteral(
                 "Easy2Boot: reserved _ISO/e2b folders are skipped; place distros outside those "

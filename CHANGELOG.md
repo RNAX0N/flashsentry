@@ -4,13 +4,21 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-05-21
+
+### Changed
+
+- User-facing copy reframed for **any** image-on-USB workflow (`dd`, Rufus, copy, multiboot) — not Ventoy-specific
+- Settings profile label: **Multi-image USB** (internal id `ventoy` unchanged for compatibility)
+- Docs/README describe multiboot coexistence as one compatibility case among others
+
 ## [1.4.0] - 2026-05-21
 
 ### Added
 
 - **Header mode tabs**: switch between **USB devices** and **ISO verify** without opening Settings
 - ISO tab UI refresh: summary pass/fail/sidecar chips, color-coded results table, vertical splitter (results + report)
-- **Ventoy / multiboot badge** when a known layout is detected on the scan path
+- **Multiboot layout badge** when a known stick layout is detected on the scan path
 - **More** menu groups export, catalog, and trust-hash actions; primary **Verify images** action
 - Status bar catalog control opens the ISO verify tab (clickable)
 

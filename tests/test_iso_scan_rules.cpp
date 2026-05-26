@@ -12,7 +12,7 @@ class TestIsoScanRules : public QObject {
 
 private slots:
     void reservedDirectories();
-    void ventoyLayoutDetection();
+    void multibootLayoutDetection();
     void skipSmallEfiPartition();
 };
 
@@ -27,7 +27,7 @@ void TestIsoScanRules::reservedDirectories()
         QStringLiteral("/mnt/usb/debian.iso")));
 }
 
-void TestIsoScanRules::ventoyLayoutDetection()
+void TestIsoScanRules::multibootLayoutDetection()
 {
 #ifdef FLASHSENTRY_TEST_FIXTURES_DIR
     const QString root = QStringLiteral(FLASHSENTRY_TEST_FIXTURES_DIR) + QStringLiteral("/ventoy-scan");

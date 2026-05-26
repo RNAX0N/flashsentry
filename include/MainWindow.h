@@ -277,6 +277,9 @@ private:
 
     void mountDespiteModification(const DeviceInfo& device);
 
+    void applyIsoVerifyOptions();
+    void handleIsoVerificationReport(const QString& deviceNode, const QList<IsoVerifyResult>& results);
+
     bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
                                  const QString& actual, bool offerMount = true);
 

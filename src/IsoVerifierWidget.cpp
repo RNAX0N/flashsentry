@@ -1,6 +1,8 @@
 #include "IsoVerifierWidget.h"
 #include "IsoVerifierWorker.h"
 #include "IsoVerifier.h"
+#include "IsoCatalogManifest.h"
+#include "IsoVerifyReport.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -11,9 +13,13 @@
 #include <QLabel>
 #include <QProgressBar>
 #include <QFileDialog>
+#include <QFile>
 #include <QTextEdit>
 #include <QMessageBox>
 #include <QScrollBar>
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QInputDialog>
 
 namespace FlashSentry {
 
@@ -42,8 +48,23 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
     connect(verifyBtn, &QPushButton::clicked, this, &IsoVerifierWidget::onVerifyMount);
     auto* reportBtn = new QPushButton(QStringLiteral("Full report"));
     connect(reportBtn, &QPushButton::clicked, this, &IsoVerifierWidget::onShowReport);
+    auto* exportBtn = new QPushButton(QStringLiteral("Export…"));
+    connect(exportBtn, &QPushButton::clicked, this, &IsoVerifierWidget::onExportReport);
+    auto* copyBtn = new QPushButton(QStringLiteral("Copy report"));
+    connect(copyBtn, &QPushButton::clicked, this, &IsoVerifierWidget::onCopyReport);
+    auto* cancelBtn = new QPushButton(QStringLiteral("Cancel"));
+    connect(cancelBtn, &QPushButton::clicked, m_worker, &IsoVerifierWorker::cancel);
+    auto* catalogBtn = new QPushButton(QStringLiteral("Update catalog"));
+    connect(catalogBtn, &QPushButton::clicked, this, &IsoVerifierWidget::onUpdateCatalog);
+    auto* pasteHashBtn = new QPushButton(QStringLiteral("Trust hash…"));
+    connect(pasteHashBtn, &QPushButton::clicked, this, &IsoVerifierWidget::onPasteTrustedHash);
     btnRow->addWidget(verifyBtn);
     btnRow->addWidget(reportBtn);
+    btnRow->addWidget(exportBtn);
+    btnRow->addWidget(copyBtn);
+    btnRow->addWidget(cancelBtn);
+    btnRow->addWidget(catalogBtn);
+    btnRow->addWidget(pasteHashBtn);
     btnRow->addStretch();
     layout->addLayout(btnRow);
 
@@ -148,6 +169,66 @@ void IsoVerifierWidget::onShowReport()
     box.setText(m_reportView->toPlainText());
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
+}
+
+void IsoVerifierWidget::onExportReport()
+{
+    if (m_lastResults.isEmpty()) {
+        return;
+    }
+    const QString path = QFileDialog::getSaveFileName(
+        this, QStringLiteral("Export report"), QStringLiteral("flashsentry-report.html"),
+        QStringLiteral("HTML (*.html);;CSV (*.csv);;Text (*.txt)"));
+    if (path.isEmpty()) {
+        return;
+    }
+    QString body;
+    if (path.endsWith(QStringLiteral(".csv"), Qt::CaseInsensitive)) {
+        body = IsoVerifyReport::buildCsv(m_lastResults);
+    } else if (path.endsWith(QStringLiteral(".html"), Qt::CaseInsensitive)) {
+        body = IsoVerifyReport::buildHtml(m_lastResults);
+    } else {
+        body = IsoVerifyReport::buildPlainText(m_lastResults);
+    }
+    QFile f(path);
+    if (f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        f.write(body.toUtf8());
+        m_summaryLabel->setText(QStringLiteral("Report exported to %1").arg(path));
+    }
+}
+
+void IsoVerifierWidget::onCopyReport()
+{
+    if (auto* clip = QGuiApplication::clipboard()) {
+        clip->setText(m_reportView->toPlainText());
+        m_summaryLabel->setText(QStringLiteral("Report copied to clipboard"));
+    }
+}
+
+void IsoVerifierWidget::onUpdateCatalog()
+{
+    m_summaryLabel->setText(QStringLiteral("Updating ISO catalog…"));
+    const bool ok = IsoCatalogManifest::refreshRemoteIfStale(0, true);
+    m_summaryLabel->setText(ok ? QStringLiteral("Catalog updated (%1 entries)")
+                                         .arg(IsoCatalogManifest::entryCount())
+                               : QStringLiteral("Catalog update failed (using embedded copy)"));
+}
+
+void IsoVerifierWidget::onPasteTrustedHash()
+{
+    const QString file = QInputDialog::getText(this, QStringLiteral("Trust image hash"),
+                                               QStringLiteral("Exact filename (e.g. Win11_24H2_English_x64.iso)"));
+    if (file.isEmpty()) {
+        return;
+    }
+    const QString hash = QInputDialog::getText(this, QStringLiteral("SHA-256 hex"),
+                                               QStringLiteral("64-character SHA-256"));
+    if (IsoCatalogManifest::trustUserHash(file, hash)) {
+        m_summaryLabel->setText(QStringLiteral("Saved trusted hash for %1").arg(file));
+    } else {
+        QMessageBox::warning(this, QStringLiteral("Invalid hash"),
+                             QStringLiteral("Expected a 64-character SHA-256 hex string."));
+    }
 }
 
 void IsoVerifierWidget::onVerificationFinished(const QString& location, const QString& deviceNode,

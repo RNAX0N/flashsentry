@@ -20,5 +20,6 @@
     </qresource>
     <qresource prefix="/iso-catalog">
         <file>iso-catalog/embedded-manifest.json</file>
+        <file>iso-catalog/embedded-manifest.json.sha256</file>
     </qresource>
 </RCC>

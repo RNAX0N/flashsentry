@@ -1,7 +1,9 @@
 #include "IsoVerifier.h"
+#include "AuditLog.h"
 #include "IsoCatalog.h"
 #include "IsoCatalogManifest.h"
 #include "IsoChecksum.h"
+#include "IsoVerifyCache.h"
 
 #include <openssl/evp.h>
 
@@ -19,10 +21,81 @@
 #include <QTimer>
 #include <QStandardPaths>
 #include <QCryptographicHash>
+#include <QtConcurrent>
+#include <QThreadPool>
 
 namespace FlashSentry {
 
 namespace {
+
+IsoVerifyOptions g_verifyOptions;
+
+QString hashFileSha256(const QString& path, QString* errorOut);
+
+QString hashDecompressedXz(const QString& path, QString* errorOut)
+{
+    QProcess proc;
+    proc.setProgram(QStringLiteral("xz"));
+    proc.setArguments({QStringLiteral("-dc"), path});
+    proc.setProcessChannelMode(QProcess::SeparateChannels);
+    proc.start();
+    if (!proc.waitForStarted(5000)) {
+        if (errorOut) {
+            *errorOut = QStringLiteral("xz decompressor not available (install xz)");
+        }
+        return {};
+    }
+
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+    QByteArray buf(1024 * 1024, Qt::Uninitialized);
+    while (proc.waitForReadyRead(30000)) {
+        const qint64 n = proc.read(buf.data(), buf.size());
+        if (n <= 0) {
+            break;
+        }
+        EVP_DigestUpdate(ctx, buf.constData(), static_cast<size_t>(n));
+    }
+    proc.waitForFinished(3600000);
+    if (proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
+        EVP_MD_CTX_free(ctx);
+        if (errorOut) {
+            *errorOut = proc.errorString().isEmpty() ? QStringLiteral("xz decompress failed")
+                                                     : proc.errorString();
+        }
+        return {};
+    }
+
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int len = 0;
+    EVP_DigestFinal_ex(ctx, hash, &len);
+    EVP_MD_CTX_free(ctx);
+    return QByteArray(reinterpret_cast<char*>(hash), static_cast<int>(len)).toHex();
+}
+
+QString computeFileSha256(const QString& path, const IsoVerifyOptions& options, QString* errorOut)
+{
+    const QFileInfo fi(path);
+    if (options.useHashCache) {
+        const QString cached =
+            IsoVerifyCache::lookup(path, fi.size(), fi.lastModified().toMSecsSinceEpoch());
+        if (!cached.isEmpty()) {
+            return cached;
+        }
+    }
+
+    QString hash;
+    if (options.verifyDecompressed && path.endsWith(QStringLiteral(".img.xz"), Qt::CaseInsensitive)) {
+        hash = hashDecompressedXz(path, errorOut);
+    } else {
+        hash = hashFileSha256(path, errorOut);
+    }
+
+    if (!hash.isEmpty() && options.useHashCache) {
+        IsoVerifyCache::store(path, fi.size(), fi.lastModified().toMSecsSinceEpoch(), hash);
+    }
+    return hash;
+}
 
 QString normalizeHash(const QString& h)
 {
@@ -102,49 +175,76 @@ QString cacheDir()
     return dir;
 }
 
+QStringList mirrorFallbackUrls(const QString& url)
+{
+    QStringList urls;
+    urls << url;
+    if (url.contains(QStringLiteral("geo.mirror.pkgbuild.com"))) {
+        urls << url;
+        urls.last().replace(QStringLiteral("geo.mirror.pkgbuild.com"),
+                            QStringLiteral("mirror.pkgbuild.com"));
+    }
+    if (url.contains(QStringLiteral("download.rockylinux.org"))) {
+        urls << url;
+        urls.last().replace(QStringLiteral("download.rockylinux.org"),
+                            QStringLiteral("dl.rockylinux.org"));
+    }
+    return urls;
+}
+
 QByteArray httpGet(const QString& url, QString* errorOut, int timeoutMs = 90000)
 {
-    QNetworkAccessManager nam;
-    QNetworkRequest req{QUrl(url)};
-    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                     QNetworkRequest::NoLessSafeRedirectPolicy);
+    const QStringList urls = mirrorFallbackUrls(url);
+    QString lastErr;
+    for (const QString& tryUrl : urls) {
+        QNetworkAccessManager nam;
+        QNetworkRequest req{QUrl(tryUrl)};
+        req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
 #ifdef FLASHSENTRY_VERSION
-    req.setHeader(QNetworkRequest::UserAgentHeader,
-                  QStringLiteral("FlashSentry/" FLASHSENTRY_VERSION));
+        req.setHeader(QNetworkRequest::UserAgentHeader,
+                      QStringLiteral("FlashSentry/" FLASHSENTRY_VERSION));
 #else
-    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("FlashSentry/1.1.5"));
+        req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("FlashSentry/1.1.5"));
 #endif
 
-    QNetworkReply* reply = nam.get(req);
-    QEventLoop loop;
-    QTimer timer;
-    timer.setSingleShot(true);
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-    timer.start(timeoutMs);
-    loop.exec();
+        QNetworkReply* reply = nam.get(req);
+        QEventLoop loop;
+        QTimer timer;
+        timer.setSingleShot(true);
+        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+        QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+        timer.start(timeoutMs);
+        loop.exec();
 
-    if (!reply->isFinished()) {
-        if (errorOut) *errorOut = QStringLiteral("Download timed out");
-        reply->abort();
+        if (!reply->isFinished()) {
+            lastErr = QStringLiteral("Download timed out");
+            reply->abort();
+            reply->deleteLater();
+            continue;
+        }
+        if (reply->error() != QNetworkReply::NoError) {
+            lastErr = reply->errorString();
+            reply->deleteLater();
+            continue;
+        }
+
+        const QByteArray data = reply->readAll();
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         reply->deleteLater();
-        return {};
-    }
-    if (reply->error() != QNetworkReply::NoError) {
-        if (errorOut) *errorOut = reply->errorString();
-        reply->deleteLater();
-        return {};
-    }
 
-    const QByteArray data = reply->readAll();
-    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    reply->deleteLater();
-
-    if (status >= 400) {
-        if (errorOut) *errorOut = QStringLiteral("HTTP %1 for %2").arg(status).arg(url);
-        return {};
+        if (status >= 400) {
+            lastErr = QStringLiteral("HTTP %1 for %2").arg(status).arg(tryUrl);
+            continue;
+        }
+        if (!data.isEmpty()) {
+            return data;
+        }
     }
-    return data;
+    if (errorOut) {
+        *errorOut = lastErr.isEmpty() ? QStringLiteral("HTTP download failed") : lastErr;
+    }
+    return {};
 }
 
 QString gpgHomedir()
@@ -333,8 +433,13 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
         return r;
     }
 
+    if (g_verifyOptions.cancelled && g_verifyOptions.cancelled->load()) {
+        r.errorMessage = QStringLiteral("Cancelled");
+        return r;
+    }
+
     QString hashErr;
-    r.computedSha256 = hashFileSha256(isoPath, &hashErr);
+    r.computedSha256 = computeFileSha256(isoPath, g_verifyOptions, &hashErr);
     if (r.computedSha256.isEmpty()) {
         r.errorMessage = hashErr;
         return r;
@@ -346,7 +451,23 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
 
     IsoCatalogManifest::refreshRemoteIfStale();
 
+    if (g_verifyOptions.preferOfflineSidecars) {
+        const QString checksumPath = findChecksumSidecar(isoPath);
+        if (!checksumPath.isEmpty()) {
+            QFile f(checksumPath);
+            if (f.open(QIODevice::ReadOnly)) {
+                QString parseErr;
+                r.expectedSha256 =
+                    IsoChecksum::parseSha256Content(QString::fromUtf8(f.readAll()), isoName, &parseErr);
+                r.hashMatches = !r.expectedSha256.isEmpty()
+                                && normalizeHash(r.computedSha256) == normalizeHash(r.expectedSha256);
+                r.source = IsoVerifySource::LocalSidecar;
+            }
+        }
+    }
+
     // 1) Try publisher catalog (remote, embedded, or hint)
+    if (r.expectedSha256.isEmpty()) {
     if (auto match = IsoCatalog::matchIso(isoPath)) {
         r.publisherId = match->publisherId;
         r.publisherName = match->publisherName;
@@ -435,6 +556,7 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
                                                    : match->referenceUrl);
         }
     }
+    }
 
     // 2) Local sidecars on drive (Rufus users often copy .sha256 + .asc alongside)
     if (r.expectedSha256.isEmpty()) {
@@ -454,7 +576,9 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
     if (r.expectedSha256.isEmpty()) {
         r.source = IsoVerifySource::ComputedOnly;
         r.hashMatches = true;
-        r.reportSummary = QStringLiteral("Computed SHA-256 only — unknown publisher or offline fetch failed.");
+        r.reportSummary = QStringLiteral(
+            "Computed SHA-256 only — unknown publisher, offline, or no checksum available. "
+            "Add a .sha256 sidecar or update the catalog.");
     }
 
     const QString sigPath = findSignatureSidecar(isoPath);
@@ -476,16 +600,88 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
     r.success = true;
     r.durationMs = static_cast<uint64_t>(timer.elapsed());
     r.reportSummary = buildReport(r);
+    AuditLog::appendIsoVerify(r);
     return r;
+}
+
+namespace {
+
+QList<IsoVerifyResult> verifyPathsParallel(const QStringList& paths, const QString& mountPoint,
+                                           const QString& deviceNode)
+{
+    QList<IsoVerifyResult> results;
+    if (paths.isEmpty()) {
+        return results;
+    }
+
+    const int parallel = qMax(1, g_verifyOptions.maxParallel);
+    QThreadPool pool;
+    pool.setMaxThreadCount(parallel);
+
+    QMutex mutex;
+    results.resize(paths.size());
+
+    auto verifyOne = [&](int index) {
+        if (g_verifyOptions.cancelled && g_verifyOptions.cancelled->load()) {
+            return;
+        }
+        if (g_verifyOptions.progress) {
+            g_verifyOptions.progress(index + 1, paths.size(), QFileInfo(paths.at(index)).fileName());
+        }
+        IsoVerifyResult r = IsoVerifier::verifyIsoAutomated(paths.at(index), mountPoint, deviceNode);
+        QMutexLocker lock(&mutex);
+        results[index] = r;
+    };
+
+    if (parallel <= 1 || paths.size() == 1) {
+        for (int i = 0; i < paths.size(); ++i) {
+            verifyOne(i);
+        }
+    } else {
+        QList<QFuture<void>> futures;
+        futures.reserve(paths.size());
+        for (int i = 0; i < paths.size(); ++i) {
+            futures.append(QtConcurrent::run(&pool, verifyOne, i));
+        }
+        for (QFuture<void>& f : futures) {
+            f.waitForFinished();
+        }
+    }
+
+    QList<IsoVerifyResult> ordered;
+    for (const IsoVerifyResult& r : results) {
+        if (!r.isoPath.isEmpty() || !r.layoutNote.isEmpty()) {
+            ordered.append(r);
+        }
+    }
+    return ordered;
+}
+
+} // namespace
+
+IsoVerifyOptions& IsoVerifier::verifyOptions()
+{
+    return g_verifyOptions;
+}
+
+void IsoVerifier::setVerifyOptions(const IsoVerifyOptions& options)
+{
+    g_verifyOptions = options;
+}
+
+bool IsoVerifier::mountScanHasFailures(const QList<IsoVerifyResult>& results)
+{
+    for (const IsoVerifyResult& r : results) {
+        if (!r.isoPath.isEmpty() && !r.passed()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 QList<IsoVerifyResult> IsoVerifier::verifyDirectory(const QString& directory)
 {
-    QList<IsoVerifyResult> results;
-    for (const QString& iso : findIsoFiles(directory)) {
-        results.append(verifyIsoAutomated(iso, directory));
-    }
-    return results;
+    return verifyPathsParallel(findIsoFiles(directory), directory, {});
 }
 
 QList<IsoVerifyResult> IsoVerifier::verifyMountPoint(const QString& mountPoint, const QString& deviceNode)
@@ -493,12 +689,11 @@ QList<IsoVerifyResult> IsoVerifier::verifyMountPoint(const QString& mountPoint, 
     QList<IsoVerifyResult> results;
     const MountScanResult scan = scanMountPoint(mountPoint);
 
-    for (const QString& iso : scan.isoPaths) {
-        IsoVerifyResult r = verifyIsoAutomated(iso, mountPoint, deviceNode);
+    results = verifyPathsParallel(scan.isoPaths, mountPoint, deviceNode);
+    for (IsoVerifyResult& r : results) {
         if (!scan.layoutNote.isEmpty() && r.layoutNote.isEmpty()) {
             r.layoutNote = scan.layoutNote;
         }
-        results.append(r);
     }
 
     if (results.isEmpty() && scan.looksLikeDdIsoStick) {

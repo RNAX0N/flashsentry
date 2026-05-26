@@ -218,12 +218,30 @@ Publisher mirrors and keys are defined in the application; see [VERIFICATION.md]
 
 ---
 
+## Command-line verification (1.2.0+)
+
+Headless checks exit with `0` on full pass, `1` if any image fails, `2` on usage errors:
+
+```bash
+flashsentry --verify-iso /path/to/debian-12.5.0-amd64-netinst.iso
+flashsentry --verify-mount /run/media/$USER/Ventoy
+flashsentry --verify-dir ~/Downloads/isos
+flashsentry --update-catalog
+flashsentry --export-report /run/media/$USER/Ventoy --format csv
+```
+
+Reports can be plain text (default), `csv`, or `html`. Use **Settings → Verification** profiles (Default, Ventoy, Work USB, Paranoid) for quick presets.
+
+---
+
 ## Files and privacy
 
 | Path | Contents |
 |------|----------|
 | `~/.config/FlashSentry/FlashSentry.conf` | UI and behavior settings |
 | `~/.config/flashsentry/devices.json` | Whitelist, baselines, optional partition hashes |
+| `~/.config/flashsentry/audit.log` | JSON-lines log of ISO verify results |
+| `~/.config/flashsentry/iso-catalog.d/` | Optional drop-in manifest fragments |
 | `~/.cache/FlashSentry/iso-verify/` | Downloaded checksums, GPG homedir cache |
 
 ISO verification contacts publisher mirrors over HTTPS. No telemetry is sent to FlashSentry developers by the app itself.
@@ -236,7 +254,7 @@ ISO verification contacts publisher mirrors over HTTPS. No telemetry is sent to 
 No. FlashSentry calls `gpg` itself with a private homedir under your cache directory.
 
 **Will it verify Windows ISOs?**  
-Not automatically by publisher catalog today. Use sidecar `.sha256` / `.asc` files if you have them.
+Known builds are listed in the embedded catalog (refresh with **Update catalog** or `--update-catalog`). For other `Win11_*` / `Win10_*` names, place a `.sha256` sidecar from Microsoft’s download page next to the ISO.
 
 **Can I use it only for ISOs and ignore USB whitelisting?**  
 Yes. Set **Mode** to **Automatic ISO verification** and use folder scan or mount auto-verify.

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "IsoVerifyOptions.h"
 #include "Types.h"
 
 #include <QString>
@@ -36,6 +37,11 @@ public:
 
     static QList<IsoVerifyResult> verifyMountPoint(const QString& mountPoint,
                                                    const QString& deviceNode = {});
+
+    static IsoVerifyOptions& verifyOptions();
+    static void setVerifyOptions(const IsoVerifyOptions& options);
+
+    static bool mountScanHasFailures(const QList<IsoVerifyResult>& results);
 };
 
 } // namespace FlashSentry

@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "AutostartManager.h"
+#include "WelcomeWizard.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -114,14 +115,8 @@ void MainWindow::setupUi()
     m_isoWidget = new IsoVerifierWidget;
     connect(m_isoWidget, &IsoVerifierWidget::logMessageRequested,
             this, &MainWindow::onIsoLogMessage);
-    connect(m_isoWidget, &IsoVerifierWidget::verificationReportReady,
-            this, [this](const QString& deviceNode, const QList<IsoVerifyResult>& results) {
-                int passed = 0;
-                for (const auto& r : results) if (r.passed()) ++passed;
-                const QString summary = QStringLiteral("ISO verify: %1/%2 passed").arg(passed).arg(results.size());
-                logMessage(summary, passed == results.size() ? LogLevel::Info : LogLevel::Security);
-Q_UNUSED(deviceNode);
-            });
+    connect(m_isoWidget, &IsoVerifierWidget::verificationReportReady, this,
+            &MainWindow::handleIsoVerificationReport);
 
     m_appModeStack->addWidget(m_isoWidget);
     m_mainLayout->addWidget(m_appModeStack, 1);
@@ -457,6 +452,13 @@ void MainWindow::loadSettings()
     m_settings.isoScanDirectory = m_qsettings->value("iso/scanDirectory").toString();
     m_settings.isoAutoVerifyOnScan = m_qsettings->value("iso/autoVerify", true).toBool();
     m_settings.isoAutoVerifyOnUsbMount = m_qsettings->value("iso/autoVerifyOnUsbMount", true).toBool();
+    m_settings.blockMountOnIsoVerifyFailure =
+        m_qsettings->value("iso/blockMountOnFailure", false).toBool();
+    m_settings.isoVerifyDecompressed = m_qsettings->value("iso/verifyDecompressed", false).toBool();
+    m_settings.isoPreferOfflineSidecars = m_qsettings->value("iso/preferOfflineSidecars", false).toBool();
+    m_settings.isoVerifyParallel = m_qsettings->value("iso/verifyParallel", 2).toInt();
+    m_settings.showFirstRunWizard = m_qsettings->value("general/showFirstRunWizard", true).toBool();
+    m_settings.settingsProfile = m_qsettings->value("general/settingsProfile", QStringLiteral("default")).toString();
     m_settings.requireConfirmationForNew = m_qsettings->value("security/confirmNewDevice", true).toBool();
     m_settings.requireConfirmationForModified = m_qsettings->value("security/confirmModified", true).toBool();
     m_settings.blockModifiedDevices = m_qsettings->value("security/blockModified", false).toBool();
@@ -479,7 +481,8 @@ void MainWindow::loadSettings()
     m_hashWorker->setMaxConcurrent(m_settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(m_settings.animationsEnabled);
     applyAppModule();
-    
+    applyIsoVerifyOptions();
+
     // Restore window geometry
     if (m_qsettings->contains("window/geometry")) {
         restoreGeometry(m_qsettings->value("window/geometry").toByteArray());
@@ -507,6 +510,12 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("iso/scanDirectory", m_settings.isoScanDirectory);
     m_qsettings->setValue("iso/autoVerify", m_settings.isoAutoVerifyOnScan);
     m_qsettings->setValue("iso/autoVerifyOnUsbMount", m_settings.isoAutoVerifyOnUsbMount);
+    m_qsettings->setValue("iso/blockMountOnFailure", m_settings.blockMountOnIsoVerifyFailure);
+    m_qsettings->setValue("iso/verifyDecompressed", m_settings.isoVerifyDecompressed);
+    m_qsettings->setValue("iso/preferOfflineSidecars", m_settings.isoPreferOfflineSidecars);
+    m_qsettings->setValue("iso/verifyParallel", m_settings.isoVerifyParallel);
+    m_qsettings->setValue("general/showFirstRunWizard", m_settings.showFirstRunWizard);
+    m_qsettings->setValue("general/settingsProfile", m_settings.settingsProfile);
     m_qsettings->setValue("appearance/theme", FSStyle.themeName(FSStyle.currentTheme()));
     m_qsettings->setValue("window/geometry", saveGeometry());
     
@@ -590,6 +599,16 @@ void MainWindow::showEvent(QShowEvent* event)
 {
     QMainWindow::showEvent(event);
     m_trayIcon->updateWindowVisibility(true);
+
+    static bool wizardShown = false;
+    if (!wizardShown && m_settings.showFirstRunWizard) {
+        wizardShown = true;
+        WelcomeWizard wizard(this);
+        if (wizard.exec() == QDialog::Accepted) {
+            m_settings.showFirstRunWizard = false;
+            m_qsettings->setValue("general/showFirstRunWizard", false);
+        }
+    }
 }
 
 void MainWindow::hideEvent(QHideEvent* event)

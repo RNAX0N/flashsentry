@@ -117,6 +117,8 @@ public:
                               uint64_t durationMs,
                               double speedMBps);
 
+    void notifyIsoVerifySummary(const QString& deviceName, int passed, int total, int needsSidecar);
+
     /**
      * @brief Enable or disable notifications
      */

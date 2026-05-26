@@ -4,6 +4,20 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-21
+
+### Added
+
+- CLI: `--verify-iso`, `--verify-mount`, `--verify-dir`, `--update-catalog`, `--export-report`
+- Embedded ISO catalog: remote refresh, `iso-catalog.d` drop-ins, user TOFU hashes, manifest SHA-256 integrity check
+- Parallel image verification, session hash cache, optional `.img.xz` decompress verify (`xz`)
+- Audit log (`audit.log`), CSV/HTML report export, welcome wizard, settings profiles (Default, Ventoy, Work USB, Paranoid)
+- Tray notifications and device card status for ISO verify results; optional block mount on verify failure
+
+### Changed
+
+- ISO verify worker supports cancel and per-file progress
+
 ## [1.1.6] - 2026-05-26
 
 ### Added

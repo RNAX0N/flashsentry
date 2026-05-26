@@ -46,3 +46,8 @@ add_executable(test_iso_checksum test_iso_checksum.cpp ${CMAKE_SOURCE_DIR}/src/I
 target_include_directories(test_iso_checksum PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_iso_checksum PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME test_iso_checksum COMMAND test_iso_checksum)
+
+add_executable(test_verify_report test_verify_report.cpp ${CMAKE_SOURCE_DIR}/src/IsoVerifyReport.cpp)
+target_include_directories(test_verify_report PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_verify_report PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_verify_report COMMAND test_verify_report)

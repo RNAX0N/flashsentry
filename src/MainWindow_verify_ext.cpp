@@ -1,5 +1,9 @@
 #include "MainWindow.h"
 #include "WatchListDialog.h"
+#include "IsoVerifier.h"
+#include "IsoVerifyReport.h"
+#include "IsoCatalogManifest.h"
+#include "SettingsProfiles.h"
 #include <QMessageBox>
 
 namespace FlashSentry {
@@ -261,6 +265,55 @@ void MainWindow::acceptManifestBaseline(const DeviceInfo& device, const WatchMan
     DeviceCard* card = getDeviceCard(device.deviceNode);
     if (card) {
         card->setVerificationStatus(VerificationStatus::Verified);
+    }
+}
+
+void MainWindow::applyIsoVerifyOptions()
+{
+    IsoVerifyOptions opt;
+    opt.useHashCache = true;
+    opt.maxParallel = qMax(1, m_settings.isoVerifyParallel);
+    opt.verifyDecompressed = m_settings.isoVerifyDecompressed;
+    opt.preferOfflineSidecars = m_settings.isoPreferOfflineSidecars;
+    IsoVerifier::setVerifyOptions(opt);
+}
+
+void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
+                                             const QList<IsoVerifyResult>& results)
+{
+    int passed = 0;
+    int needsSidecar = 0;
+    for (const IsoVerifyResult& r : results) {
+        if (r.passed()) {
+            ++passed;
+        } else if (r.hashChecked && r.expectedSha256.isEmpty() && !r.isoPath.isEmpty()) {
+            ++needsSidecar;
+        }
+    }
+
+    const QString summary = IsoVerifyReport::summaryLine(results);
+    logMessage(QStringLiteral("ISO verify (%1): %2")
+                   .arg(deviceNode.isEmpty() ? QStringLiteral("manual") : deviceNode, summary),
+               passed == results.size() ? LogLevel::Info : LogLevel::Security);
+
+    if (m_settings.showNotifications && m_trayIcon) {
+        auto info = m_deviceMonitor->getDevice(deviceNode);
+        const QString name = info ? info->displayName() : deviceNode;
+        m_trayIcon->notifyIsoVerifySummary(name, passed, results.size(), needsSidecar);
+    }
+
+    if (DeviceCard* card = getDeviceCard(deviceNode)) {
+        if (passed == results.size() && !results.isEmpty()) {
+            card->setVerificationStatus(VerificationStatus::Verified);
+        } else if (IsoVerifier::mountScanHasFailures(results)) {
+            card->setVerificationStatus(VerificationStatus::Modified);
+        }
+    }
+
+    if (m_settings.blockMountOnIsoVerifyFailure && IsoVerifier::mountScanHasFailures(results)) {
+        logMessage(QStringLiteral("Mount blocked: ISO/image verification failed on %1").arg(deviceNode),
+                   LogLevel::Security);
+        m_pendingHashActions.remove(deviceNode);
     }
 }
 

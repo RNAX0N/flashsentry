@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCoreApplication>
 #include <QLoggingCategory>
 #include <QFileInfo>
 #include <QTimer>
@@ -19,6 +20,7 @@
 #include "MainWindow.h"
 #include "StyleManager.h"
 #include "Types.h"
+#include "VerifyCli.h"
 
 using namespace FlashSentry;
 
@@ -122,27 +124,15 @@ void printVersion()
 
 int main(int argc, char* argv[])
 {
-    // Set application attributes before creating QApplication
-    QApplication::setApplicationName("FlashSentry");
+    QCoreApplication::setApplicationName("FlashSentry");
 #ifdef FLASHSENTRY_VERSION
     QApplication::setApplicationVersion(QLatin1String(FLASHSENTRY_VERSION));
 #else
     QApplication::setApplicationVersion(QStringLiteral("1.1.5"));
 #endif
-    QApplication::setOrganizationName("FlashSentry");
-    QApplication::setOrganizationDomain("flashsentry.io");
-    
-    // Enable high DPI scaling
-    QApplication::setHighDpiScaleFactorRoundingPolicy(
-        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
-    
-    // Create application instance
-    QApplication app(argc, argv);
-    
-    // Install custom message handler
-    qInstallMessageHandler(messageHandler);
-    
-    // Parse command line arguments
+    QCoreApplication::setOrganizationName("FlashSentry");
+    QCoreApplication::setOrganizationDomain("flashsentry.io");
+
     QCommandLineParser parser;
     parser.setApplicationDescription("USB Flash Drive Security Monitor");
     parser.addHelpOption();
@@ -184,8 +174,46 @@ int main(int argc, char* argv[])
         "Open the settings dialog on startup"
     );
     parser.addOption(settingsOption);
-    
+
+    QCommandLineOption verifyIsoOption(QStringLiteral("verify-iso"), QStringLiteral("Verify one image file and exit"), QStringLiteral("path"));
+    QCommandLineOption verifyMountOption(QStringLiteral("verify-mount"), QStringLiteral("Verify images on mount point and exit"), QStringLiteral("path"));
+    QCommandLineOption verifyDirOption(QStringLiteral("verify-dir"), QStringLiteral("Verify images in directory and exit"), QStringLiteral("path"));
+    QCommandLineOption updateCatalogOption(QStringLiteral("update-catalog"), QStringLiteral("Refresh ISO catalog manifest from remote"));
+    QCommandLineOption exportReportOption(QStringLiteral("export-report"), QStringLiteral("Verify path and print report (text|csv|html)"), QStringLiteral("format"));
+    parser.addOption(verifyIsoOption);
+    parser.addOption(verifyMountOption);
+    parser.addOption(verifyDirOption);
+    parser.addOption(updateCatalogOption);
+    parser.addOption(exportReportOption);
+
+    QApplication::setHighDpiScaleFactorRoundingPolicy(
+        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+
+    QApplication app(argc, argv);
+    qInstallMessageHandler(messageHandler);
     parser.process(app);
+
+    if (parser.isSet(updateCatalogOption)) {
+        return VerifyCli::runUpdateCatalog(true);
+    }
+    if (parser.isSet(verifyIsoOption)) {
+        return VerifyCli::runVerifyIso(parser.value(verifyIsoOption));
+    }
+    if (parser.isSet(verifyMountOption)) {
+        return VerifyCli::runVerifyMount(parser.value(verifyMountOption));
+    }
+    if (parser.isSet(verifyDirOption)) {
+        return VerifyCli::runVerifyDir(parser.value(verifyDirOption));
+    }
+    if (parser.isSet(exportReportOption)) {
+        const QString fmt = parser.value(exportReportOption);
+        const QString path = parser.positionalArguments().value(0);
+        if (path.isEmpty()) {
+            std::cerr << "export-report requires a path argument.\n";
+            return VerifyCli::ExitError;
+        }
+        return VerifyCli::runExportReport(path, fmt);
+    }
 
     if (parser.isSet(debugOption)) {
         QLoggingCategory::setFilterRules(QStringLiteral("*.debug=true"));

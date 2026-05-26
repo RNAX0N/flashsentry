@@ -6,6 +6,8 @@
 #include <QString>
 #include <QFuture>
 
+#include <atomic>
+
 namespace FlashSentry {
 
 /**
@@ -31,6 +33,7 @@ signals:
 
 private:
     bool m_cancelled = false;
+    std::atomic<bool> m_cancelledFlag{false};
     QFuture<void> m_activeJob;
 };
 

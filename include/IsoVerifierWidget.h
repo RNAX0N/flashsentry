@@ -41,6 +41,10 @@ private slots:
     void onBrowse();
     void onVerifyMount();
     void onShowReport();
+    void onExportReport();
+    void onCopyReport();
+    void onUpdateCatalog();
+    void onPasteTrustedHash();
     void onVerificationFinished(const QString& location, const QString& deviceNode,
                                 const QList<IsoVerifyResult>& results);
 

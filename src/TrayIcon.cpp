@@ -195,6 +195,26 @@ void TrayIcon::notifyHashCompleted(const QString& deviceName,
     showNotification("Hash Complete", message, QSystemTrayIcon::Information);
 }
 
+void TrayIcon::notifyIsoVerifySummary(const QString& deviceName, int passed, int total,
+                                      int needsSidecar)
+{
+    if (!m_notificationsEnabled) {
+        return;
+    }
+
+    QString message = QStringLiteral("%1: %2/%3 image(s) passed").arg(deviceName).arg(passed).arg(total);
+    if (needsSidecar > 0) {
+        message += QStringLiteral("\n%1 need a .sha256 sidecar or catalog update").arg(needsSidecar);
+    }
+
+    QSystemTrayIcon::MessageIcon icon = QSystemTrayIcon::Information;
+    if (passed < total) {
+        icon = needsSidecar > 0 ? QSystemTrayIcon::Warning : QSystemTrayIcon::Critical;
+    }
+
+    showNotification(QStringLiteral("ISO verification"), message, icon);
+}
+
 void TrayIcon::updateDeviceList(const QList<DeviceInfo>& devices)
 {
     m_currentDevices = devices;

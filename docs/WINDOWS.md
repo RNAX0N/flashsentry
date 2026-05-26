@@ -48,12 +48,15 @@ for the selected triplet.
 
 The Windows CI job installs the app into a staging directory and uploads a portable ZIP artifact.
 This is the first distribution format because it avoids installer elevation and makes dependency
-issues visible early.
+issues visible early. CI also runs `windeployqt` and copies OpenSSL runtime DLLs into the staged
+application directory before zipping.
 
 For a local portable package:
 
 ```powershell
 cmake --install build-windows --config Release --prefix .\stage
+$exe = Get-ChildItem -Path .\stage -Filter FlashSentry.exe -Recurse | Select-Object -First 1
+windeployqt --release --compiler-runtime --no-translations $exe.FullName
 Compress-Archive -Path .\stage\* -DestinationPath FlashSentry-windows-portable.zip
 ```
 

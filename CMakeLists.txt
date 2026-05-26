@@ -17,8 +17,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -Wpedantic")
+if(MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
+    set(CMAKE_CXX_FLAGS_DEBUG "/Zi /Od /W4")
+else()
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -Wpedantic")
+endif()
 
 set(FLASHSENTRY_QT_COMPONENTS Core Gui Widgets Concurrent Network)
 if(NOT WIN32)
@@ -29,6 +34,7 @@ find_package(Qt6 REQUIRED COMPONENTS ${FLASHSENTRY_QT_COMPONENTS})
 if(WIN32)
     find_package(OpenSSL REQUIRED)
     set(OPENSSL_LIBRARIES OpenSSL::Crypto)
+    set(OPENSSL_INCLUDE_DIRS ${OPENSSL_INCLUDE_DIR})
 else()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(LIBUDEV REQUIRED libudev)
@@ -123,6 +129,14 @@ set(HEADERS
 )
 
 set(RESOURCES resources/resources.qrc)
+if(WIN32)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/FlashSentry.rc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/FlashSentry.rc"
+        @ONLY
+    )
+    list(APPEND RESOURCES "${CMAKE_CURRENT_BINARY_DIR}/FlashSentry.rc")
+endif()
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${RESOURCES})
 if(WIN32)

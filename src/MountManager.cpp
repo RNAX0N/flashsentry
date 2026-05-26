@@ -3,10 +3,25 @@
 #ifdef Q_OS_WIN
 
 #include <QMutexLocker>
+#include <QDir>
 #include <QStorageInfo>
 #include <QTimer>
+#include <qt_windows.h>
 
 namespace FlashSentry {
+
+namespace {
+
+bool isRemovableVolumeRoot(const QString& rootPath)
+{
+    QString nativeRoot = QDir::toNativeSeparators(rootPath);
+    if (!nativeRoot.endsWith(QLatin1Char('\\'))) {
+        nativeRoot += QLatin1Char('\\');
+    }
+    return GetDriveTypeW(reinterpret_cast<LPCWSTR>(nativeRoot.utf16())) == DRIVE_REMOVABLE;
+}
+
+} // namespace
 
 MountManager::MountManager(QObject* parent)
     : QObject(parent)
@@ -89,7 +104,7 @@ void MountManager::refreshMountStatus()
 {
     QHash<QString, QString> newMountPoints;
     for (const QStorageInfo& storage : QStorageInfo::mountedVolumes()) {
-        if (!storage.isValid() || !storage.isReady() || !storage.isRemovable()) {
+        if (!storage.isValid() || !storage.isReady() || !isRemovableVolumeRoot(storage.rootPath())) {
             continue;
         }
         const QString root = QString::fromUtf8(storage.rootPath().toUtf8());

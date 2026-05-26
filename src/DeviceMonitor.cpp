@@ -3,10 +3,24 @@
 #ifdef Q_OS_WIN
 
 #include <QMutexLocker>
-#include <QSet>
+#include <QDir>
 #include <QStorageInfo>
+#include <qt_windows.h>
 
 namespace FlashSentry {
+
+namespace {
+
+bool isRemovableVolumeRoot(const QString& rootPath)
+{
+    QString nativeRoot = QDir::toNativeSeparators(rootPath);
+    if (!nativeRoot.endsWith(QLatin1Char('\\'))) {
+        nativeRoot += QLatin1Char('\\');
+    }
+    return GetDriveTypeW(reinterpret_cast<LPCWSTR>(nativeRoot.utf16())) == DRIVE_REMOVABLE;
+}
+
+} // namespace
 
 DeviceMonitor::DeviceMonitor(QObject* parent)
     : QThread(parent)
@@ -89,12 +103,13 @@ void DeviceMonitor::scanExistingDevices()
 {
     QHash<QString, DeviceInfo> detected;
     for (const QStorageInfo& storage : QStorageInfo::mountedVolumes()) {
-        if (!storage.isValid() || !storage.isReady() || !storage.isRemovable()) {
+        if (!storage.isValid() || !storage.isReady() || !isRemovableVolumeRoot(storage.rootPath())) {
             continue;
         }
         DeviceInfo info;
         info.deviceNode = storage.rootPath();
         info.parentDevice = storage.rootPath();
+        info.serial = QString::fromUtf8(storage.device());
         info.label = storage.displayName();
         info.model = storage.name();
         info.vendor = QStringLiteral("Windows removable volume");

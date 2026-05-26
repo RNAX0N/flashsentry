@@ -45,7 +45,6 @@ jobs:
         with:
           version: '6.7.3'
           arch: 'win64_msvc2019_64'
-          modules: 'qt5compat'
           cache: true
 
       - name: Install OpenSSL
@@ -74,6 +73,21 @@ jobs:
         shell: pwsh
         run: |
           cmake --install build --config Release --prefix "$pwd/stage"
+          $exe = Get-ChildItem -Path "$pwd/stage" -Filter FlashSentry.exe -Recurse | Select-Object -First 1
+          if (-not $exe) {
+            throw "FlashSentry.exe was not installed into the staging directory"
+          }
+          windeployqt --release --compiler-runtime --no-translations "$($exe.FullName)"
+          $opensslBins = @(
+            "C:/Program Files/OpenSSL/bin",
+            "C:/Program Files/OpenSSL-Win64/bin"
+          )
+          foreach ($bin in $opensslBins) {
+            if (Test-Path $bin) {
+              Get-ChildItem $bin -Filter "libcrypto*.dll" | Copy-Item -Destination $exe.DirectoryName -Force
+              Get-ChildItem $bin -Filter "libssl*.dll" | Copy-Item -Destination $exe.DirectoryName -Force
+            }
+          }
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           Compress-Archive -Path stage/* -DestinationPath artifacts/FlashSentry-windows-portable.zip
 

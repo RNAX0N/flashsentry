@@ -8,6 +8,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,22 +80,28 @@ def main() -> int:
 
     gpg_note = "GPG signature not checked"
     if ASC_FILE.is_file() and PUB_FILE.is_file() and shutil.which("gpg"):
-        verify = subprocess.run(
-            [
-                "gpg",
-                "--verify",
-                "--keyring",
-                str(PUB_FILE),
-                str(ASC_FILE),
-                str(MANIFEST),
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if verify.returncode != 0:
-            print(verify.stderr or verify.stdout, file=sys.stderr)
-            return 1
+        # Import into an isolated homedir: --keyring on a fresh ~/.gnupg fails on
+        # CI runners (invalid packet / no public key) with modern OpenPGP signatures.
+        with tempfile.TemporaryDirectory(prefix="flashsentry-gpg-") as gpg_home:
+            homedir = ["--homedir", gpg_home]
+            imp = subprocess.run(
+                ["gpg", *homedir, "--import", str(PUB_FILE)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if imp.returncode != 0:
+                print(imp.stderr or imp.stdout, file=sys.stderr)
+                return 1
+            verify = subprocess.run(
+                ["gpg", *homedir, "--verify", str(ASC_FILE), str(MANIFEST)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if verify.returncode != 0:
+                print(verify.stderr or verify.stdout, file=sys.stderr)
+                return 1
         gpg_note = "OpenPGP signature valid"
 
     print(

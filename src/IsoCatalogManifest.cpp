@@ -187,27 +187,46 @@ bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
     sigOut.close();
     pubOut.close();
 
-    QProcess proc;
-    proc.setProgram(QStringLiteral("gpg"));
-    proc.setArguments({QStringLiteral("--verify"),
-                     QStringLiteral("--keyring"),
-                     pubPath,
-                     QStringLiteral("--status-fd"),
-                     QStringLiteral("1"),
-                     sigPath,
-                     manifestPath});
-    proc.setProcessChannelMode(QProcess::MergedChannels);
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.remove(QStringLiteral("GNUPGHOME"));
-    proc.setProcessEnvironment(env);
-    proc.start();
-    if (!proc.waitForFinished(30000)) {
-        proc.kill();
+    const QString gpgHome = temp.filePath(QStringLiteral("gnupg"));
+    if (!QDir().mkpath(gpgHome)) {
         return false;
     }
-    const QString output = QString::fromUtf8(proc.readAllStandardOutput());
-    return proc.exitCode() == 0
-           && output.contains(QStringLiteral("VALIDSIG"), Qt::CaseInsensitive);
+
+    auto runGpgInHome = [&](const QStringList& args, QString* output) -> bool {
+        QProcess p;
+        p.setProgram(QStringLiteral("gpg"));
+        QStringList fullArgs = {QStringLiteral("--homedir"), gpgHome};
+        fullArgs.append(args);
+        p.setArguments(fullArgs);
+        p.setProcessChannelMode(QProcess::MergedChannels);
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.remove(QStringLiteral("GNUPGHOME"));
+        p.setProcessEnvironment(env);
+        p.start();
+        if (!p.waitForFinished(30000)) {
+            p.kill();
+            return false;
+        }
+        if (output) {
+            *output = QString::fromUtf8(p.readAllStandardOutput());
+        }
+        return p.exitCode() == 0;
+    };
+
+    if (!runGpgInHome({QStringLiteral("--import"), pubPath}, nullptr)) {
+        return false;
+    }
+
+    QString output;
+    if (!runGpgInHome({QStringLiteral("--verify"),
+                       QStringLiteral("--status-fd"),
+                       QStringLiteral("1"),
+                       sigPath,
+                       manifestPath},
+                      &output)) {
+        return false;
+    }
+    return output.contains(QStringLiteral("VALIDSIG"), Qt::CaseInsensitive);
 }
 
 void loadFromFile(const QString& path, bool userTofu = false)

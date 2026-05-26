@@ -49,7 +49,13 @@ jobs:
 
       - name: Install OpenSSL
         shell: pwsh
-        run: choco install openssl -y --no-progress
+        run: choco install openssl gnupg -y --no-progress
+
+      - name: Verify toolchain helpers
+        shell: pwsh
+        run: |
+          gpg --version
+          windeployqt --version
 
       - name: Configure
         shell: pwsh

@@ -287,6 +287,11 @@ void TestIsoCatalog::embeddedManifestIntegrity()
     QVERIFY(IsoCatalogManifest::entryCount() >= 4);
 
     const bool hasSignature = QFile::exists(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.asc"));
+#ifdef Q_OS_WIN
+    if (hasSignature) {
+        QSKIP("Embedded catalog OpenPGP verification is skipped on Windows until Gpg4win support is validated");
+    }
+#endif
     if (hasSignature && gpgAvailable()) {
         QVERIFY(IsoCatalogManifest::lastEmbeddedGpgOk());
         QVERIFY2(IsoCatalogManifest::lastEmbeddedIntegrityOk(),

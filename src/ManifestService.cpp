@@ -22,24 +22,38 @@ QString normalizeMount(const QString& mountPoint)
     return m;
 }
 
+bool isWithinMount(const QString& mountPoint, const QString& path)
+{
+    const QString mount = normalizeMount(QDir::cleanPath(QDir::fromNativeSeparators(mountPoint)));
+    const QString cleanPath = QDir::cleanPath(QDir::fromNativeSeparators(path));
+    return cleanPath == mount || cleanPath.startsWith(mount + QLatin1Char('/'));
+}
+
 QString relativePathUnder(const QString& mountPoint, const QString& absolutePath)
 {
     const QString mount = normalizeMount(mountPoint);
-    QString abs = QDir::fromNativeSeparators(absolutePath);
-    if (abs.startsWith(mount)) {
-        QString rel = abs.mid(mount.size());
-        if (rel.startsWith(QLatin1Char('/'))) {
-            rel = rel.mid(1);
-        }
-        return rel;
+    const QString abs = QDir::cleanPath(QDir::fromNativeSeparators(absolutePath));
+    if (abs == mount) {
+        return {};
     }
-    return abs;
+    if (abs.startsWith(mount + QLatin1Char('/'))) {
+        return abs.mid(mount.size() + 1);
+    }
+    return {};
 }
 
 QStringList collectFilesForPaths(const QString& mountPoint, const QStringList& paths, QString* errorOut)
 {
     QStringList files;
-    const QString mount = normalizeMount(mountPoint);
+    const QString normalizedMount = normalizeMount(mountPoint);
+    const QString mount = QFileInfo(normalizedMount).canonicalFilePath();
+    if (mount.isEmpty()) {
+        if (errorOut) {
+            *errorOut = QStringLiteral("Mount point does not exist: %1").arg(mountPoint);
+        }
+        return {};
+    }
+
     QDir root(mount);
     if (!root.exists()) {
         if (errorOut) {
@@ -57,18 +71,42 @@ QStringList collectFilesForPaths(const QString& mountPoint, const QStringList& p
         if (!QDir::isAbsolutePath(trimmed)) {
             absolute = root.absoluteFilePath(trimmed);
         }
-        QFileInfo info(absolute);
+        const QString cleanAbsolute = QDir::cleanPath(QDir::fromNativeSeparators(absolute));
+        if (!isWithinMount(mount, cleanAbsolute)) {
+            if (errorOut) {
+                *errorOut = QStringLiteral("Watch path escapes mount point: %1").arg(trimmed);
+            }
+            return {};
+        }
+
+        QFileInfo info(cleanAbsolute);
         if (!info.exists()) {
             continue;
         }
+        const QString canonical = info.canonicalFilePath();
+        if (canonical.isEmpty() || !isWithinMount(mount, canonical)) {
+            if (errorOut) {
+                *errorOut = QStringLiteral("Watch path escapes mount point: %1").arg(trimmed);
+            }
+            return {};
+        }
+
         if (info.isFile()) {
-            files.append(info.absoluteFilePath());
+            files.append(canonical);
             continue;
         }
         if (info.isDir()) {
-            QDirIterator it(info.absoluteFilePath(), QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it(canonical, QDir::Files, QDirIterator::Subdirectories);
             while (it.hasNext()) {
-                files.append(it.next());
+                const QString filePath = it.next();
+                const QString fileCanonical = QFileInfo(filePath).canonicalFilePath();
+                if (fileCanonical.isEmpty() || !isWithinMount(mount, fileCanonical)) {
+                    if (errorOut) {
+                        *errorOut = QStringLiteral("Watched file escapes mount point: %1").arg(filePath);
+                    }
+                    return {};
+                }
+                files.append(fileCanonical);
             }
         }
     }
@@ -122,7 +160,13 @@ QString ManifestService::hashFileContents(const QString& absolutePath, QString* 
         }
         return {};
     }
-    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1) {
+        EVP_MD_CTX_free(ctx);
+        if (errorOut) {
+            *errorOut = QStringLiteral("OpenSSL hash initialization failed");
+        }
+        return {};
+    }
 
     QByteArray buffer;
     buffer.resize(1024 * 1024);
@@ -138,12 +182,24 @@ QString ManifestService::hashFileContents(const QString& absolutePath, QString* 
         if (n == 0) {
             break;
         }
-        EVP_DigestUpdate(ctx, buffer.constData(), static_cast<size_t>(n));
+        if (EVP_DigestUpdate(ctx, buffer.constData(), static_cast<size_t>(n)) != 1) {
+            EVP_MD_CTX_free(ctx);
+            if (errorOut) {
+                *errorOut = QStringLiteral("OpenSSL hash update failed");
+            }
+            return {};
+        }
     }
 
     unsigned char hash[EVP_MAX_MD_SIZE];
     unsigned int len = 0;
-    EVP_DigestFinal_ex(ctx, hash, &len);
+    if (EVP_DigestFinal_ex(ctx, hash, &len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        if (errorOut) {
+            *errorOut = QStringLiteral("OpenSSL hash finalization failed");
+        }
+        return {};
+    }
     EVP_MD_CTX_free(ctx);
 
     return MerkleTree::toHex(QByteArray(reinterpret_cast<const char*>(hash), static_cast<int>(len)));

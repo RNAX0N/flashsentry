@@ -255,6 +255,29 @@ struct HidDeviceInfo {
         return capabilities.contains(QStringLiteral("mouse"));
     }
 
+    QString vidPidKey() const {
+        if (vendorId.isEmpty() || productId.isEmpty()) {
+            return {};
+        }
+        return QStringLiteral("vidpid:%1:%2").arg(vendorId.toLower(), productId.toLower());
+    }
+
+    QString vidPidSerialKey() const {
+        if (vendorId.isEmpty() || productId.isEmpty() || serial.isEmpty()) {
+            return {};
+        }
+        return QStringLiteral("vidpidserial:%1:%2:%3")
+            .arg(vendorId.toLower(), productId.toLower(), serial);
+    }
+
+    QString productKey() const {
+        if (vendorId.isEmpty() || productId.isEmpty() || product.isEmpty()) {
+            return {};
+        }
+        return QStringLiteral("product:%1:%2:%3")
+            .arg(vendorId.toLower(), productId.toLower(), product.toLower());
+    }
+
     QString stableId() const {
         const QString identity = QStringList{vendorId, productId, serial, usbPath}.join(QLatin1Char(':'));
         if (!vendorId.isEmpty() && !productId.isEmpty()
@@ -327,10 +350,83 @@ struct HidDeviceInfo {
     }
 };
 
+enum class HidDeviceCategory {
+    Unknown,
+    Keyboard,
+    Mouse,
+    KeyboardMouseCombo,
+    Touchpad,
+    GameController,
+    Receiver,
+    OtherHid
+};
+
+inline QString hidDeviceCategoryToString(HidDeviceCategory category) {
+    switch (category) {
+        case HidDeviceCategory::Keyboard: return QStringLiteral("keyboard");
+        case HidDeviceCategory::Mouse: return QStringLiteral("mouse");
+        case HidDeviceCategory::KeyboardMouseCombo: return QStringLiteral("keyboard_mouse_combo");
+        case HidDeviceCategory::Touchpad: return QStringLiteral("touchpad");
+        case HidDeviceCategory::GameController: return QStringLiteral("game_controller");
+        case HidDeviceCategory::Receiver: return QStringLiteral("receiver");
+        case HidDeviceCategory::OtherHid: return QStringLiteral("other_hid");
+        case HidDeviceCategory::Unknown: return QStringLiteral("unknown");
+    }
+    return QStringLiteral("unknown");
+}
+
+inline HidDeviceCategory hidDeviceCategoryFromString(const QString& value) {
+    const QString v = value.trimmed().toLower();
+    if (v == QLatin1String("keyboard")) return HidDeviceCategory::Keyboard;
+    if (v == QLatin1String("mouse")) return HidDeviceCategory::Mouse;
+    if (v == QLatin1String("keyboard_mouse_combo")) return HidDeviceCategory::KeyboardMouseCombo;
+    if (v == QLatin1String("touchpad")) return HidDeviceCategory::Touchpad;
+    if (v == QLatin1String("game_controller")) return HidDeviceCategory::GameController;
+    if (v == QLatin1String("receiver")) return HidDeviceCategory::Receiver;
+    if (v == QLatin1String("other_hid")) return HidDeviceCategory::OtherHid;
+    return HidDeviceCategory::Unknown;
+}
+
+inline QString hidDeviceCategoryLabel(HidDeviceCategory category) {
+    switch (category) {
+        case HidDeviceCategory::Keyboard: return QStringLiteral("Keyboard");
+        case HidDeviceCategory::Mouse: return QStringLiteral("Mouse");
+        case HidDeviceCategory::KeyboardMouseCombo: return QStringLiteral("Keyboard + mouse combo");
+        case HidDeviceCategory::Touchpad: return QStringLiteral("Touchpad");
+        case HidDeviceCategory::GameController: return QStringLiteral("Game controller");
+        case HidDeviceCategory::Receiver: return QStringLiteral("Wireless receiver / dongle");
+        case HidDeviceCategory::OtherHid: return QStringLiteral("Other HID device");
+        case HidDeviceCategory::Unknown: return QStringLiteral("Unknown");
+    }
+    return QStringLiteral("Unknown");
+}
+
+inline HidDeviceCategory inferredHidDeviceCategory(const HidDeviceInfo& info) {
+    if (info.capabilities.contains(QStringLiteral("keyboard"))
+        && info.capabilities.contains(QStringLiteral("mouse"))) {
+        return HidDeviceCategory::KeyboardMouseCombo;
+    }
+    if (info.capabilities.contains(QStringLiteral("keyboard"))) {
+        return HidDeviceCategory::Keyboard;
+    }
+    if (info.capabilities.contains(QStringLiteral("mouse"))) {
+        return HidDeviceCategory::Mouse;
+    }
+    if (info.capabilities.contains(QStringLiteral("touchpad"))) {
+        return HidDeviceCategory::Touchpad;
+    }
+    if (info.capabilities.contains(QStringLiteral("joystick"))) {
+        return HidDeviceCategory::GameController;
+    }
+    return HidDeviceCategory::OtherHid;
+}
+
 struct BadUsbBaselineEntry {
     QString stableId;
     HidDeviceInfo device;
     bool trusted = false;
+    HidDeviceCategory userCategory = HidDeviceCategory::Unknown;
+    QStringList identifierAliases;
     QDateTime firstSeenUtc;
     QDateTime lastSeenUtc;
     QString notes;
@@ -339,6 +435,10 @@ struct BadUsbBaselineEntry {
         QJsonObject obj = device.toJson();
         obj["stable_id"] = stableId.isEmpty() ? device.stableId() : stableId;
         obj["trusted"] = trusted;
+        obj["user_category"] = hidDeviceCategoryToString(userCategory);
+        QJsonArray aliases;
+        for (const QString& alias : identifierAliases) aliases.append(alias);
+        obj["identifier_aliases"] = aliases;
         obj["first_seen"] = firstSeenUtc.toString(Qt::ISODate);
         obj["last_seen"] = lastSeenUtc.toString(Qt::ISODate);
         obj["notes"] = notes;
@@ -350,6 +450,12 @@ struct BadUsbBaselineEntry {
         entry.device = HidDeviceInfo::fromJson(obj);
         entry.stableId = obj["stable_id"].toString(entry.device.stableId());
         entry.trusted = obj["trusted"].toBool(false);
+        entry.userCategory = hidDeviceCategoryFromString(obj["user_category"].toString());
+        for (const QJsonValue& value : obj["identifier_aliases"].toArray()) {
+            const QString alias = value.toString();
+            if (!alias.isEmpty()) entry.identifierAliases.append(alias);
+        }
+        entry.identifierAliases.removeDuplicates();
         entry.firstSeenUtc = QDateTime::fromString(obj["first_seen"].toString(), Qt::ISODate);
         entry.lastSeenUtc = QDateTime::fromString(obj["last_seen"].toString(), Qt::ISODate);
         entry.notes = obj["notes"].toString();

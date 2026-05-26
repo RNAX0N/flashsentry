@@ -12,6 +12,7 @@ private slots:
     void compositeKeyboardStorageIsCritical();
     void trustedKeyboardPasses();
     void interfaceDriftAnomaly();
+    void categoryCapabilityDriftIsCritical();
 };
 
 static HidDeviceInfo keyboard()
@@ -74,6 +75,21 @@ void TestBadUsbAnalyzer::interfaceDriftAnomaly()
     const auto result = BadUsbAnalyzer::analyzeConnect(changed, baseline, {}, 1, settings);
     QVERIFY(result.anomalous);
     QCOMPARE(result.ruleId, QStringLiteral("interface-drift"));
+}
+
+void TestBadUsbAnalyzer::categoryCapabilityDriftIsCritical()
+{
+    AppSettings settings;
+    BadUsbBaselineEntry baseline;
+    baseline.stableId = keyboard().stableId();
+    baseline.device = keyboard();
+    baseline.trusted = true;
+    baseline.userCategory = HidDeviceCategory::Mouse;
+
+    const auto result = BadUsbAnalyzer::analyzeConnect(keyboard(), baseline, {}, 1, settings);
+    QVERIFY(result.anomalous);
+    QCOMPARE(result.severity, BadUsbSeverity::Critical);
+    QCOMPARE(result.ruleId, QStringLiteral("category-capability-drift"));
 }
 
 QTEST_MAIN(TestBadUsbAnalyzer)

@@ -16,6 +16,7 @@
 #include <QCloseEvent>
 #include <QSettings>
 #include <memory>
+#include <optional>
 #include <QHash>
 #include <QSet>
 
@@ -298,6 +299,8 @@ private:
     QStringList relatedStorageNodesForHid(const HidDeviceInfo& device) const;
     void processBadUsbDevice(const HidDeviceInfo& device);
     void configureBadUsbMonitoring();
+    std::optional<HidDeviceCategory> promptForHidCategory(const HidDeviceInfo& device,
+                                                          HidDeviceCategory suggested) const;
 
     bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
                                  const QString& actual, bool offerMount = true);

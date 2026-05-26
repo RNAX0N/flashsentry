@@ -21,8 +21,13 @@ public:
     QList<BadUsbBaselineEntry> allDevices() const;
     bool hasDevice(const QString& stableId) const;
     std::optional<BadUsbBaselineEntry> getDevice(const QString& stableId) const;
+    std::optional<BadUsbBaselineEntry> matchDevice(const HidDeviceInfo& info) const;
 
-    bool upsertBaseline(const HidDeviceInfo& info, bool trusted = true, const QString& notes = {});
+    static QStringList identifierAliasesFor(const HidDeviceInfo& info);
+
+    bool upsertBaseline(const HidDeviceInfo& info, bool trusted = true,
+                        const QString& notes = {},
+                        HidDeviceCategory category = HidDeviceCategory::Unknown);
     bool setTrusted(const QString& stableId, bool trusted);
     bool removeDevice(const QString& stableId);
     bool save() const;

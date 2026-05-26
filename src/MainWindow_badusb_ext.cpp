@@ -4,6 +4,7 @@
 #include "Platform.h"
 
 #include <QDateTime>
+#include <QInputDialog>
 #include <QMessageBox>
 
 namespace FlashSentry {
@@ -87,7 +88,19 @@ void MainWindow::processBadUsbDevice(const HidDeviceInfo& device)
         history.removeFirst();
     }
 
-    const auto baseline = m_badUsbBaselineStore->getDevice(stableId);
+    auto baseline = m_badUsbBaselineStore->matchDevice(device);
+    if (!baseline.has_value() && isVisible() && m_settings.badUsbConfirmAnomalies) {
+        const HidDeviceCategory suggested = inferredHidDeviceCategory(device);
+        const auto selected = promptForHidCategory(device, suggested);
+        if (selected.has_value()) {
+            m_badUsbBaselineStore->upsertBaseline(
+                device, true, QStringLiteral("User-enrolled on first sight"), *selected);
+            baseline = m_badUsbBaselineStore->matchDevice(device);
+            logMessage(QStringLiteral("BadUSB enrolled %1 as %2")
+                           .arg(device.displayName(), hidDeviceCategoryLabel(*selected)),
+                       LogLevel::Security);
+        }
+    }
     const QStringList relatedStorage = relatedStorageNodesForHid(device);
     const BadUsbAnomalyResult anomaly = BadUsbAnalyzer::analyzeConnect(
         device, baseline, relatedStorage, history.size(), m_settings);
@@ -98,7 +111,8 @@ void MainWindow::processBadUsbDevice(const HidDeviceInfo& device)
     }
 
     if (m_settings.badUsbAutoBaselineTrusted && !anomaly.anomalous && !baseline.has_value()) {
-        m_badUsbBaselineStore->upsertBaseline(device, true, QStringLiteral("Auto-baselined"));
+        m_badUsbBaselineStore->upsertBaseline(device, true, QStringLiteral("Auto-baselined"),
+                                              inferredHidDeviceCategory(device));
     }
 
     if (!anomaly.anomalous) {
@@ -141,7 +155,11 @@ void MainWindow::onBadUsbTrustRequested(const QString& stableId)
                    LogLevel::Warning);
         return;
     }
-    if (m_badUsbBaselineStore->upsertBaseline(*device, true)) {
+    const auto selected = promptForHidCategory(*device, inferredHidDeviceCategory(*device));
+    if (!selected.has_value()) {
+        return;
+    }
+    if (m_badUsbBaselineStore->upsertBaseline(*device, true, QString(), *selected)) {
         logMessage(QStringLiteral("BadUSB baseline trusted: %1").arg(device->displayName()),
                    LogLevel::Security);
         if (m_badUsbWidget) {
@@ -165,6 +183,50 @@ void MainWindow::onBadUsbCaptureRequested(const QString& stableId)
     manual.device = *device;
     manual.detectedAtUtc = QDateTime::currentDateTimeUtc();
     m_usbmonCapture->startCapture(*device, manual, m_settings.badUsbUsbmonCommand);
+}
+
+std::optional<HidDeviceCategory> MainWindow::promptForHidCategory(
+    const HidDeviceInfo& device, HidDeviceCategory suggested) const
+{
+    QStringList labels;
+    QList<HidDeviceCategory> categories = {
+        HidDeviceCategory::Keyboard,
+        HidDeviceCategory::Mouse,
+        HidDeviceCategory::KeyboardMouseCombo,
+        HidDeviceCategory::Touchpad,
+        HidDeviceCategory::GameController,
+        HidDeviceCategory::Receiver,
+        HidDeviceCategory::OtherHid,
+    };
+    int current = 0;
+    for (int i = 0; i < categories.size(); ++i) {
+        labels.append(hidDeviceCategoryLabel(categories.at(i)));
+        if (categories.at(i) == suggested) {
+            current = i;
+        }
+    }
+
+    bool ok = false;
+    const QString selected = QInputDialog::getItem(
+        const_cast<MainWindow*>(this),
+        QStringLiteral("Enroll HID device"),
+        QStringLiteral("Confirm what this device is:\n\n%1\nVID:PID %2:%3\nCapabilities: %4")
+            .arg(device.displayName(),
+                 device.vendorId,
+                 device.productId,
+                 device.capabilities.join(QStringLiteral(", "))),
+        labels,
+        current,
+        false,
+        &ok);
+    if (!ok) {
+        return std::nullopt;
+    }
+    const int index = labels.indexOf(selected);
+    if (index < 0 || index >= categories.size()) {
+        return std::nullopt;
+    }
+    return categories.at(index);
 }
 
 } // namespace FlashSentry

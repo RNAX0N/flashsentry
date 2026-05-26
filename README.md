@@ -202,16 +202,47 @@ See **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** for workflows and troubleshooti
 
 ## Building
 
-```bash
-# Arch build deps
-sudo pacman -S qt6-base qt6-tools cmake base-devel openssl pkgconf
+### Arch package build and pacman install
 
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . -j$(nproc)
+For normal Arch use, build a pacman package from the `packaging/PKGBUILD` and install that
+package instead of running directly from the CMake build tree:
+
+```bash
+# Tools needed by makepkg itself
+sudo pacman -S --needed base-devel git
+
+git clone https://github.com/RNAX0N/flashsentry.git
+cd flashsentry/packaging
+
+# Build the package and install dependencies declared in the PKGBUILD
+makepkg -s --cleanbuild
+
+# Install/upgrade through pacman
+sudo pacman -U ./flashsentry-*.pkg.tar.zst
+
+# Run after install
+flashsentry
+```
+
+Shortcut:
+
+```bash
+cd flashsentry/packaging
+makepkg -si
+```
+
+### Developer build without installing
+
+Use this only for local development or quick compile checks:
+
+```bash
+sudo pacman -S --needed qt6-base qt6-tools cmake base-devel openssl pkgconf
+
+cmake -B build-gcc -DCMAKE_BUILD_TYPE=Release -DFLASHSENTRY_BUILD_TESTS=ON -DCMAKE_CXX_COMPILER=g++
+cmake --build build-gcc -j$(nproc)
 
 # Run from build tree
-./flashsentry
+./build-gcc/flashsentry
 ```
 
 Optional tests:

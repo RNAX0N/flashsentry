@@ -114,6 +114,9 @@ public:
      */
     void setProgressVisible(bool visible);
 
+    /** Last ISO/image verification summary for this partition (empty hides). */
+    void setIsoVerifySummary(const QString& summary);
+
     /**
      * @brief Start the status indicator pulse animation
      */
@@ -252,6 +255,7 @@ private:
     QLabel* m_serialLabel = nullptr;
     QLabel* m_lastSeenLabel = nullptr;
     QLabel* m_hashLabel = nullptr;
+    QLabel* m_isoSummaryLabel = nullptr;
 
     // UI Components - Progress
     QWidget* m_progressWidget = nullptr;

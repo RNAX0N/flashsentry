@@ -240,7 +240,7 @@ flashsentry --list-publishers
 flashsentry --trust-hash Win11_24H2_English_x64.iso:41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54
 ```
 
-Reports can be plain text (default), `csv`, or `html`. Use **Settings → Verification** profiles (Default, Multi-image USB, Work USB, Paranoid) for quick presets.
+Reports can be plain text (default), `csv`, `html`, or `json`. Profiles: **Default**, **Multi-image USB**, **Work USB**, **Paranoid** (settings id `multi_image` replaces the legacy `ventoy` id automatically).
 
 ---
 
@@ -300,7 +300,9 @@ FlashSentry verifies **files on a mounted volume** — it does not care whether 
 | No image files found | Often a `dd`-written layout or the small boot partition only — mount the main data partition or see the dd section above |
 | Offline verification | Copy `SHA256SUMS`, `.gpg`, or per-file `.sha256` / `.sig` next to the image |
 
-Use **Settings → Verification profile → Multi-image USB** when the stick usually holds several ISOs (auto-verify on mount, no full-disk hash on connect). Otherwise **Default** is fine.
+Use **ISO verify → Verification profile → Multi-image USB** (or **Settings → Verification**) when the stick usually holds several images. Otherwise **Default** is fine.
+
+On the **ISO verify** tab: plug in a flash drive or choose a folder, pick a profile, then **Verify images**. Click a result row to jump to that file in the report. Device cards on the **USB devices** tab show the latest image check summary.
 
 **Compatibility:** FlashSentry only **reads** image files. Vendor boot trees (`EFI/`, `ventoy/`, Easy2Boot `_ISO/`, etc.) are not scanned or modified. Desktop automount is supported — verification runs on the mount your session already has.
 

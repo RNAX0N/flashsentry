@@ -57,6 +57,7 @@ add_test(NAME test_iso_checksum COMMAND test_iso_checksum)
 
 add_executable(test_iso_scan_rules
     test_iso_scan_rules.cpp
+    ${CMAKE_SOURCE_DIR}/src/SettingsProfiles.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoScanRules.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoVerifier.cpp
     ${ISO_CATALOG_SOURCES}

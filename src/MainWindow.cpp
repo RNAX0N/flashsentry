@@ -2,6 +2,7 @@
 #include "AutostartManager.h"
 #include "AuditLog.h"
 #include "IsoCatalogManifest.h"
+#include "SettingsProfiles.h"
 #include "WelcomeWizard.h"
 
 #include <QApplication>
@@ -122,6 +123,15 @@ void MainWindow::setupUi()
             this, &MainWindow::onIsoLogMessage);
     connect(m_isoWidget, &IsoVerifierWidget::verificationReportReady, this,
             &MainWindow::handleIsoVerificationReport);
+    connect(m_isoWidget, &IsoVerifierWidget::settingsProfileSelected, this,
+            [this](const QString& profileId) {
+                SettingsProfiles::applyProfile(profileId, m_settings);
+                applySettings(m_settings);
+                saveSettings();
+                logMessage(QStringLiteral("Profile: %1")
+                               .arg(SettingsProfiles::profileDisplayName(profileId)),
+                           LogLevel::Info);
+            });
 
     m_appModeStack->addWidget(m_isoWidget);
     m_mainLayout->addWidget(m_appModeStack, 1);
@@ -499,7 +509,14 @@ void MainWindow::loadSettings()
     m_settings.isoPreferOfflineSidecars = m_qsettings->value("iso/preferOfflineSidecars", false).toBool();
     m_settings.isoVerifyParallel = m_qsettings->value("iso/verifyParallel", 2).toInt();
     m_settings.showFirstRunWizard = m_qsettings->value("general/showFirstRunWizard", true).toBool();
-    m_settings.settingsProfile = m_qsettings->value("general/settingsProfile", QStringLiteral("default")).toString();
+    {
+        const QString storedProfile =
+            m_qsettings->value("general/settingsProfile", QStringLiteral("default")).toString();
+        m_settings.settingsProfile = SettingsProfiles::normalizeProfileId(storedProfile);
+        if (storedProfile == QStringLiteral("ventoy")) {
+            m_qsettings->setValue("general/settingsProfile", QStringLiteral("multi_image"));
+        }
+    }
     m_settings.requireConfirmationForNew = m_qsettings->value("security/confirmNewDevice", true).toBool();
     m_settings.requireConfirmationForModified = m_qsettings->value("security/confirmModified", true).toBool();
     m_settings.blockModifiedDevices = m_qsettings->value("security/blockModified", false).toBool();
@@ -1375,6 +1392,9 @@ void MainWindow::applySettings(const AppSettings& settings)
     m_hashWorker->setMaxConcurrent(settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(settings.animationsEnabled);
     applyAppModule();
+    if (m_isoWidget) {
+        m_isoWidget->setActiveProfile(settings.settingsProfile);
+    }
 
     if (AutostartManager::isAvailable()) {
         const auto current = AutostartManager::isLoginAutostartEnabled();

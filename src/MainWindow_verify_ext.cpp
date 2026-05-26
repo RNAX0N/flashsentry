@@ -366,6 +366,7 @@ void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
     }
 
     if (DeviceCard* card = getDeviceCard(deviceNode)) {
+        card->setIsoVerifySummary(summary);
         if (passed == results.size() && !results.isEmpty()) {
             card->setVerificationStatus(VerificationStatus::Verified);
         } else if (IsoVerifier::mountScanHasFailures(results)) {

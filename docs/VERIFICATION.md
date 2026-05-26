@@ -198,6 +198,17 @@ Exit codes: `0` pass, `1` verify failure, `2` error. ISO options are read from `
 
 Embedded catalog integrity (SHA-256 + OpenPGP) is shown in the status bar and ISO verification tab when checks fail.
 
+### Settings profiles
+
+| Profile id | Purpose |
+|------------|---------|
+| `default` | Balanced USB monitor + optional auto image verify |
+| `multi_image` | Several images on one stick; auto-verify on mount; no full-disk hash on connect |
+| `work_usb` | Watch folders; no auto image verify on mount |
+| `paranoid` | Stricter blocking and single-threaded verify |
+
+Legacy config value `ventoy` is migrated automatically to `multi_image`.
+
 ## Configuration keys (QSettings)
 
 | Key | Purpose |

@@ -4,6 +4,7 @@
 #include <QFile>
 #include "IsoScanRules.h"
 #include "IsoVerifier.h"
+#include "SettingsProfiles.h"
 
 using namespace FlashSentry;
 
@@ -14,6 +15,7 @@ private slots:
     void reservedDirectories();
     void multibootLayoutDetection();
     void skipSmallEfiPartition();
+    void profileIdMigration();
 };
 
 void TestIsoScanRules::reservedDirectories()
@@ -42,6 +44,16 @@ void TestIsoScanRules::multibootLayoutDetection()
     for (const QString& path : files) {
         QVERIFY(!path.contains(QStringLiteral("/ventoy/")));
     }
+}
+
+void TestIsoScanRules::profileIdMigration()
+{
+    QCOMPARE(SettingsProfiles::normalizeProfileId(QStringLiteral("ventoy")),
+             QStringLiteral("multi_image"));
+    QCOMPARE(SettingsProfiles::normalizeProfileId(QStringLiteral("multi_image")),
+             QStringLiteral("multi_image"));
+    QCOMPARE(SettingsProfiles::profileDisplayName(QStringLiteral("ventoy")),
+             QStringLiteral("Multi-image USB"));
 }
 
 void TestIsoScanRules::skipSmallEfiPartition()

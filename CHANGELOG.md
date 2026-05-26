@@ -4,12 +4,24 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-05-21
+
+### Added
+
+- **ISO verify tab**: empty state (plug in USB flash drive), verification **profile** picker, table row → report scroll
+- **Device cards**: show last image verification summary (`Images: N/M passed`)
+
+### Changed
+
+- Settings profile id **`multi_image`** replaces legacy **`ventoy`** (auto-migrated in config)
+- Profile display name: **Multi-image USB**
+
 ## [1.4.1] - 2026-05-21
 
 ### Changed
 
 - User-facing copy reframed for **any** image-on-USB workflow (`dd`, Rufus, copy, multiboot) — not Ventoy-specific
-- Settings profile label: **Multi-image USB** (internal id `ventoy` unchanged for compatibility)
+- Settings profile label: **Multi-image USB** (later renamed to id `multi_image` in 1.4.2)
 - Docs/README describe multiboot coexistence as one compatibility case among others
 
 ## [1.4.0] - 2026-05-21

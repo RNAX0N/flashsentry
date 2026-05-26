@@ -2,23 +2,32 @@
 
 namespace FlashSentry {
 
+QString SettingsProfiles::normalizeProfileId(const QString& profileId)
+{
+    if (profileId == QStringLiteral("ventoy")) {
+        return QStringLiteral("multi_image");
+    }
+    return profileId;
+}
+
 QStringList SettingsProfiles::profileIds()
 {
     return {QStringLiteral("default"),
-            QStringLiteral("ventoy"),
+            QStringLiteral("multi_image"),
             QStringLiteral("work_usb"),
             QStringLiteral("paranoid")};
 }
 
 QString SettingsProfiles::profileDisplayName(const QString& profileId)
 {
-    if (profileId == QStringLiteral("ventoy")) {
-        return QStringLiteral("Multi-image USB (several ISOs on one stick)");
+    const QString id = normalizeProfileId(profileId);
+    if (id == QStringLiteral("multi_image")) {
+        return QStringLiteral("Multi-image USB");
     }
-    if (profileId == QStringLiteral("work_usb")) {
+    if (id == QStringLiteral("work_usb")) {
         return QStringLiteral("Work USB (watch folders)");
     }
-    if (profileId == QStringLiteral("paranoid")) {
+    if (id == QStringLiteral("paranoid")) {
         return QStringLiteral("Paranoid");
     }
     return QStringLiteral("Default (recommended)");
@@ -26,8 +35,9 @@ QString SettingsProfiles::profileDisplayName(const QString& profileId)
 
 void SettingsProfiles::applyProfile(const QString& profileId, AppSettings& settings)
 {
-    settings.settingsProfile = profileId;
-    if (profileId == QStringLiteral("ventoy")) {
+    const QString id = normalizeProfileId(profileId);
+    settings.settingsProfile = id;
+    if (id == QStringLiteral("multi_image")) {
         settings.appModule = AppModule::UsbMonitor;
         settings.defaultVerificationProfile = VerificationProfile::WatchManifest;
         settings.isoAutoVerifyOnUsbMount = true;
@@ -39,7 +49,7 @@ void SettingsProfiles::applyProfile(const QString& profileId, AppSettings& setti
         settings.blockModifiedDevices = false;
         return;
     }
-    if (profileId == QStringLiteral("work_usb")) {
+    if (id == QStringLiteral("work_usb")) {
         settings.appModule = AppModule::UsbMonitor;
         settings.defaultVerificationProfile = VerificationProfile::WatchManifest;
         settings.isoAutoVerifyOnUsbMount = false;
@@ -47,7 +57,7 @@ void SettingsProfiles::applyProfile(const QString& profileId, AppSettings& setti
         settings.requireConfirmationForModified = true;
         return;
     }
-    if (profileId == QStringLiteral("paranoid")) {
+    if (id == QStringLiteral("paranoid")) {
         settings.appModule = AppModule::UsbMonitor;
         settings.defaultVerificationProfile = VerificationProfile::WatchManifest;
         settings.isoAutoVerifyOnUsbMount = true;

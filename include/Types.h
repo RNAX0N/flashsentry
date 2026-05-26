@@ -445,7 +445,13 @@ struct AppSettings {
         settings.isoPreferOfflineSidecars = obj["iso_prefer_offline_sidecars"].toBool(false);
         settings.isoVerifyParallel = obj["iso_verify_parallel"].toInt(2);
         settings.showFirstRunWizard = obj["show_first_run_wizard"].toBool(true);
-        settings.settingsProfile = obj["settings_profile"].toString(QStringLiteral("default"));
+        {
+            QString profile = obj["settings_profile"].toString(QStringLiteral("default"));
+            if (profile == QStringLiteral("ventoy")) {
+                profile = QStringLiteral("multi_image");
+            }
+            settings.settingsProfile = profile;
+        }
         return settings;
     }
 };

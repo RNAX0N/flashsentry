@@ -74,7 +74,8 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     if (m_isoParallelSpin)
         m_isoParallelSpin->setValue(settings.isoVerifyParallel);
     if (m_settingsProfileCombo) {
-        const int idx = m_settingsProfileCombo->findData(settings.settingsProfile);
+        const QString profileId = SettingsProfiles::normalizeProfileId(settings.settingsProfile);
+        const int idx = m_settingsProfileCombo->findData(profileId);
         if (idx >= 0) {
             m_settingsProfileCombo->setCurrentIndex(idx);
         }
@@ -136,8 +137,10 @@ AppSettings SettingsDialog::getSettings() const
         settings.isoPreferOfflineSidecars = m_isoPreferOfflineCheck->isChecked();
     if (m_isoParallelSpin)
         settings.isoVerifyParallel = m_isoParallelSpin->value();
-    if (m_settingsProfileCombo)
-        settings.settingsProfile = m_settingsProfileCombo->currentData().toString();
+    if (m_settingsProfileCombo) {
+        settings.settingsProfile =
+            SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->currentData().toString());
+    }
     settings.defaultTrustLevel = m_defaultTrustCombo->currentIndex();
     
     // Hashing
@@ -268,7 +271,8 @@ QWidget* SettingsDialog::createVerificationTab()
             return;
         }
         AppSettings s = getSettings();
-        SettingsProfiles::applyProfile(m_settingsProfileCombo->itemData(index).toString(), s);
+        SettingsProfiles::applyProfile(
+            SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->itemData(index).toString()), s);
         loadSettings(s);
         m_hasChanges = true;
     });

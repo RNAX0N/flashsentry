@@ -25,6 +25,11 @@ private slots:
     void garudaMatches();
     void cachyosPerFileArtifacts();
     void nobaraMatches();
+    void raspiosMatches();
+    void ubuntuRpiMatches();
+    void windowsManifestEmbedded();
+    void windowsManifestHintOnly();
+    void armbianMatches();
 };
 
 void TestIsoCatalog::archIsoMatches()
@@ -160,7 +165,7 @@ void TestIsoCatalog::elementaryPerFileArtifacts()
 
 void TestIsoCatalog::knownPublisherIdsCount()
 {
-    QCOMPARE(IsoCatalog::knownPublisherIds().size(), 23);
+    QCOMPARE(IsoCatalog::knownPublisherIds().size(), 30);
 }
 
 void TestIsoCatalog::garudaMatches()
@@ -192,6 +197,52 @@ void TestIsoCatalog::nobaraMatches()
     QCOMPARE(match->publisherId, QStringLiteral("nobara"));
     QVERIFY(match->checksumUrl.endsWith(QStringLiteral(".iso.sha256sum")));
     QCOMPARE(match->releaseLabel, QStringLiteral("43 Official"));
+}
+
+void TestIsoCatalog::raspiosMatches()
+{
+    const auto match = IsoCatalog::matchIso(
+        QStringLiteral("/pi/2024-11-19-raspios-bookworm-arm64.img.xz"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("raspios"));
+    QVERIFY(match->checksumUrl.contains(QStringLiteral("raspios_arm64-2024-11-19")));
+    QVERIFY(match->checksumUrl.endsWith(QStringLiteral(".img.xz.sha256")));
+}
+
+void TestIsoCatalog::ubuntuRpiMatches()
+{
+    const auto match = IsoCatalog::matchIso(QStringLiteral(
+        "/pi/ubuntu-24.04.3-preinstalled-server-arm64+raspi.img.xz"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("ubuntu-rpi"));
+    QVERIFY(match->checksumUrl.contains(QStringLiteral("releases/24.04.3/release/SHA256SUMS")));
+}
+
+void TestIsoCatalog::windowsManifestEmbedded()
+{
+    const auto match = IsoCatalog::matchIso(QStringLiteral("/usb/Win11_24H2_English_x64.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("microsoft-windows"));
+    QVERIFY(!match->embeddedSha256.isEmpty());
+    QCOMPARE(match->embeddedSha256,
+             QStringLiteral("41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54"));
+}
+
+void TestIsoCatalog::windowsManifestHintOnly()
+{
+    const auto match = IsoCatalog::matchIso(QStringLiteral("/usb/Win11_25H2_English_x64.iso"));
+    QVERIFY(match.has_value());
+    QVERIFY(match->hintOnly);
+    QVERIFY(match->embeddedSha256.isEmpty());
+}
+
+void TestIsoCatalog::armbianMatches()
+{
+    const auto match = IsoCatalog::matchIso(
+        QStringLiteral("/usb/Armbian_25.2.1_Odroidn2_bookworm_current_6.12.13.img.xz"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("armbian"));
+    QVERIFY(match->checksumUrl.isEmpty());
 }
 
 QTEST_MAIN(TestIsoCatalog)

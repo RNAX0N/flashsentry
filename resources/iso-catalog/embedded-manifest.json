@@ -1,0 +1,41 @@
+{
+  "manifest_version": 2,
+  "remote_url": "https://raw.githubusercontent.com/RNAX0N/flashsentry/main/resources/iso-catalog/embedded-manifest.json",
+  "entries": [
+    {
+      "publisher_id": "microsoft-windows",
+      "publisher_name": "Microsoft Windows",
+      "file_pattern": "^Win11_24H2_English_x64\\.iso$",
+      "release_label": "Windows 11 24H2 English (US) x64",
+      "sha256": "41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54",
+      "reference_url": "https://www.microsoft.com/software-download/windows11"
+    },
+    {
+      "publisher_id": "microsoft-windows",
+      "publisher_name": "Microsoft Windows",
+      "file_pattern": "^Win11_.*\\.iso$",
+      "release_label": "Windows 11 — place Win11_*.iso.sha256 beside the file or refresh the catalog",
+      "sha256": "",
+      "reference_url": "https://www.microsoft.com/software-download/windows11",
+      "hint_only": true
+    },
+    {
+      "publisher_id": "microsoft-windows",
+      "publisher_name": "Microsoft Windows",
+      "file_pattern": "^Win10_.*\\.iso$",
+      "release_label": "Windows 10 — place Win10_*.iso.sha256 beside the file or refresh the catalog",
+      "sha256": "",
+      "reference_url": "https://www.microsoft.com/software-download/windows10",
+      "hint_only": true
+    },
+    {
+      "publisher_id": "microsoft-windows",
+      "publisher_name": "Microsoft Windows",
+      "file_pattern": "^Windows.*\\.iso$",
+      "release_label": "Windows — use a .sha256 sidecar from the Microsoft download page",
+      "sha256": "",
+      "reference_url": "https://www.microsoft.com/software-download",
+      "hint_only": true
+    }
+  ]
+}

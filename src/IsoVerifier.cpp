@@ -1,5 +1,6 @@
 #include "IsoVerifier.h"
 #include "IsoCatalog.h"
+#include "IsoCatalogManifest.h"
 #include "IsoChecksum.h"
 
 #include <openssl/evp.h>
@@ -61,6 +62,7 @@ QString findChecksumSidecar(const QString& isoPath)
         base + QStringLiteral(".sha256sum"),
         iso.absoluteFilePath() + QStringLiteral(".sha256"),
         iso.absoluteFilePath() + QStringLiteral(".sha256sum"),
+        iso.absoluteFilePath() + QStringLiteral(".sha"),
         iso.absolutePath() + QStringLiteral("/SHA256SUMS"),
         iso.absolutePath() + QStringLiteral("/sha256sums.txt"),
         iso.absolutePath() + QStringLiteral("/sha256sum.txt"),
@@ -289,13 +291,22 @@ IsoVerifier::MountScanResult IsoVerifier::scanMountPoint(const QString& mountPoi
     return scan;
 }
 
+bool isVerifiableImageFile(const QString& fileName)
+{
+    static const QRegularExpression re(
+        QStringLiteral("\\.(iso|img\\.xz|img|zip)$"), QRegularExpression::CaseInsensitiveOption);
+    return re.match(fileName).hasMatch();
+}
+
 QStringList IsoVerifier::findIsoFiles(const QString& directory)
 {
     QStringList result;
-    QDirIterator it(directory, {QStringLiteral("*.iso"), QStringLiteral("*.ISO")},
-                    QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it(directory, QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
-        result.append(it.next());
+        const QString path = it.next();
+        if (isVerifiableImageFile(QFileInfo(path).fileName())) {
+            result.append(path);
+        }
     }
     result.sort();
     return result;
@@ -333,7 +344,9 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
     const QFileInfo isoFi(isoPath);
     const QString isoName = isoFi.fileName();
 
-    // 1) Try publisher remote verification
+    IsoCatalogManifest::refreshRemoteIfStale();
+
+    // 1) Try publisher catalog (remote, embedded, or hint)
     if (auto match = IsoCatalog::matchIso(isoPath)) {
         r.publisherId = match->publisherId;
         r.publisherName = match->publisherName;
@@ -341,10 +354,24 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
         r.trustedFingerprints = match->trustedFingerprints;
         r.checksumUrl = match->checksumUrl;
         r.signatureUrl = match->signatureUrl;
-        r.source = IsoVerifySource::RemotePublisher;
+
+        if (!match->embeddedSha256.isEmpty()) {
+            r.source = IsoVerifySource::EmbeddedCatalog;
+            r.expectedSha256 = normalizeHash(match->embeddedSha256);
+            r.hashMatches = normalizeHash(r.computedSha256) == r.expectedSha256;
+        } else if (match->hintOnly) {
+            r.source = IsoVerifySource::EmbeddedCatalog;
+            if (!match->referenceUrl.isEmpty()) {
+                r.checksumUrl = match->referenceUrl;
+            }
+        } else {
+            r.source = IsoVerifySource::RemotePublisher;
+        }
 
         QString fetchErr;
-        const QByteArray sumsData = httpGet(match->checksumUrl, &fetchErr);
+        const QByteArray sumsData = match->checksumUrl.isEmpty() || !match->embeddedSha256.isEmpty()
+                                       ? QByteArray()
+                                       : httpGet(match->checksumUrl, &fetchErr);
         if (!sumsData.isEmpty()) {
             r.remoteFetched = true;
             const QString sumsPath = cacheDir() + QLatin1Char('/') + match->publisherId
@@ -398,8 +425,14 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
                     r.pgpSummary = importLog;
                 }
             }
-        } else if (r.errorMessage.isEmpty()) {
+        } else if (r.errorMessage.isEmpty() && !match->hintOnly && !match->checksumUrl.isEmpty()) {
             r.errorMessage = QStringLiteral("Could not download publisher checksums: %1").arg(fetchErr);
+        } else if (match->hintOnly && r.expectedSha256.isEmpty() && r.errorMessage.isEmpty()) {
+            r.errorMessage = QStringLiteral(
+                "Known image type — add a .sha256 sidecar next to the file or update the embedded "
+                "catalog (see %1).")
+                .arg(match->referenceUrl.isEmpty() ? QStringLiteral("docs/VERIFICATION.md")
+                                                   : match->referenceUrl);
         }
     }
 

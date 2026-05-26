@@ -1,6 +1,7 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
 
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
 
 add_executable(test_types test_types.cpp)
 target_include_directories(test_types PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -22,9 +23,15 @@ target_include_directories(test_merkle PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPE
 target_link_libraries(test_merkle PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
 add_test(NAME test_merkle COMMAND test_merkle)
 
-add_executable(test_iso_catalog test_iso_catalog.cpp ${CMAKE_SOURCE_DIR}/src/IsoCatalog.cpp)
+add_executable(test_iso_catalog
+    test_iso_catalog.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoCatalog.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoCatalogManifest.cpp
+)
 target_include_directories(test_iso_catalog PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_iso_catalog PRIVATE Qt6::Test Qt6::Core)
+target_link_libraries(test_iso_catalog PRIVATE Qt6::Test Qt6::Core Qt6::Network)
+target_compile_definitions(test_iso_catalog PRIVATE FLASHSENTRY_VERSION="${PROJECT_VERSION}")
+target_sources(test_iso_catalog PRIVATE ${CMAKE_SOURCE_DIR}/resources/resources.qrc)
 add_test(NAME test_iso_catalog COMMAND test_iso_catalog)
 
 add_executable(test_autostart

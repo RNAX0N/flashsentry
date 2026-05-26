@@ -4,6 +4,20 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.1.6] - 2026-05-26
+
+### Added
+
+- **Microsoft Windows** verification via embedded manifest (`resources/iso-catalog/embedded-manifest.json`) with optional remote catalog refresh
+- SBC / ARM images: **Raspberry Pi OS** (`.img.xz`/`.zip`), **Ubuntu for Raspberry Pi**, **Armbian** (local `.img.xz.sha` sidecar)
+- **Alpine Linux**, **Void Linux**, **NixOS** catalog entries
+- USB scan discovers `.iso`, `.img.xz`, `.img`, and `.zip` images (Ventoy / Pi Imager layouts)
+
+### Changed
+
+- Windows: known `Win11_24H2_English_x64.iso` hash in manifest; other `Win11_*` / `Win10_*` names use hint + `.sha256` sidecar
+- Docs: Windows manifest workflow and SBC publisher table (30 catalog IDs)
+
 ## [1.1.5] - 2026-05-21
 
 ### Added

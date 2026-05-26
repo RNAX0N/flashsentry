@@ -25,7 +25,7 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
 
     layout->addWidget(new QLabel(
         QStringLiteral("<b>Fully automated ISO verification</b> — built for people who want confidence without learning hashes or PGP.<br>"
-                       "Plug in a stick with a copied <code>.iso</code> (Rufus, etc.): we detect it, fetch the publisher checksums, "
+                       "Plug in a stick with a copied <code>.iso</code> or <code>.img.xz</code> (Rufus, Ventoy, etc.): we detect it, fetch the publisher checksums, "
                        "verify signatures and key fingerprints for you — no Kleopatra or terminal commands.")));
 
     auto* dirRow = new QHBoxLayout;

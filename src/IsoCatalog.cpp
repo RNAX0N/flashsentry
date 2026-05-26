@@ -1,4 +1,5 @@
 #include "IsoCatalog.h"
+#include "IsoCatalogManifest.h"
 
 #include <QFileInfo>
 #include <optional>
@@ -357,6 +358,130 @@ IsoPublisherMatch makeNobara(const QString& fileName)
     return m;
 }
 
+QString raspiosMirrorTree(const QString& suffix)
+{
+    if (suffix.endsWith(QStringLiteral("-lite"))) {
+        if (suffix.contains(QStringLiteral("arm64"))) {
+            return QStringLiteral("raspios_lite_arm64");
+        }
+        return QStringLiteral("raspios_lite_armhf");
+    }
+    if (suffix.contains(QStringLiteral("full"))) {
+        if (suffix.contains(QStringLiteral("arm64"))) {
+            return QStringLiteral("raspios_full_arm64");
+        }
+        if (suffix.contains(QStringLiteral("armhf"))) {
+            return QStringLiteral("raspios_full_armhf");
+        }
+    }
+    if (suffix.contains(QStringLiteral("arm64"))) {
+        return QStringLiteral("raspios_arm64");
+    }
+    if (suffix.contains(QStringLiteral("armhf"))) {
+        return QStringLiteral("raspios_armhf");
+    }
+    return QStringLiteral("raspios_arm64");
+}
+
+IsoPublisherMatch makeRaspiosOs(const QString& fileName, const QString& date, const QString& suffix)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("raspios");
+    m.publisherName = QStringLiteral("Raspberry Pi OS");
+    m.releaseLabel = QStringLiteral("%1 %2").arg(date, suffix);
+    m.isoFileName = fileName;
+    const QString tree = raspiosMirrorTree(suffix);
+    const bool legacy = suffix.contains(QStringLiteral("buster")) || date < QStringLiteral("2022-06-01");
+    const QString host = legacy ? QStringLiteral("https://downloads.raspberrypi.org")
+                                : QStringLiteral("https://downloads.raspberrypi.com");
+    const QString base = host + QStringLiteral("/%1/images/%2-%3/").arg(tree, tree, date);
+    m.checksumUrl = base + fileName + QStringLiteral(".sha256");
+    m.signatureUrl = base + fileName + QStringLiteral(".sig");
+    m.signingKeyIds = {QStringLiteral("0xCF8A072D")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("FC8A 072D 3B48 8CE6 99B0 56B8 94A9 8445 94AE 2274")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makeUbuntuRpi(const QString& fileName, const QString& version)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("ubuntu-rpi");
+    m.publisherName = QStringLiteral("Ubuntu for Raspberry Pi");
+    m.releaseLabel = version;
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://cdimage.ubuntu.com/releases/%1/release/").arg(version);
+    m.checksumUrl = base + QStringLiteral("SHA256SUMS");
+    m.signatureUrl = base + QStringLiteral("SHA256SUMS.gpg");
+    m.signingKeyIds = {QStringLiteral("0x843938DF")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("8439 38DF 228B 22A7 0FAC 1C9B 0C3A 2CEF 088A 431B")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makeAlpine(const QString& fileName, const QString& version, const QString& arch)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("alpine");
+    m.publisherName = QStringLiteral("Alpine Linux");
+    m.releaseLabel = QStringLiteral("%1 %2").arg(version, arch);
+    m.isoFileName = fileName;
+    const QString majorMinor = version.section(QLatin1Char('.'), 0, 1);
+    const QString base = QStringLiteral("https://dl-cdn.alpinelinux.org/alpine/v%1/releases/%2/")
+                             .arg(majorMinor, arch);
+    m.checksumUrl = base + fileName + QStringLiteral(".sha256");
+    m.signatureUrl = QString();
+    m.signingKeyIds = {};
+    m.trustedFingerprints = {};
+    return m;
+}
+
+IsoPublisherMatch makeVoidLinux(const QString& fileName)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("voidlinux");
+    m.publisherName = QStringLiteral("Void Linux");
+    m.releaseLabel = fileName;
+    m.isoFileName = fileName;
+    m.checksumUrl = QStringLiteral("https://repo-default.voidlinux.org/live/current/sha256sum.txt");
+    m.signatureUrl = QStringLiteral("https://repo-default.voidlinux.org/live/current/sha256sum.sig");
+    m.signingKeyIds = {};
+    m.trustedFingerprints = {};
+    return m;
+}
+
+IsoPublisherMatch makeArmbian(const QString& fileName)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("armbian");
+    m.publisherName = QStringLiteral("Armbian");
+    m.releaseLabel = fileName;
+    m.isoFileName = fileName;
+    m.checksumUrl = QString();
+    m.signatureUrl = QString();
+    m.referenceUrl = QStringLiteral("https://www.armbian.com/download/");
+    m.signingKeyIds = {};
+    m.trustedFingerprints = {};
+    return m;
+}
+
+IsoPublisherMatch makeNixos(const QString& fileName, const QString& channel, const QString& variant)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("nixos");
+    m.publisherName = QStringLiteral("NixOS");
+    m.releaseLabel = QStringLiteral("%1 %2").arg(channel, variant);
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://channels.nixos.org/%1/latest-nixos-%2/").arg(channel, variant);
+    m.checksumUrl = base + fileName + QStringLiteral(".sha256");
+    m.signatureUrl = QString();
+    m.signingKeyIds = {};
+    m.trustedFingerprints = {};
+    return m;
+}
+
 IsoPublisherMatch makeEndeavourOs(const QString& fileName, const QString& dateVersion)
 {
     IsoPublisherMatch m;
@@ -633,6 +758,66 @@ std::optional<IsoPublisherMatch> IsoCatalog::matchIso(const QString& isoPath)
         }
     }
 
+    {
+        static const QRegularExpression raspiosRe(
+            QStringLiteral("^(\\d{4}-\\d{2}-\\d{2})-raspios-(.+)\\.(img\\.xz|zip)$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = raspiosRe.match(name);
+        if (m.hasMatch()) {
+            return makeRaspiosOs(name, m.captured(1), m.captured(2));
+        }
+    }
+
+    {
+        static const QRegularExpression ubuntuRpiRe(
+            QStringLiteral("^ubuntu-(\\d+\\.\\d+(?:\\.\\d+)?)-preinstalled-.+arm64\\+raspi.*\\.img\\.xz$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = ubuntuRpiRe.match(name);
+        if (m.hasMatch()) {
+            return makeUbuntuRpi(name, m.captured(1));
+        }
+    }
+
+    {
+        static const QRegularExpression alpineRe(
+            QStringLiteral("^alpine-(\\w+)-(\\d+\\.\\d+\\.\\d+)-(\\w+)\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = alpineRe.match(name);
+        if (m.hasMatch()) {
+            return makeAlpine(name, m.captured(2), m.captured(3));
+        }
+    }
+
+    {
+        static const QRegularExpression voidRe(
+            QStringLiteral("^void-live-.+\\.iso$"), QRegularExpression::CaseInsensitiveOption);
+        if (voidRe.match(name).hasMatch()) {
+            return makeVoidLinux(name);
+        }
+    }
+
+    {
+        static const QRegularExpression armbianRe(
+            QStringLiteral("^Armbian_.+\\.img\\.xz$"), QRegularExpression::CaseInsensitiveOption);
+        if (armbianRe.match(name).hasMatch()) {
+            return makeArmbian(name);
+        }
+    }
+
+    {
+        static const QRegularExpression nixosRe(
+            QStringLiteral("^nixos-(\\d+\\.\\d+(?:\\.\\d+)?)-([a-z0-9_-]+)-x86_64-linux\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = nixosRe.match(name);
+        if (m.hasMatch()) {
+            return makeNixos(name, QStringLiteral("nixos-%1").arg(m.captured(1)), m.captured(2));
+        }
+    }
+
+    if (auto manifest = IsoCatalogManifest::lookup(name)) {
+        return manifest;
+    }
+
     return std::nullopt;
 }
 
@@ -649,7 +834,10 @@ QStringList IsoCatalog::knownPublisherIds()
             QStringLiteral("almalinux"),         QStringLiteral("elementary"),
             QStringLiteral("pop-os"),            QStringLiteral("endeavouros"),
             QStringLiteral("garuda"),            QStringLiteral("cachyos"),
-            QStringLiteral("nobara")};
+            QStringLiteral("nobara"),            QStringLiteral("raspios"),
+            QStringLiteral("ubuntu-rpi"),        QStringLiteral("alpine"),
+            QStringLiteral("voidlinux"),         QStringLiteral("armbian"),
+            QStringLiteral("nixos"),             QStringLiteral("microsoft-windows")};
 }
 
 } // namespace FlashSentry

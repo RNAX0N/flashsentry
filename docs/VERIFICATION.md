@@ -94,7 +94,7 @@ Some publishers (e.g. **Manjaro**, **elementary OS**, **EndeavourOS**) ship `{is
 
 ### Ventoy / multi-ISO volumes
 
-`verifyMountPoint()` calls `findIsoFiles()` recursively on the mounted path. A Ventoy data partition with many `.iso` files produces **one `IsoVerifyResult` per image**; results are independent (one failure does not block others).
+`verifyMountPoint()` calls `findIsoFiles()` recursively on the mounted path (`.iso`, `.img.xz`, `.img`, `.zip`). A Ventoy data partition with many images produces **one `IsoVerifyResult` per file**; results are independent (one failure does not block others).
 
 ### Bootable stick without `.iso`
 
@@ -163,8 +163,36 @@ Legacy records without partition suffix may still resolve via `legacyUniqueId()`
 | `garuda` | `garuda-{edition}-linux-zen-{YYMMDD}.iso` (iso.builds.garudalinux.org) |
 | `cachyos` | `cachyos-{variant}-linux-{YYMMDD}.iso` (build.cachyos.org, `.sha256` + `.sig`) |
 | `nobara` | `Nobara-{ver}-{edition}-{date}.iso` (`.sha256sum` on nobara-images) |
+| `raspios` | `YYYY-MM-DD-raspios-{variant}.img.xz` (downloads.raspberrypi.com) |
+| `ubuntu-rpi` | `ubuntu-*-preinstalled-*-arm64+raspi.img.xz` |
+| `alpine` | `alpine-*-{version}-{arch}.iso` |
+| `voidlinux` | `void-live-*.iso` (`sha256sum.txt` on repo-default.voidlinux.org) |
+| `armbian` | `Armbian_*.img.xz` (copy `.img.xz.sha` beside image from armbian.com) |
+| `nixos` | `nixos-{channel}-{variant}-x86_64-linux.iso` |
+| `microsoft-windows` | `Win11_*` / `Win10_*` / `Windows*.iso` ([embedded manifest](#windows-iso-verification) + sidecars) |
 
-Run `test_iso_catalog` after editing `IsoCatalog.cpp`.
+Run `test_iso_catalog` after editing `IsoCatalog.cpp` or `embedded-manifest.json`.
+
+## Windows ISO verification
+
+Microsoft publishes SHA-256 values on their [Windows 11](https://www.microsoft.com/software-download/windows11) and [Windows 10](https://www.microsoft.com/software-download/windows10) download pages, but not at a stable per-file URL. FlashSentry uses:
+
+1. **Embedded manifest** — shipped at `:/iso-catalog/embedded-manifest.json` (also installed under `share/flashsentry/iso-catalog/`). Includes known hashes (e.g. `Win11_24H2_English_x64.iso`) and `hint_only` patterns for other `Win11_*` / `Win10_*` names.
+2. **Remote refresh** — the manifest’s `remote_url` (GitHub raw) is cached weekly under `~/.cache/FlashSentry/iso-catalog-manifest.json` so hashes can be updated without rebuilding the app.
+3. **Local sidecar** — place `Win11_24H2_English_x64.iso.sha256` (single hex line or `hash  filename` format) next to the ISO on the USB stick.
+
+After downloading from Microsoft, copy the hash from the download page into a sidecar file if your exact filename is not in the manifest yet.
+
+## SBC and compressed images
+
+`findIsoFiles()` scans recursively for:
+
+- `*.iso` — PC installers, Ventoy
+- `*.img.xz` — Raspberry Pi OS, Ubuntu for Pi, Armbian
+- `*.img` — raw images
+- `*.zip` — legacy Raspberry Pi OS zip releases
+
+Checksums are computed on the **file as stored** (e.g. the compressed `.img.xz` bytes), matching `sha256sum` on the downloaded artifact.
 
 ## Extending publisher support
 

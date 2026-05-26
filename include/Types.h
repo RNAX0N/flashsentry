@@ -203,7 +203,13 @@ inline QString appModuleToString(AppModule m) {
                                        : QStringLiteral("usb_monitor");
 }
 
-enum class IsoVerifySource { Unknown, LocalSidecar, RemotePublisher, ComputedOnly };
+enum class IsoVerifySource {
+    Unknown,
+    LocalSidecar,
+    RemotePublisher,
+    EmbeddedCatalog,
+    ComputedOnly
+};
 
 struct IsoVerifyResult {
     QString isoPath;

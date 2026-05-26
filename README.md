@@ -118,7 +118,7 @@ Log out and back in after adding the `storage` group.
 3. Plug in a stick that contains a supported `.iso` (e.g. `archlinux-*-x86_64.iso`, `ubuntu-*-desktop-amd64.iso`).
 4. Read the report in the log panel, or switch **Mode** to **Automatic ISO verification** for the full ISO UI.
 
-Supported publisher matching (by filename): **Arch Linux**, **Ubuntu**, **Kubuntu**, **Xubuntu**, **Lubuntu**, **Ubuntu MATE**, **Ubuntu Studio**, **Debian**, **Fedora**, **Linux Mint**, **openSUSE Leap/Tumbleweed**, **Manjaro**, **Kali Linux**, **CentOS Stream**, **Rocky Linux**, **AlmaLinux**, **elementary OS**, **Pop!_OS**, **EndeavourOS**, **Garuda Linux**, **CachyOS**, **Nobara Linux**. Others can still use local `.sha256`, `.sha256sum`, `.sig`, `.asc`, or `CHECKSUM` sidecars on the drive.
+Supported publisher matching (by filename): **Arch Linux**, **Ubuntu** (including **Ubuntu for Raspberry Pi** `.img.xz`), **Kubuntu**, **Xubuntu**, **Lubuntu**, **Ubuntu MATE**, **Ubuntu Studio**, **Debian**, **Fedora**, **Linux Mint**, **openSUSE**, **Manjaro**, **Kali**, **Rocky/Alma/CentOS Stream**, **elementary**, **Pop!_OS**, **EndeavourOS**, **Garuda**, **CachyOS**, **Nobara**, **Raspberry Pi OS**, **Alpine**, **Void Linux**, **Armbian**, **NixOS**, and **Microsoft Windows** (embedded catalog + `.sha256` sidecars). Ventoy sticks can hold `.iso`, `.img.xz`, or `.zip` images. See [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ### Verify specific folders on a USB stick
 

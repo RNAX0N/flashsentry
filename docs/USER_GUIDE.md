@@ -208,6 +208,11 @@ Filename patterns (examples):
 | Garuda Linux | `garuda-hyprland-linux-zen-250308.iso` |
 | CachyOS | `cachyos-desktop-linux-260308.iso` |
 | Nobara Linux | `Nobara-43-Official-2026-04-19.iso` |
+| Raspberry Pi OS | `2024-11-19-raspios-bookworm-arm64.img.xz` |
+| Ubuntu for Raspberry Pi | `ubuntu-24.04.3-preinstalled-server-arm64+raspi.img.xz` |
+| Armbian | `Armbian_25.2.1_Odroidn2_bookworm_current.img.xz` + `.img.xz.sha` sidecar |
+| Alpine / Void / NixOS | `alpine-standard-3.20.3-x86_64.iso`, `void-live-x86_64-*.iso`, `nixos-*-x86_64-linux.iso` |
+| Microsoft Windows | `Win11_24H2_English_x64.iso` (manifest + optional `.sha256` sidecar) |
 
 Publisher mirrors and keys are defined in the application; see [VERIFICATION.md](VERIFICATION.md) for technical detail.
 

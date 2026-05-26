@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(flashsentry
-    VERSION 1.1.5
+    VERSION 1.1.6
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )
@@ -38,6 +38,7 @@ set(SOURCES
     src/ManifestService.cpp
     src/ManifestWorker.cpp
     src/IsoCatalog.cpp
+    src/IsoCatalogManifest.cpp
     src/IsoChecksum.cpp
     src/IsoVerifier.cpp
     src/IsoVerifierWorker.cpp
@@ -61,6 +62,7 @@ set(HEADERS
     include/ManifestService.h
     include/ManifestWorker.h
     include/IsoCatalog.h
+    include/IsoCatalogManifest.h
     include/IsoChecksum.h
     include/IsoVerifier.h
     include/IsoVerifierWorker.h
@@ -157,6 +159,8 @@ install(
     DESTINATION ${CMAKE_INSTALL_DOCDIR}
 )
 install(FILES docs/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME docs-README.md)
+install(FILES resources/iso-catalog/embedded-manifest.json
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/flashsentry/iso-catalog)
 
 if(NOT TARGET uninstall)
     configure_file(

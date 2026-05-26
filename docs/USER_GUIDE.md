@@ -277,6 +277,10 @@ Each `.iso` on the mounted Ventoy partition can be verified when the volume moun
 
 ---
 
+## Switching views
+
+Use the **USB devices** / **ISO verify** tabs in the window header to jump between drive monitoring and image verification. The same tabs mirror **Settings → Mode**; Ventoy users can stay on **USB devices** with auto-verify on mount, or use **ISO verify** for manual folder scans.
+
 ## Ventoy and multi-ISO USB sticks
 
 [Ventoy](https://www.ventoy.net/) exposes a normal data partition that holds many `.iso` files. FlashSentry treats that like any other mounted volume:

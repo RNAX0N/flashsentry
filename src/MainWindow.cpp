@@ -158,9 +158,20 @@ QWidget* MainWindow::createHeader()
     titleLayout->addWidget(m_titleLabel);
     
     layout->addLayout(titleLayout);
-    
+
+    layout->addSpacing(12);
+
+    m_modeTabBar = new QTabBar;
+    m_modeTabBar->addTab(QStringLiteral("USB devices"));
+    m_modeTabBar->addTab(QStringLiteral("ISO verify"));
+    m_modeTabBar->setDocumentMode(true);
+    m_modeTabBar->setExpanding(false);
+    m_modeTabBar->setStyleSheet(FSStyle.tabWidgetStyleSheet());
+    connect(m_modeTabBar, &QTabBar::currentChanged, this, &MainWindow::onModeTabChanged);
+    layout->addWidget(m_modeTabBar);
+
     layout->addStretch();
-    
+
     // Search box
     m_searchEdit = new QLineEdit;
     m_searchEdit->setPlaceholderText("🔍 Search devices...");
@@ -349,10 +360,23 @@ void MainWindow::createStatusBar()
         FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     status->addWidget(m_statusLabel, 1);
 
-    m_catalogStatusLabel = new QLabel;
-    m_catalogStatusLabel->setStyleSheet(QString("color: %1;").arg(
+    m_catalogStatusBtn = new QPushButton;
+    m_catalogStatusBtn->setFlat(true);
+    m_catalogStatusBtn->setCursor(Qt::PointingHandCursor);
+    m_catalogStatusBtn->setStyleSheet(QString("color: %1; text-align: left;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
-    status->addPermanentWidget(m_catalogStatusLabel);
+    connect(m_catalogStatusBtn, &QPushButton::clicked, this, [this]() {
+        if (m_modeTabBar) {
+            m_modeTabBar->setCurrentIndex(1);
+        }
+        m_settings.appModule = AppModule::IsoVerifier;
+        applyAppModule();
+        saveSettings();
+        if (m_isoWidget) {
+            m_isoWidget->refreshCatalogStatus();
+        }
+    });
+    status->addPermanentWidget(m_catalogStatusBtn);
 
     m_hashStatusLabel = new QLabel;
     m_hashStatusLabel->setStyleSheet(QString("color: %1;").arg(
@@ -1381,22 +1405,49 @@ void MainWindow::updateStatusBar()
                              .arg(connected)
                              .arg(whitelisted));
 
-    if (!m_catalogStatusLabel) {
+    if (!m_catalogStatusBtn) {
         return;
     }
     IsoCatalogManifest::ensureLoaded();
     const QString catalogDetail = IsoCatalogManifest::integrityStatusText();
-    m_catalogStatusLabel->setToolTip(catalogDetail);
+    m_catalogStatusBtn->setToolTip(
+        catalogDetail + QStringLiteral("\n\nClick to open ISO verify."));
     if (!IsoCatalogManifest::lastEmbeddedIntegrityOk()) {
-        m_catalogStatusLabel->setText(QStringLiteral("⚠ ISO catalog"));
-        m_catalogStatusLabel->setStyleSheet(QString("color: %1; font-weight: 600;")
-                                                .arg(FSStyle.colorCss(StyleManager::ColorRole::Warning)));
+        m_catalogStatusBtn->setText(QStringLiteral("⚠ ISO catalog"));
+        m_catalogStatusBtn->setStyleSheet(QString("color: %1; font-weight: 600; text-align: left;")
+                                              .arg(FSStyle.colorCss(StyleManager::ColorRole::Warning)));
     } else {
-        m_catalogStatusLabel->setText(
+        m_catalogStatusBtn->setText(
             QStringLiteral("Catalog: %1").arg(IsoCatalogManifest::entryCount()));
-        m_catalogStatusLabel->setStyleSheet(QString("color: %1;")
-                                                .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+        m_catalogStatusBtn->setStyleSheet(QString("color: %1; text-align: left;")
+                                              .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     }
+}
+
+void MainWindow::syncModeTabFromSettings()
+{
+    if (!m_modeTabBar) {
+        return;
+    }
+    const int index = m_settings.appModule == AppModule::IsoVerifier ? 1 : 0;
+    if (m_modeTabBar->currentIndex() != index) {
+        m_modeTabBar->blockSignals(true);
+        m_modeTabBar->setCurrentIndex(index);
+        m_modeTabBar->blockSignals(false);
+    }
+    if (m_searchEdit) {
+        m_searchEdit->setVisible(index == 0);
+    }
+}
+
+void MainWindow::onModeTabChanged(int index)
+{
+    m_settings.appModule = index == 1 ? AppModule::IsoVerifier : AppModule::UsbMonitor;
+    if (m_searchEdit) {
+        m_searchEdit->setVisible(index == 0);
+    }
+    applyAppModule();
+    saveSettings();
 }
 
 // ============================================================================

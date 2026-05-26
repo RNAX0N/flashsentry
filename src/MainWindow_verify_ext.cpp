@@ -18,10 +18,13 @@ void MainWindow::applyAppModule()
     if (m_settings.appModule == AppModule::IsoVerifier) {
         m_appModeStack->setCurrentWidget(m_isoWidget);
         if (m_titleLabel) {
-            m_titleLabel->setText(QStringLiteral("FlashSentry — ISO Verify"));
+            m_titleLabel->setText(QStringLiteral("FlashSentry"));
         }
-        if (m_isoWidget && !m_settings.isoScanDirectory.isEmpty()) {
-            m_isoWidget->setScanDirectory(m_settings.isoScanDirectory);
+        if (m_isoWidget) {
+            if (!m_settings.isoScanDirectory.isEmpty()) {
+                m_isoWidget->setScanDirectory(m_settings.isoScanDirectory);
+            }
+            m_isoWidget->refreshCatalogStatus();
         }
     } else {
         m_appModeStack->setCurrentWidget(m_splitter);
@@ -29,6 +32,7 @@ void MainWindow::applyAppModule()
             m_titleLabel->setText(QStringLiteral("FlashSentry"));
         }
     }
+    syncModeTabFromSettings();
 }
 
 void MainWindow::onIsoLogMessage(const QString& message)

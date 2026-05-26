@@ -4,6 +4,21 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-05-21
+
+### Added
+
+- **Header mode tabs**: switch between **USB devices** and **ISO verify** without opening Settings
+- ISO tab UI refresh: summary pass/fail/sidecar chips, color-coded results table, vertical splitter (results + report)
+- **Ventoy / multiboot badge** when a known layout is detected on the scan path
+- **More** menu groups export, catalog, and trust-hash actions; primary **Verify images** action
+- Status bar catalog control opens the ISO verify tab (clickable)
+
+### Changed
+
+- ISO verify intro text shortened; path field grouped in a card
+- Progress bar shows file name and index during multi-image runs
+
 ## [1.3.3] - 2026-05-21
 
 ### Added

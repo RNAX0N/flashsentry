@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(flashsentry
-    VERSION 1.3.3
+    VERSION 1.4.0
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )

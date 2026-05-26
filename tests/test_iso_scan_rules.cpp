@@ -1,6 +1,7 @@
 #include <QtTest>
 #include <QTemporaryDir>
 #include <QDir>
+#include <QFile>
 #include "IsoScanRules.h"
 #include "IsoVerifier.h"
 

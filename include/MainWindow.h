@@ -11,6 +11,8 @@
 #include <QSplitter>
 #include <QListWidget>
 #include <QTimer>
+#include <QTabBar>
+#include <QPushButton>
 #include <QCloseEvent>
 #include <QSettings>
 #include <memory>
@@ -271,6 +273,8 @@ private:
     void startManifestVerification(const QString& deviceNode);
     void openWatchListDialog(const QString& deviceNode);
     void applyAppModule();
+    void syncModeTabFromSettings();
+    void onModeTabChanged(int index);
     void triggerIsoVerificationOnMount(const MountManager::MountResult& result);
     void handleManifestMismatch(const DeviceInfo& device, const ManifestVerifyResult& result);
     void acceptManifestBaseline(const DeviceInfo& device, const WatchManifest& manifest);
@@ -316,6 +320,7 @@ private:
     // UI - Header
     QWidget* m_headerWidget = nullptr;
     QLabel* m_titleLabel = nullptr;
+    QTabBar* m_modeTabBar = nullptr;
     QLineEdit* m_searchEdit = nullptr;
     QPushButton* m_refreshBtn = nullptr;
     QPushButton* m_settingsBtn = nullptr;
@@ -336,7 +341,7 @@ private:
 
     // UI - Status bar
     QLabel* m_statusLabel = nullptr;
-    QLabel* m_catalogStatusLabel = nullptr;
+    QPushButton* m_catalogStatusBtn = nullptr;
     QLabel* m_hashStatusLabel = nullptr;
 
     // Device tracking

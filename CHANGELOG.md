@@ -8,7 +8,7 @@ All notable changes to FlashSentry are documented in this file.
 
 ### Added
 
-- ISO publisher catalog: **Kali**, **Rocky Linux**, **AlmaLinux**, **Pop!_OS**, **EndeavourOS**, **CentOS Stream**, **elementary OS**
+- ISO publisher catalog: **Kali**, **Rocky Linux**, **AlmaLinux**, **Pop!_OS**, **EndeavourOS**, **CentOS Stream**, **elementary OS**, **Garuda Linux**, **CachyOS**, **Nobara Linux**
 - Ubuntu flavors: **Kubuntu**, **Xubuntu**, **Lubuntu**, **Ubuntu MATE**, **Ubuntu Studio**
 - Parse Rocky/Alma `CHECKSUM` parenthesis format (`SHA256 (file.iso) = …`)
 - Local sidecar lookup for `CHECKSUM` and `{iso}.CHECKSUM`
@@ -16,7 +16,8 @@ All notable changes to FlashSentry are documented in this file.
 
 ### Changed
 
-- [README.md](README.md), [docs/USER_GUIDE.md](docs/USER_GUIDE.md), [docs/VERIFICATION.md](docs/VERIFICATION.md): 20 automatic publishers
+- Parse Nobara `.sha256sum` lines with `./` relative paths; local `.sha256sum` sidecars
+- [README.md](README.md), [docs/USER_GUIDE.md](docs/USER_GUIDE.md), [docs/VERIFICATION.md](docs/VERIFICATION.md): 23 automatic publishers
 
 ## [1.1.4] - 2026-05-25
 

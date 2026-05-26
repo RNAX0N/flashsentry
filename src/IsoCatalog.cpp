@@ -300,6 +300,63 @@ IsoPublisherMatch makeElementary(const QString& fileName, const QString& version
     return m;
 }
 
+IsoPublisherMatch makeGaruda(const QString& fileName, const QString& edition, const QString& date)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("garuda");
+    m.publisherName = QStringLiteral("Garuda Linux");
+    m.releaseLabel = QStringLiteral("%1 %2").arg(edition, date);
+    m.isoFileName = fileName;
+    const QString base = QStringLiteral("https://iso.builds.garudalinux.org/iso/garuda/%1/%2/")
+                             .arg(edition, date);
+    m.checksumUrl = base + fileName + QStringLiteral(".sha256");
+    m.signatureUrl = QString();
+    m.signingKeyIds = {};
+    m.trustedFingerprints = {};
+    return m;
+}
+
+IsoPublisherMatch makeCachyOs(const QString& fileName, const QString& variant, const QString& date)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("cachyos");
+    m.publisherName = QStringLiteral("CachyOS");
+    m.releaseLabel = QStringLiteral("%1 %2").arg(variant, date);
+    m.isoFileName = fileName;
+    m.perFileArtifacts = true;
+    const QString base = QStringLiteral("https://build.cachyos.org/ISO/%1/%2/").arg(variant, date);
+    m.checksumUrl = base + fileName + QStringLiteral(".sha256");
+    m.signatureUrl = base + fileName + QStringLiteral(".sig");
+    m.signingKeyIds = {QStringLiteral("0xF3B607488DB35A47")};
+    m.trustedFingerprints = {
+        normalizeFingerprint(QStringLiteral("882D CFE4 8E20 51D4 8E25 62AB F3B6 0748 8DB3 5A47")),
+    };
+    return m;
+}
+
+IsoPublisherMatch makeNobara(const QString& fileName)
+{
+    IsoPublisherMatch m;
+    m.publisherId = QStringLiteral("nobara");
+    m.publisherName = QStringLiteral("Nobara Linux");
+    m.isoFileName = fileName;
+    static const QRegularExpression nobaraRe(
+        QStringLiteral("^Nobara-(\\d+)-(.+)-(\\d{4}-\\d{2}-\\d{2})\\.iso$"),
+        QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch match = nobaraRe.match(fileName);
+    if (match.hasMatch()) {
+        m.releaseLabel = QStringLiteral("%1 %2").arg(match.captured(1), match.captured(2));
+    } else {
+        m.releaseLabel = fileName;
+    }
+    const QString base = QStringLiteral("https://nobara-images.nobaraproject.org/");
+    m.checksumUrl = base + fileName + QStringLiteral(".sha256sum");
+    m.signatureUrl = QString();
+    m.signingKeyIds = {};
+    m.trustedFingerprints = {};
+    return m;
+}
+
 IsoPublisherMatch makeEndeavourOs(const QString& fileName, const QString& dateVersion)
 {
     IsoPublisherMatch m;
@@ -478,6 +535,35 @@ std::optional<IsoPublisherMatch> IsoCatalog::matchIso(const QString& isoPath)
     }
 
     {
+        static const QRegularExpression garudaRe(
+            QStringLiteral("^garuda-([a-z0-9]+)-linux-zen-(\\d{6})\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = garudaRe.match(name);
+        if (m.hasMatch()) {
+            return makeGaruda(name, m.captured(1).toLower(), m.captured(2));
+        }
+    }
+
+    {
+        static const QRegularExpression cachyosRe(
+            QStringLiteral("^cachyos-([a-z0-9-]+)-linux-(\\d{6})\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = cachyosRe.match(name);
+        if (m.hasMatch()) {
+            return makeCachyOs(name, m.captured(1).toLower(), m.captured(2));
+        }
+    }
+
+    {
+        static const QRegularExpression nobaraRe(
+            QStringLiteral("^Nobara-\\d+-.+-\\d{4}-\\d{2}-\\d{2}\\.iso$"),
+            QRegularExpression::CaseInsensitiveOption);
+        if (nobaraRe.match(name).hasMatch()) {
+            return makeNobara(name);
+        }
+    }
+
+    {
         static const QRegularExpression endeavourRe(
             QStringLiteral("^endeavouros-(\\d+\\.\\d+\\.\\d+)-x86_64\\.iso$"),
             QRegularExpression::CaseInsensitiveOption);
@@ -561,7 +647,9 @@ QStringList IsoCatalog::knownPublisherIds()
             QStringLiteral("manjaro"),           QStringLiteral("kali"),
             QStringLiteral("centos-stream"),     QStringLiteral("rocky"),
             QStringLiteral("almalinux"),         QStringLiteral("elementary"),
-            QStringLiteral("pop-os"),            QStringLiteral("endeavouros")};
+            QStringLiteral("pop-os"),            QStringLiteral("endeavouros"),
+            QStringLiteral("garuda"),            QStringLiteral("cachyos"),
+            QStringLiteral("nobara")};
 }
 
 } // namespace FlashSentry

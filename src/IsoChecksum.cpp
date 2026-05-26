@@ -43,6 +43,9 @@ QString IsoChecksum::parseSha256Content(const QString& content, const QString& i
         if (name.startsWith(QLatin1Char('*'))) {
             name = name.mid(1);
         }
+        if (name.startsWith(QStringLiteral("./"))) {
+            name = name.mid(2);
+        }
         if (isoBaseName.isEmpty() || name == isoBaseName
             || name.endsWith(QLatin1Char('/') + isoBaseName)) {
             return normalizeHash(hash);

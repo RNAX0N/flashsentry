@@ -79,7 +79,8 @@ For each `.iso` file:
 If remote fetch fails or publisher is unknown:
 
 - `SHA256SUMS`, `sha256sums.txt`, `sha256sum.txt` (directory-level)
-- `{iso}.sha256` or `{iso}.sha256` single-line hash (e.g. Manjaro layout)
+- `{iso}.sha256` or single-line hash (e.g. Manjaro layout)
+- `{iso}.sha256sum` (Nobara layout)
 - `*.asc`, `*.sig`, `{iso}.sig`, `SHA256SUMS.gpg` for detached signatures
 
 Sidecar OpenPGP on the ISO file itself is also attempted when no checksum-file signature was verified.
@@ -159,6 +160,9 @@ Legacy records without partition suffix may still resolve via `legacyUniqueId()`
 | `elementary` | `elementaryos-{version}-amd64.iso` (per-file `.sha256`) |
 | `pop-os` | `pop-os_{version}_amd64_*.iso` |
 | `endeavouros` | `endeavouros-{date}-x86_64.iso` (GitHub release `.sha256` / `.asc`) |
+| `garuda` | `garuda-{edition}-linux-zen-{YYMMDD}.iso` (iso.builds.garudalinux.org) |
+| `cachyos` | `cachyos-{variant}-linux-{YYMMDD}.iso` (build.cachyos.org, `.sha256` + `.sig`) |
+| `nobara` | `Nobara-{ver}-{edition}-{date}.iso` (`.sha256sum` on nobara-images) |
 
 Run `test_iso_catalog` after editing `IsoCatalog.cpp`.
 

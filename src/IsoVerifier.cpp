@@ -58,7 +58,9 @@ QString findChecksumSidecar(const QString& isoPath)
     const QString base = iso.absolutePath() + QLatin1Char('/') + iso.completeBaseName();
     const QStringList candidates = {
         base + QStringLiteral(".sha256"),
+        base + QStringLiteral(".sha256sum"),
         iso.absoluteFilePath() + QStringLiteral(".sha256"),
+        iso.absoluteFilePath() + QStringLiteral(".sha256sum"),
         iso.absolutePath() + QStringLiteral("/SHA256SUMS"),
         iso.absolutePath() + QStringLiteral("/sha256sums.txt"),
         iso.absolutePath() + QStringLiteral("/sha256sum.txt"),

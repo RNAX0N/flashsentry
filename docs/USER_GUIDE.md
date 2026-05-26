@@ -205,6 +205,9 @@ Filename patterns (examples):
 | elementary OS | `elementaryos-7.1-amd64.iso` |
 | Pop!_OS | `pop-os_22.04_amd64_intel_35.iso` |
 | EndeavourOS | `endeavouros-2024.12.18-x86_64.iso` |
+| Garuda Linux | `garuda-hyprland-linux-zen-250308.iso` |
+| CachyOS | `cachyos-desktop-linux-260308.iso` |
+| Nobara Linux | `Nobara-43-Official-2026-04-19.iso` |
 
 Publisher mirrors and keys are defined in the application; see [VERIFICATION.md](VERIFICATION.md) for technical detail.
 

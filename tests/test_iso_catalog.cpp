@@ -22,6 +22,9 @@ private slots:
     void centosStreamMatches();
     void elementaryPerFileArtifacts();
     void knownPublisherIdsCount();
+    void garudaMatches();
+    void cachyosPerFileArtifacts();
+    void nobaraMatches();
 };
 
 void TestIsoCatalog::archIsoMatches()
@@ -85,6 +88,9 @@ void TestIsoCatalog::knownPublisherIdsIncludesNewPublishers()
     QVERIFY(ids.contains(QStringLiteral("rocky")));
     QVERIFY(ids.contains(QStringLiteral("centos-stream")));
     QVERIFY(ids.contains(QStringLiteral("elementary")));
+    QVERIFY(ids.contains(QStringLiteral("garuda")));
+    QVERIFY(ids.contains(QStringLiteral("cachyos")));
+    QVERIFY(ids.contains(QStringLiteral("nobara")));
 }
 
 void TestIsoCatalog::manjaroPerFileArtifacts()
@@ -154,7 +160,38 @@ void TestIsoCatalog::elementaryPerFileArtifacts()
 
 void TestIsoCatalog::knownPublisherIdsCount()
 {
-    QCOMPARE(IsoCatalog::knownPublisherIds().size(), 20);
+    QCOMPARE(IsoCatalog::knownPublisherIds().size(), 23);
+}
+
+void TestIsoCatalog::garudaMatches()
+{
+    const auto match = IsoCatalog::matchIso(
+        QStringLiteral("/iso/garuda-hyprland-linux-zen-250308.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("garuda"));
+    QVERIFY(match->checksumUrl.contains(QStringLiteral("garuda/hyprland/250308")));
+    QVERIFY(match->checksumUrl.endsWith(QStringLiteral(".iso.sha256")));
+}
+
+void TestIsoCatalog::cachyosPerFileArtifacts()
+{
+    const auto match = IsoCatalog::matchIso(
+        QStringLiteral("/usb/cachyos-desktop-linux-260308.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("cachyos"));
+    QVERIFY(match->perFileArtifacts);
+    QVERIFY(match->checksumUrl.contains(QStringLiteral("build.cachyos.org/ISO/desktop/260308")));
+    QVERIFY(match->signatureUrl.endsWith(QStringLiteral(".iso.sig")));
+}
+
+void TestIsoCatalog::nobaraMatches()
+{
+    const auto match = IsoCatalog::matchIso(
+        QStringLiteral("/usb/Nobara-43-Official-2026-04-19.iso"));
+    QVERIFY(match.has_value());
+    QCOMPARE(match->publisherId, QStringLiteral("nobara"));
+    QVERIFY(match->checksumUrl.endsWith(QStringLiteral(".iso.sha256sum")));
+    QCOMPARE(match->releaseLabel, QStringLiteral("43 Official"));
 }
 
 QTEST_MAIN(TestIsoCatalog)

@@ -167,6 +167,11 @@ private:
     QLineEdit* m_isoDirEdit = nullptr;
     QCheckBox* m_isoAutoVerifyCheck = nullptr;
     QCheckBox* m_isoAutoVerifyOnUsbMountCheck = nullptr;
+    QComboBox* m_settingsProfileCombo = nullptr;
+    QCheckBox* m_blockMountOnIsoFailCheck = nullptr;
+    QCheckBox* m_isoVerifyDecompressedCheck = nullptr;
+    QCheckBox* m_isoPreferOfflineCheck = nullptr;
+    QSpinBox* m_isoParallelSpin = nullptr;
 
     // Hashing tab
     QComboBox* m_hashAlgorithmCombo = nullptr;

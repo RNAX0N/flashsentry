@@ -41,7 +41,7 @@ Open **Settings → Verification → Mode**.
 - Arch Linux with FlashSentry installed
 - `gpg` package (`sudo pacman -S gnupg`)
 - Internet access when verifying (to download official checksums)
-- A USB stick with a `.iso` file on it — typical after **Rufus**, **Ventoy**, or copying the file manually
+- A USB stick with an image file on it — after **Rufus**, **`dd`**, a manual copy, or any similar method
 
 ### Steps
 
@@ -49,7 +49,7 @@ Open **Settings → Verification → Mode**.
 2. Insert the USB drive and wait for it to mount.
 3. FlashSentry will:
    - Find `.iso` files on the volume
-   - Match the filename to a known publisher (Arch, Ubuntu, Debian, Fedora)
+   - Match the filename to a known publisher (see [supported list](#supported-iso-publishers-automatic))
    - Download official `SHA256SUMS` (or equivalent) and signature files
    - Compute SHA-256 of your on-drive copy
    - Run `gpg --verify` in an isolated cache directory
@@ -191,14 +191,56 @@ Filename patterns (examples):
 |-----------|------------------|
 | Arch Linux | `archlinux-2024.11.01-x86_64.iso` |
 | Ubuntu | `ubuntu-24.04.2-desktop-amd64.iso` |
+| Kubuntu / Xubuntu / Lubuntu | `kubuntu-24.04-desktop-amd64.iso` |
+| Ubuntu MATE / Ubuntu Studio | `ubuntu-mate-24.04-desktop-amd64.iso` |
 | Debian | `debian-12.8.0-amd64-netinst.iso` |
 | Fedora | `Fedora-Workstation-Live-41-1.4.x86_64.iso` |
 | Linux Mint | `linuxmint-22.2-cinnamon-64bit.iso` |
 | openSUSE Leap | `openSUSE-Leap-15.6-DVD-x86_64-Media.iso` |
 | openSUSE Tumbleweed | `openSUSE-Tumbleweed-DVD-x86_64-Current.iso` |
 | Manjaro | `manjaro-kde-25.0.0-250527-linux612.iso` |
+| Kali Linux | `kali-linux-2024.4-live-amd64.iso` |
+| CentOS Stream | `CentOS-Stream-9-x86_64-dvd1.iso` |
+| Rocky Linux / AlmaLinux | `Rocky-9.4-x86_64-minimal.iso` |
+| elementary OS | `elementaryos-7.1-amd64.iso` |
+| Pop!_OS | `pop-os_22.04_amd64_intel_35.iso` |
+| EndeavourOS | `endeavouros-2024.12.18-x86_64.iso` |
+| Garuda Linux | `garuda-hyprland-linux-zen-250308.iso` |
+| CachyOS | `cachyos-desktop-linux-260308.iso` |
+| Nobara Linux | `Nobara-43-Official-2026-04-19.iso` |
+| Raspberry Pi OS | `2024-11-19-raspios-bookworm-arm64.img.xz` |
+| Ubuntu for Raspberry Pi | `ubuntu-24.04.3-preinstalled-server-arm64+raspi.img.xz` |
+| Armbian | `Armbian_25.2.1_Odroidn2_bookworm_current.img.xz` + `.img.xz.sha` sidecar |
+| Alpine / Void / NixOS | `alpine-standard-3.20.3-x86_64.iso`, `void-live-x86_64-*.iso`, `nixos-*-x86_64-linux.iso` |
+| Microsoft Windows | `Win11_24H2_English_x64.iso` (manifest + optional `.sha256` sidecar) |
 
 Publisher mirrors and keys are defined in the application; see [VERIFICATION.md](VERIFICATION.md) for technical detail.
+
+---
+
+## Screenshots
+
+| USB monitor | ISO verification |
+|-------------|------------------|
+| ![Main window](../docs/images/main-window.png) | ![ISO verify report](../docs/images/iso-verify-report.png) |
+
+Watch folder setup: ![Watch lists](../docs/images/watch-lists.png)
+
+## Command-line verification (1.2.0+)
+
+Headless checks exit with `0` on full pass, `1` if any image fails, `2` on usage errors:
+
+```bash
+flashsentry --verify-iso /path/to/debian-12.5.0-amd64-netinst.iso
+flashsentry --verify-mount /run/media/$USER/USB
+flashsentry --verify-dir ~/Downloads/isos
+flashsentry --update-catalog
+flashsentry --export-report /run/media/$USER/USB --report-format csv
+flashsentry --list-publishers
+flashsentry --trust-hash Win11_24H2_English_x64.iso:41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54
+```
+
+Reports can be plain text (default), `csv`, `html`, or `json`. Profiles: **Default**, **Multi-image USB**, **Work USB**, **Paranoid** (settings id `multi_image` replaces the legacy `ventoy` id automatically).
 
 ---
 
@@ -208,6 +250,8 @@ Publisher mirrors and keys are defined in the application; see [VERIFICATION.md]
 |------|----------|
 | `~/.config/FlashSentry/FlashSentry.conf` | UI and behavior settings |
 | `~/.config/flashsentry/devices.json` | Whitelist, baselines, optional partition hashes |
+| `~/.config/flashsentry/audit.log` | JSON-lines log of ISO verify results |
+| `~/.config/flashsentry/iso-catalog.d/` | Optional drop-in manifest fragments |
 | `~/.cache/FlashSentry/iso-verify/` | Downloaded checksums, GPG homedir cache |
 
 ISO verification contacts publisher mirrors over HTTPS. No telemetry is sent to FlashSentry developers by the app itself.
@@ -220,7 +264,7 @@ ISO verification contacts publisher mirrors over HTTPS. No telemetry is sent to 
 No. FlashSentry calls `gpg` itself with a private homedir under your cache directory.
 
 **Will it verify Windows ISOs?**  
-Not automatically by publisher catalog today. Use sidecar `.sha256` / `.asc` files if you have them.
+Known builds are listed in the embedded catalog (refresh with **Update catalog** or `--update-catalog`). For other `Win11_*` / `Win10_*` names, place a `.sha256` sidecar from Microsoft’s download page next to the ISO.
 
 **Can I use it only for ISOs and ignore USB whitelisting?**  
 Yes. Set **Mode** to **Automatic ISO verification** and use folder scan or mount auto-verify.
@@ -228,29 +272,39 @@ Yes. Set **Mode** to **Automatic ISO verification** and use folder scan or mount
 **Why is full-disk hashing off by default?**  
 It is slow and confusing for most people. Watch folders and ISO checks cover common needs faster.
 
-**Ventoy with multiple ISOs?**  
-Each `.iso` on the mounted Ventoy partition can be verified when the volume mounts.
+**Several images on one stick?**  
+Each supported file on the mounted volume is verified independently when auto-verify on mount is enabled.
 
 ---
 
-## Ventoy and multi-ISO USB sticks
+## Switching views
 
-[Ventoy](https://www.ventoy.net/) exposes a normal data partition that holds many `.iso` files. FlashSentry treats that like any other mounted volume:
+Use the **USB devices** / **ISO verify** tabs in the window header to jump between drive monitoring and image verification. The same tabs mirror **Settings → Mode**.
 
-1. Plug in the stick and let your desktop (or FlashSentry) mount the **data** partition — not the small Ventoy EFI area unless you only care about that layout.
-2. Keep **Automatically verify ISOs when a USB drive is mounted** enabled (default).
-3. FlashSentry scans **all** `*.iso` files under the mount point (recursive) and runs publisher checks for each supported filename.
+## Images on USB (any preparation method)
+
+FlashSentry verifies **files on a mounted volume** — it does not care whether you used `dd`, Rufus, `cp`, a multiboot stick, or something else:
+
+| Method | What we verify |
+|--------|----------------|
+| Loose `.iso` / `.img.xz` on a mounted partition | Each file (publisher hash + optional PGP) |
+| `dd` or Rufus “ISO mode” live stick | No loose file — see [dd / live USB without a loose file](#dd-or-rufus-iso-mode-without-a-loose-file); use full-partition hash or add a copy of the `.iso` |
+| Multiboot stick with many images | Same as loose files on the **data** partition; boot/config folders are skipped automatically |
 
 **Tips:**
 
 | Situation | What to do |
 |-----------|------------|
-| Several distros on one stick | Wait for the log panel / notifications; each ISO gets its own pass/fail line |
-| One ISO fails, others pass | Normal — check filename matches a [supported publisher](#supported-iso-publishers-automatic) or add sidecars next to that ISO |
-| No `.iso` files found | You may have booted from the stick or only have a `dd`-written layout — see [dd / live USB without a loose file](#dd-or-rufus-iso-mode-without-a-loose-file) |
-| Ventoy copy + publisher checksum files | Copy `SHA256SUMS`, `.gpg`, or per-ISO `.sha256` / `.sig` beside the ISO; local sidecars are used if download fails |
+| Several distros on one stick | Each image gets its own pass/fail line in the ISO tab or notifications |
+| One image fails, others pass | Normal — check filename against [supported publishers](#supported-iso-publishers-automatic) or add sidecars |
+| No image files found | Often a `dd`-written layout or the small boot partition only — mount the main data partition or see the dd section above |
+| Offline verification | Copy `SHA256SUMS`, `.gpg`, or per-file `.sha256` / `.sig` next to the image |
 
-Ventoy does not require a separate mode — use **USB drive monitor** with ISO auto-verify on mount.
+Use **ISO verify → Verification profile → Multi-image USB** (or **Settings → Verification**) when the stick usually holds several images. Otherwise **Default** is fine.
+
+On the **ISO verify** tab: plug in a flash drive or choose a folder, pick a profile, then **Verify images**. Click a result row to jump to that file in the report. Device cards on the **USB devices** tab show the latest image check summary.
+
+**Compatibility:** FlashSentry only **reads** image files. Vendor boot trees (`EFI/`, `ventoy/`, Easy2Boot `_ISO/`, etc.) are not scanned or modified. Desktop automount is supported — verification runs on the mount your session already has.
 
 ---
 

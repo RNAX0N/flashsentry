@@ -203,7 +203,13 @@ inline QString appModuleToString(AppModule m) {
                                        : QStringLiteral("usb_monitor");
 }
 
-enum class IsoVerifySource { Unknown, LocalSidecar, RemotePublisher, ComputedOnly };
+enum class IsoVerifySource {
+    Unknown,
+    LocalSidecar,
+    RemotePublisher,
+    EmbeddedCatalog,
+    ComputedOnly
+};
 
 struct IsoVerifyResult {
     QString isoPath;
@@ -365,6 +371,12 @@ struct AppSettings {
     bool isoAutoVerifyOnScan = true;
     bool isoAutoVerifyOnUsbMount = true;
     bool promptPerPartition = false;
+    bool blockMountOnIsoVerifyFailure = false;
+    bool isoVerifyDecompressed = false;
+    bool isoPreferOfflineSidecars = false;
+    int isoVerifyParallel = 2;
+    bool showFirstRunWizard = true;
+    QString settingsProfile = QStringLiteral("default");
 
     QJsonObject toJson() const {
         QJsonObject obj;
@@ -392,6 +404,12 @@ struct AppSettings {
         obj["iso_scan_directory"] = isoScanDirectory;
         obj["iso_auto_verify_on_scan"] = isoAutoVerifyOnScan;
         obj["iso_auto_verify_on_usb_mount"] = isoAutoVerifyOnUsbMount;
+        obj["block_mount_on_iso_failure"] = blockMountOnIsoVerifyFailure;
+        obj["iso_verify_decompressed"] = isoVerifyDecompressed;
+        obj["iso_prefer_offline_sidecars"] = isoPreferOfflineSidecars;
+        obj["iso_verify_parallel"] = isoVerifyParallel;
+        obj["show_first_run_wizard"] = showFirstRunWizard;
+        obj["settings_profile"] = settingsProfile;
         return obj;
     }
 
@@ -422,6 +440,18 @@ struct AppSettings {
         settings.isoScanDirectory = obj["iso_scan_directory"].toString();
         settings.isoAutoVerifyOnScan = obj["iso_auto_verify_on_scan"].toBool(true);
         settings.isoAutoVerifyOnUsbMount = obj["iso_auto_verify_on_usb_mount"].toBool(true);
+        settings.blockMountOnIsoVerifyFailure = obj["block_mount_on_iso_failure"].toBool(false);
+        settings.isoVerifyDecompressed = obj["iso_verify_decompressed"].toBool(false);
+        settings.isoPreferOfflineSidecars = obj["iso_prefer_offline_sidecars"].toBool(false);
+        settings.isoVerifyParallel = obj["iso_verify_parallel"].toInt(2);
+        settings.showFirstRunWizard = obj["show_first_run_wizard"].toBool(true);
+        {
+            QString profile = obj["settings_profile"].toString(QStringLiteral("default"));
+            if (profile == QStringLiteral("ventoy")) {
+                profile = QStringLiteral("multi_image");
+            }
+            settings.settingsProfile = profile;
+        }
         return settings;
     }
 };

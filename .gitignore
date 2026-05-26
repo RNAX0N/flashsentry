@@ -1,5 +1,6 @@
 /build/
 /scripts/
+tests/fixtures/catalog-signing/gnupg/
 *.user
 *.autosave
 CMakeLists.txt.user

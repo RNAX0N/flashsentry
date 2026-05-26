@@ -11,6 +11,8 @@
 #include <QSplitter>
 #include <QListWidget>
 #include <QTimer>
+#include <QTabBar>
+#include <QPushButton>
 #include <QCloseEvent>
 #include <QSettings>
 #include <memory>
@@ -271,11 +273,19 @@ private:
     void startManifestVerification(const QString& deviceNode);
     void openWatchListDialog(const QString& deviceNode);
     void applyAppModule();
+    void syncModeTabFromSettings();
+    void onModeTabChanged(int index);
     void triggerIsoVerificationOnMount(const MountManager::MountResult& result);
     void handleManifestMismatch(const DeviceInfo& device, const ManifestVerifyResult& result);
     void acceptManifestBaseline(const DeviceInfo& device, const WatchManifest& manifest);
 
     void mountDespiteModification(const DeviceInfo& device);
+
+    void applyIsoVerifyOptions();
+    void warnIfCatalogIntegrityFailed();
+    void maybeTriggerIsoVerifyForMountedDevice(const DeviceInfo& device);
+    void clearIsoVerifyDedupForDevice(const DeviceInfo& device);
+    void handleIsoVerificationReport(const QString& deviceNode, const QList<IsoVerifyResult>& results);
 
     bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
                                  const QString& actual, bool offerMount = true);
@@ -310,6 +320,7 @@ private:
     // UI - Header
     QWidget* m_headerWidget = nullptr;
     QLabel* m_titleLabel = nullptr;
+    QTabBar* m_modeTabBar = nullptr;
     QLineEdit* m_searchEdit = nullptr;
     QPushButton* m_refreshBtn = nullptr;
     QPushButton* m_settingsBtn = nullptr;
@@ -330,6 +341,7 @@ private:
 
     // UI - Status bar
     QLabel* m_statusLabel = nullptr;
+    QPushButton* m_catalogStatusBtn = nullptr;
     QLabel* m_hashStatusLabel = nullptr;
 
     // Device tracking
@@ -348,6 +360,7 @@ private:
     QSet<QString> m_drivePromptInProgress;
     QSet<QString> m_rejectedDrives;
     QSet<QString> m_unmountBeforeHash;
+    QSet<QString> m_isoVerifyTriggeredMounts;
 
     // State
     bool m_isClosing = false;

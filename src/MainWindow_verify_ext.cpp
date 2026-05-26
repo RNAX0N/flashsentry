@@ -1,5 +1,11 @@
 #include "MainWindow.h"
 #include "WatchListDialog.h"
+#include "IsoVerifier.h"
+#include "IsoVerifyReport.h"
+#include "IsoVerifySettingsLoader.h"
+#include "IsoCatalogManifest.h"
+#include "IsoScanRules.h"
+#include "SettingsProfiles.h"
 #include <QMessageBox>
 
 namespace FlashSentry {
@@ -12,10 +18,13 @@ void MainWindow::applyAppModule()
     if (m_settings.appModule == AppModule::IsoVerifier) {
         m_appModeStack->setCurrentWidget(m_isoWidget);
         if (m_titleLabel) {
-            m_titleLabel->setText(QStringLiteral("FlashSentry — ISO Verify"));
+            m_titleLabel->setText(QStringLiteral("FlashSentry"));
         }
-        if (m_isoWidget && !m_settings.isoScanDirectory.isEmpty()) {
-            m_isoWidget->setScanDirectory(m_settings.isoScanDirectory);
+        if (m_isoWidget) {
+            if (!m_settings.isoScanDirectory.isEmpty()) {
+                m_isoWidget->setScanDirectory(m_settings.isoScanDirectory);
+            }
+            m_isoWidget->refreshCatalogStatus();
         }
     } else {
         m_appModeStack->setCurrentWidget(m_splitter);
@@ -23,6 +32,7 @@ void MainWindow::applyAppModule()
             m_titleLabel->setText(QStringLiteral("FlashSentry"));
         }
     }
+    syncModeTabFromSettings();
 }
 
 void MainWindow::onIsoLogMessage(const QString& message)
@@ -261,6 +271,113 @@ void MainWindow::acceptManifestBaseline(const DeviceInfo& device, const WatchMan
     DeviceCard* card = getDeviceCard(device.deviceNode);
     if (card) {
         card->setVerificationStatus(VerificationStatus::Verified);
+    }
+}
+
+void MainWindow::applyIsoVerifyOptions()
+{
+    IsoVerifyOptions opt = IsoVerifySettingsLoader::load();
+    opt.maxParallel = qMax(1, m_settings.isoVerifyParallel);
+    opt.verifyDecompressed = m_settings.isoVerifyDecompressed;
+    opt.preferOfflineSidecars = m_settings.isoPreferOfflineSidecars;
+    IsoVerifier::setVerifyOptions(opt);
+}
+
+void MainWindow::maybeTriggerIsoVerifyForMountedDevice(const DeviceInfo& device)
+{
+    if (!m_isoWidget || device.mountPoint.isEmpty() || !device.isMounted) {
+        return;
+    }
+    if (!m_settings.isoAutoVerifyOnUsbMount && m_settings.appModule != AppModule::IsoVerifier) {
+        return;
+    }
+    if (m_isoVerifyTriggeredMounts.contains(device.mountPoint)) {
+        return;
+    }
+
+    const IsoVerifier::MountScanResult scan = IsoVerifier::scanMountPoint(device.mountPoint);
+    if (IsoScanRules::shouldSkipAutoVerifyPartition(device.mountPoint, device.sizeBytes,
+                                                    scan.isoPaths.size())) {
+        if (!scan.layoutNote.isEmpty()) {
+            logMessage(scan.layoutNote, LogLevel::Info);
+        }
+        return;
+    }
+    if (scan.isoPaths.isEmpty() && !scan.looksLikeDdIsoStick) {
+        return;
+    }
+
+    MountManager::MountResult synthetic;
+    synthetic.success = true;
+    synthetic.deviceNode = device.deviceNode;
+    synthetic.mountPoint = device.mountPoint;
+    triggerIsoVerificationOnMount(synthetic);
+}
+
+void MainWindow::clearIsoVerifyDedupForDevice(const DeviceInfo& device)
+{
+    if (!device.mountPoint.isEmpty()) {
+        m_isoVerifyTriggeredMounts.remove(device.mountPoint);
+    }
+    for (const DeviceInfo& d : m_deviceMonitor->connectedDevices()) {
+        if (d.parentDevice == device.parentDevice || d.deviceNode == device.parentDevice) {
+            if (!d.mountPoint.isEmpty()) {
+                m_isoVerifyTriggeredMounts.remove(d.mountPoint);
+            }
+        }
+    }
+}
+
+void MainWindow::warnIfCatalogIntegrityFailed()
+{
+    if (IsoCatalogManifest::lastEmbeddedIntegrityOk()) {
+        return;
+    }
+    const QString detail = IsoCatalogManifest::integrityStatusText();
+    logMessage(QStringLiteral("Embedded ISO catalog integrity check failed — verification may be unreliable"),
+               LogLevel::Security);
+    QMessageBox::warning(
+        this,
+        QStringLiteral("ISO catalog integrity"),
+        QStringLiteral(
+            "%1\n\n"
+            "Image verification may be unreliable until you reinstall FlashSentry or run "
+            "\"Update catalog\" from the ISO verification tab.\n\n"
+            "If you did not modify system files, treat this as a possible installation problem.")
+            .arg(detail));
+    updateStatusBar();
+}
+
+void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
+                                             const QList<IsoVerifyResult>& results)
+{
+    const IsoVerifyReport::SummaryCounts counts = IsoVerifyReport::countSummary(results);
+    const int passed = counts.passed;
+    const int needsSidecar = counts.needsSidecar;
+    const QString summary = IsoVerifyReport::summaryLine(results);
+    logMessage(QStringLiteral("ISO verify (%1): %2")
+                   .arg(deviceNode.isEmpty() ? QStringLiteral("manual") : deviceNode, summary),
+               passed == results.size() ? LogLevel::Info : LogLevel::Security);
+
+    if (m_settings.showNotifications && m_trayIcon) {
+        auto info = m_deviceMonitor->getDevice(deviceNode);
+        const QString name = info ? info->displayName() : deviceNode;
+        m_trayIcon->notifyIsoVerifySummary(name, passed, results.size(), needsSidecar);
+    }
+
+    if (DeviceCard* card = getDeviceCard(deviceNode)) {
+        card->setIsoVerifySummary(summary);
+        if (passed == results.size() && !results.isEmpty()) {
+            card->setVerificationStatus(VerificationStatus::Verified);
+        } else if (IsoVerifier::mountScanHasFailures(results)) {
+            card->setVerificationStatus(VerificationStatus::Modified);
+        }
+    }
+
+    if (m_settings.blockMountOnIsoVerifyFailure && IsoVerifier::mountScanHasFailures(results)) {
+        logMessage(QStringLiteral("Mount blocked: ISO/image verification failed on %1").arg(deviceNode),
+                   LogLevel::Security);
+        m_pendingHashActions.remove(deviceNode);
     }
 }
 

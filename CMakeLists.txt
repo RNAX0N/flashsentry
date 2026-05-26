@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(flashsentry
-    VERSION 1.1.4
+    VERSION 1.4.2
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )
@@ -37,8 +37,20 @@ set(SOURCES
     src/MerkleTree.cpp
     src/ManifestService.cpp
     src/ManifestWorker.cpp
-    src/IsoCatalog.cpp
+    src/iso_catalog/IsoCatalogBuilders.cpp
+    src/iso_catalog/IsoCatalogMatch.cpp
+    src/iso_catalog/IsoCatalogUtil.cpp
+    src/IsoCatalogManifest.cpp
+    src/IsoHttpClient.cpp
     src/IsoChecksum.cpp
+    src/IsoVerifyCache.cpp
+    src/IsoVerifyReport.cpp
+    src/AuditLog.cpp
+    src/VerifyCli.cpp
+    src/IsoVerifySettingsLoader.cpp
+    src/SettingsProfiles.cpp
+    src/WelcomeWizard.cpp
+    src/IsoScanRules.cpp
     src/IsoVerifier.cpp
     src/IsoVerifierWorker.cpp
     src/WatchListDialog.cpp
@@ -61,7 +73,19 @@ set(HEADERS
     include/ManifestService.h
     include/ManifestWorker.h
     include/IsoCatalog.h
+    include/IsoCatalogInternal.h
+    include/IsoCatalogManifest.h
+    include/IsoHttpClient.h
     include/IsoChecksum.h
+    include/IsoVerifyOptions.h
+    include/IsoVerifyCache.h
+    include/IsoVerifyReport.h
+    include/AuditLog.h
+    include/VerifyCli.h
+    include/IsoVerifySettingsLoader.h
+    include/SettingsProfiles.h
+    include/WelcomeWizard.h
+    include/IsoScanRules.h
     include/IsoVerifier.h
     include/IsoVerifierWorker.h
     include/WatchListDialog.h
@@ -157,6 +181,11 @@ install(
     DESTINATION ${CMAKE_INSTALL_DOCDIR}
 )
 install(FILES docs/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME docs-README.md)
+install(FILES resources/iso-catalog/embedded-manifest.json
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/flashsentry/iso-catalog)
+install(DIRECTORY packaging/iso-catalog.d/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/flashsentry/iso-catalog.d
+    FILES_MATCHING PATTERN "*.md" PATTERN "*.json")
 
 if(NOT TARGET uninstall)
     configure_file(

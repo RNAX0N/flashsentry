@@ -1,5 +1,6 @@
 #include "SettingsDialog.h"
 #include "AutostartManager.h"
+#include "SettingsProfiles.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -64,6 +65,21 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     m_isoAutoVerifyCheck->setChecked(settings.isoAutoVerifyOnScan);
     if (m_isoAutoVerifyOnUsbMountCheck)
         m_isoAutoVerifyOnUsbMountCheck->setChecked(settings.isoAutoVerifyOnUsbMount);
+    if (m_blockMountOnIsoFailCheck)
+        m_blockMountOnIsoFailCheck->setChecked(settings.blockMountOnIsoVerifyFailure);
+    if (m_isoVerifyDecompressedCheck)
+        m_isoVerifyDecompressedCheck->setChecked(settings.isoVerifyDecompressed);
+    if (m_isoPreferOfflineCheck)
+        m_isoPreferOfflineCheck->setChecked(settings.isoPreferOfflineSidecars);
+    if (m_isoParallelSpin)
+        m_isoParallelSpin->setValue(settings.isoVerifyParallel);
+    if (m_settingsProfileCombo) {
+        const QString profileId = SettingsProfiles::normalizeProfileId(settings.settingsProfile);
+        const int idx = m_settingsProfileCombo->findData(profileId);
+        if (idx >= 0) {
+            m_settingsProfileCombo->setCurrentIndex(idx);
+        }
+    }
     m_defaultTrustCombo->setCurrentIndex(settings.defaultTrustLevel);
     
     // Hashing
@@ -113,6 +129,18 @@ AppSettings SettingsDialog::getSettings() const
     settings.isoAutoVerifyOnScan = m_isoAutoVerifyCheck->isChecked();
     if (m_isoAutoVerifyOnUsbMountCheck)
         settings.isoAutoVerifyOnUsbMount = m_isoAutoVerifyOnUsbMountCheck->isChecked();
+    if (m_blockMountOnIsoFailCheck)
+        settings.blockMountOnIsoVerifyFailure = m_blockMountOnIsoFailCheck->isChecked();
+    if (m_isoVerifyDecompressedCheck)
+        settings.isoVerifyDecompressed = m_isoVerifyDecompressedCheck->isChecked();
+    if (m_isoPreferOfflineCheck)
+        settings.isoPreferOfflineSidecars = m_isoPreferOfflineCheck->isChecked();
+    if (m_isoParallelSpin)
+        settings.isoVerifyParallel = m_isoParallelSpin->value();
+    if (m_settingsProfileCombo) {
+        settings.settingsProfile =
+            SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->currentData().toString());
+    }
     settings.defaultTrustLevel = m_defaultTrustCombo->currentIndex();
     
     // Hashing
@@ -232,6 +260,25 @@ QWidget* SettingsDialog::createVerificationTab()
     intro->setWordWrap(true);
     layout->addWidget(intro);
 
+    QGroupBox* presetGroup = new QGroupBox(QStringLiteral("Quick profile"));
+    QFormLayout* presetForm = new QFormLayout(presetGroup);
+    m_settingsProfileCombo = new QComboBox;
+    for (const QString& id : SettingsProfiles::profileIds()) {
+        m_settingsProfileCombo->addItem(SettingsProfiles::profileDisplayName(id), id);
+    }
+    connect(m_settingsProfileCombo, &QComboBox::currentIndexChanged, this, [this](int index) {
+        if (m_blockSignals || index < 0) {
+            return;
+        }
+        AppSettings s = getSettings();
+        SettingsProfiles::applyProfile(
+            SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->itemData(index).toString()), s);
+        loadSettings(s);
+        m_hasChanges = true;
+    });
+    presetForm->addRow(QStringLiteral("Preset:"), m_settingsProfileCombo);
+    layout->addWidget(presetGroup);
+
     QGroupBox* moduleGroup = new QGroupBox(QStringLiteral("Application mode"));
     QFormLayout* moduleForm = new QFormLayout(moduleGroup);
     m_appModuleCombo = new QComboBox;
@@ -264,12 +311,29 @@ QWidget* SettingsDialog::createVerificationTab()
     isoForm->addRow(QStringLiteral("Scan folder:"), m_isoDirEdit);
     m_isoAutoVerifyCheck = new QCheckBox(QStringLiteral("Verify ISOs automatically after scan"));
     m_isoAutoVerifyOnUsbMountCheck = new QCheckBox(
-        QStringLiteral("Automatically verify ISOs when a USB drive is mounted (recommended; Rufus/dd copies)"));
+        QStringLiteral("Automatically verify images when a USB drive is mounted"));
+    m_isoAutoVerifyOnUsbMountCheck->setToolTip(
+        QStringLiteral("Works with desktop automount: verifies the existing mount without remounting. "
+                       "Skips boot-loader and multiboot config folders (EFI, vendor trees)."));
     m_isoAutoVerifyOnUsbMountCheck->setChecked(true);
     connect(m_isoAutoVerifyOnUsbMountCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     connect(m_isoAutoVerifyCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     isoForm->addRow(QStringLiteral(""), m_isoAutoVerifyCheck);
     isoForm->addRow(QStringLiteral(""), m_isoAutoVerifyOnUsbMountCheck);
+    m_blockMountOnIsoFailCheck = new QCheckBox(QStringLiteral("Block mount when any image on the stick fails verification"));
+    connect(m_blockMountOnIsoFailCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_blockMountOnIsoFailCheck);
+    m_isoParallelSpin = new QSpinBox;
+    m_isoParallelSpin->setRange(1, 8);
+    m_isoParallelSpin->setValue(2);
+    connect(m_isoParallelSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral("Parallel verify:"), m_isoParallelSpin);
+    m_isoVerifyDecompressedCheck = new QCheckBox(QStringLiteral("Verify decompressed .img.xz payload (requires xz)"));
+    connect(m_isoVerifyDecompressedCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_isoVerifyDecompressedCheck);
+    m_isoPreferOfflineCheck = new QCheckBox(QStringLiteral("Prefer local .sha256 sidecars before downloading checksums"));
+    connect(m_isoPreferOfflineCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_isoPreferOfflineCheck);
     layout->addWidget(isoGroup);
 
     layout->addStretch();

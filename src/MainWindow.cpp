@@ -1,5 +1,9 @@
 #include "MainWindow.h"
 #include "AutostartManager.h"
+#include "AuditLog.h"
+#include "IsoCatalogManifest.h"
+#include "SettingsProfiles.h"
+#include "WelcomeWizard.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -59,6 +63,9 @@ MainWindow::MainWindow(QWidget* parent)
     }
     
     logMessage("FlashSentry started", LogLevel::Info);
+
+    IsoCatalogManifest::ensureLoaded();
+    QTimer::singleShot(0, this, [this]() { warnIfCatalogIntegrityFailed(); });
 }
 
 MainWindow::~MainWindow()
@@ -114,13 +121,16 @@ void MainWindow::setupUi()
     m_isoWidget = new IsoVerifierWidget;
     connect(m_isoWidget, &IsoVerifierWidget::logMessageRequested,
             this, &MainWindow::onIsoLogMessage);
-    connect(m_isoWidget, &IsoVerifierWidget::verificationReportReady,
-            this, [this](const QString& deviceNode, const QList<IsoVerifyResult>& results) {
-                int passed = 0;
-                for (const auto& r : results) if (r.passed()) ++passed;
-                const QString summary = QStringLiteral("ISO verify: %1/%2 passed").arg(passed).arg(results.size());
-                logMessage(summary, passed == results.size() ? LogLevel::Info : LogLevel::Security);
-Q_UNUSED(deviceNode);
+    connect(m_isoWidget, &IsoVerifierWidget::verificationReportReady, this,
+            &MainWindow::handleIsoVerificationReport);
+    connect(m_isoWidget, &IsoVerifierWidget::settingsProfileSelected, this,
+            [this](const QString& profileId) {
+                SettingsProfiles::applyProfile(profileId, m_settings);
+                applySettings(m_settings);
+                saveSettings();
+                logMessage(QStringLiteral("Profile: %1")
+                               .arg(SettingsProfiles::profileDisplayName(profileId)),
+                           LogLevel::Info);
             });
 
     m_appModeStack->addWidget(m_isoWidget);
@@ -158,9 +168,20 @@ QWidget* MainWindow::createHeader()
     titleLayout->addWidget(m_titleLabel);
     
     layout->addLayout(titleLayout);
-    
+
+    layout->addSpacing(12);
+
+    m_modeTabBar = new QTabBar;
+    m_modeTabBar->addTab(QStringLiteral("USB devices"));
+    m_modeTabBar->addTab(QStringLiteral("ISO verify"));
+    m_modeTabBar->setDocumentMode(true);
+    m_modeTabBar->setExpanding(false);
+    m_modeTabBar->setStyleSheet(FSStyle.tabWidgetStyleSheet());
+    connect(m_modeTabBar, &QTabBar::currentChanged, this, &MainWindow::onModeTabChanged);
+    layout->addWidget(m_modeTabBar);
+
     layout->addStretch();
-    
+
     // Search box
     m_searchEdit = new QLineEdit;
     m_searchEdit->setPlaceholderText("🔍 Search devices...");
@@ -348,7 +369,25 @@ void MainWindow::createStatusBar()
     m_statusLabel->setStyleSheet(QString("color: %1;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     status->addWidget(m_statusLabel, 1);
-    
+
+    m_catalogStatusBtn = new QPushButton;
+    m_catalogStatusBtn->setFlat(true);
+    m_catalogStatusBtn->setCursor(Qt::PointingHandCursor);
+    m_catalogStatusBtn->setStyleSheet(QString("color: %1; text-align: left;").arg(
+        FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+    connect(m_catalogStatusBtn, &QPushButton::clicked, this, [this]() {
+        if (m_modeTabBar) {
+            m_modeTabBar->setCurrentIndex(1);
+        }
+        m_settings.appModule = AppModule::IsoVerifier;
+        applyAppModule();
+        saveSettings();
+        if (m_isoWidget) {
+            m_isoWidget->refreshCatalogStatus();
+        }
+    });
+    status->addPermanentWidget(m_catalogStatusBtn);
+
     m_hashStatusLabel = new QLabel;
     m_hashStatusLabel->setStyleSheet(QString("color: %1;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary)));
@@ -439,6 +478,13 @@ void MainWindow::connectSignals()
             this, &MainWindow::onQuitRequested);
     connect(m_trayIcon.get(), &TrayIcon::settingsRequested,
             this, &MainWindow::onSettingsRequested);
+    connect(m_trayIcon.get(), &TrayIcon::auditLogOpenRequested, this, [this]() {
+        const QString path = AuditLog::logPath();
+        if (!QFileInfo::exists(path)) {
+            logMessage(QStringLiteral("Audit log not created yet: %1").arg(path), LogLevel::Info);
+        }
+        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    });
     connect(m_trayIcon.get(), &TrayIcon::deviceEjectRequested,
             this, &MainWindow::onEjectRequested);
 }
@@ -457,6 +503,20 @@ void MainWindow::loadSettings()
     m_settings.isoScanDirectory = m_qsettings->value("iso/scanDirectory").toString();
     m_settings.isoAutoVerifyOnScan = m_qsettings->value("iso/autoVerify", true).toBool();
     m_settings.isoAutoVerifyOnUsbMount = m_qsettings->value("iso/autoVerifyOnUsbMount", true).toBool();
+    m_settings.blockMountOnIsoVerifyFailure =
+        m_qsettings->value("iso/blockMountOnFailure", false).toBool();
+    m_settings.isoVerifyDecompressed = m_qsettings->value("iso/verifyDecompressed", false).toBool();
+    m_settings.isoPreferOfflineSidecars = m_qsettings->value("iso/preferOfflineSidecars", false).toBool();
+    m_settings.isoVerifyParallel = m_qsettings->value("iso/verifyParallel", 2).toInt();
+    m_settings.showFirstRunWizard = m_qsettings->value("general/showFirstRunWizard", true).toBool();
+    {
+        const QString storedProfile =
+            m_qsettings->value("general/settingsProfile", QStringLiteral("default")).toString();
+        m_settings.settingsProfile = SettingsProfiles::normalizeProfileId(storedProfile);
+        if (storedProfile == QStringLiteral("ventoy")) {
+            m_qsettings->setValue("general/settingsProfile", QStringLiteral("multi_image"));
+        }
+    }
     m_settings.requireConfirmationForNew = m_qsettings->value("security/confirmNewDevice", true).toBool();
     m_settings.requireConfirmationForModified = m_qsettings->value("security/confirmModified", true).toBool();
     m_settings.blockModifiedDevices = m_qsettings->value("security/blockModified", false).toBool();
@@ -479,7 +539,8 @@ void MainWindow::loadSettings()
     m_hashWorker->setMaxConcurrent(m_settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(m_settings.animationsEnabled);
     applyAppModule();
-    
+    applyIsoVerifyOptions();
+
     // Restore window geometry
     if (m_qsettings->contains("window/geometry")) {
         restoreGeometry(m_qsettings->value("window/geometry").toByteArray());
@@ -507,6 +568,12 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("iso/scanDirectory", m_settings.isoScanDirectory);
     m_qsettings->setValue("iso/autoVerify", m_settings.isoAutoVerifyOnScan);
     m_qsettings->setValue("iso/autoVerifyOnUsbMount", m_settings.isoAutoVerifyOnUsbMount);
+    m_qsettings->setValue("iso/blockMountOnFailure", m_settings.blockMountOnIsoVerifyFailure);
+    m_qsettings->setValue("iso/verifyDecompressed", m_settings.isoVerifyDecompressed);
+    m_qsettings->setValue("iso/preferOfflineSidecars", m_settings.isoPreferOfflineSidecars);
+    m_qsettings->setValue("iso/verifyParallel", m_settings.isoVerifyParallel);
+    m_qsettings->setValue("general/showFirstRunWizard", m_settings.showFirstRunWizard);
+    m_qsettings->setValue("general/settingsProfile", m_settings.settingsProfile);
     m_qsettings->setValue("appearance/theme", FSStyle.themeName(FSStyle.currentTheme()));
     m_qsettings->setValue("window/geometry", saveGeometry());
     
@@ -590,6 +657,16 @@ void MainWindow::showEvent(QShowEvent* event)
 {
     QMainWindow::showEvent(event);
     m_trayIcon->updateWindowVisibility(true);
+
+    static bool wizardShown = false;
+    if (!wizardShown && m_settings.showFirstRunWizard) {
+        wizardShown = true;
+        WelcomeWizard wizard(this);
+        if (wizard.exec() == QDialog::Accepted) {
+            m_settings.showFirstRunWizard = false;
+            m_qsettings->setValue("general/showFirstRunWizard", false);
+        }
+    }
 }
 
 void MainWindow::hideEvent(QHideEvent* event)
@@ -624,11 +701,15 @@ void MainWindow::onDeviceConnected(const DeviceInfo& device)
     updateSidebarStats();
     updateEmptyState();
     m_trayIcon->updateDeviceList(m_deviceMonitor->connectedDevices());
+    maybeTriggerIsoVerifyForMountedDevice(device);
 }
 
 void MainWindow::onDeviceDisconnected(const QString& deviceNode)
 {
     DeviceCard* card = getDeviceCard(deviceNode);
+    if (card) {
+        clearIsoVerifyDedupForDevice(card->device());
+    }
     QString deviceName = card ? card->device().displayName() : deviceNode;
     QString drive;
     if (card) {
@@ -673,6 +754,7 @@ void MainWindow::onDeviceDisconnected(const QString& deviceNode)
 void MainWindow::onDeviceChanged(const DeviceInfo& device)
 {
     updateDeviceCard(device);
+    maybeTriggerIsoVerifyForMountedDevice(device);
 }
 
 void MainWindow::onInitialScanComplete(int deviceCount)
@@ -680,6 +762,9 @@ void MainWindow::onInitialScanComplete(int deviceCount)
     logMessage(QString("Initial scan complete: %1 device(s) found").arg(deviceCount), LogLevel::Info);
     updateSidebarStats();
     updateEmptyState();
+    for (const DeviceInfo& device : m_deviceMonitor->connectedDevices()) {
+        maybeTriggerIsoVerifyForMountedDevice(device);
+    }
 }
 
 void MainWindow::handleNewDevice(const DeviceInfo& device)
@@ -1021,6 +1106,10 @@ void MainWindow::triggerIsoVerificationOnMount(const MountManager::MountResult& 
 {
     if (!m_isoWidget || result.mountPoint.isEmpty()) return;
     if (!m_settings.isoAutoVerifyOnUsbMount && m_settings.appModule != AppModule::IsoVerifier) return;
+    if (m_isoVerifyTriggeredMounts.contains(result.mountPoint)) {
+        return;
+    }
+    m_isoVerifyTriggeredMounts.insert(result.mountPoint);
     QString label = result.deviceNode;
     if (auto info = m_deviceMonitor->getDevice(result.deviceNode)) {
         label = info->displayName();
@@ -1303,6 +1392,9 @@ void MainWindow::applySettings(const AppSettings& settings)
     m_hashWorker->setMaxConcurrent(settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(settings.animationsEnabled);
     applyAppModule();
+    if (m_isoWidget) {
+        m_isoWidget->setActiveProfile(settings.settingsProfile);
+    }
 
     if (AutostartManager::isAvailable()) {
         const auto current = AutostartManager::isLoginAutostartEnabled();
@@ -1328,9 +1420,54 @@ void MainWindow::updateStatusBar()
 {
     int connected = m_deviceCards.size();
     int whitelisted = m_database->deviceCount();
-    
+
     m_statusLabel->setText(QString("Connected: %1 | Whitelisted: %2")
-        .arg(connected).arg(whitelisted));
+                             .arg(connected)
+                             .arg(whitelisted));
+
+    if (!m_catalogStatusBtn) {
+        return;
+    }
+    IsoCatalogManifest::ensureLoaded();
+    const QString catalogDetail = IsoCatalogManifest::integrityStatusText();
+    m_catalogStatusBtn->setToolTip(
+        catalogDetail + QStringLiteral("\n\nClick to open ISO verify."));
+    if (!IsoCatalogManifest::lastEmbeddedIntegrityOk()) {
+        m_catalogStatusBtn->setText(QStringLiteral("⚠ ISO catalog"));
+        m_catalogStatusBtn->setStyleSheet(QString("color: %1; font-weight: 600; text-align: left;")
+                                              .arg(FSStyle.colorCss(StyleManager::ColorRole::Warning)));
+    } else {
+        m_catalogStatusBtn->setText(
+            QStringLiteral("Catalog: %1").arg(IsoCatalogManifest::entryCount()));
+        m_catalogStatusBtn->setStyleSheet(QString("color: %1; text-align: left;")
+                                              .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+    }
+}
+
+void MainWindow::syncModeTabFromSettings()
+{
+    if (!m_modeTabBar) {
+        return;
+    }
+    const int index = m_settings.appModule == AppModule::IsoVerifier ? 1 : 0;
+    if (m_modeTabBar->currentIndex() != index) {
+        m_modeTabBar->blockSignals(true);
+        m_modeTabBar->setCurrentIndex(index);
+        m_modeTabBar->blockSignals(false);
+    }
+    if (m_searchEdit) {
+        m_searchEdit->setVisible(index == 0);
+    }
+}
+
+void MainWindow::onModeTabChanged(int index)
+{
+    m_settings.appModule = index == 1 ? AppModule::IsoVerifier : AppModule::UsbMonitor;
+    if (m_searchEdit) {
+        m_searchEdit->setVisible(index == 0);
+    }
+    applyAppModule();
+    saveSettings();
 }
 
 // ============================================================================

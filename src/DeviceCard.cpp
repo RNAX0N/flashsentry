@@ -140,7 +140,13 @@ void DeviceCard::setupUi()
     addInfoRow(0, 1, "Type:", m_fsTypeLabel);
     addInfoRow(1, 0, "Mount:", m_mountPointLabel);
     addInfoRow(1, 1, "Serial:", m_serialLabel);
-    
+
+    m_isoSummaryLabel = new QLabel;
+    m_isoSummaryLabel->setWordWrap(true);
+    m_isoSummaryLabel->setFont(FSFont(Small));
+    m_isoSummaryLabel->setVisible(false);
+    m_infoLayout->addWidget(m_isoSummaryLabel, 2, 0, 1, 4);
+
     m_mainLayout->addWidget(infoWidget);
     
     // === Progress Section ===
@@ -300,6 +306,22 @@ void DeviceCard::setActionsEnabled(bool enabled)
     m_watchBtn->setEnabled(enabled);
     m_acceptBtn->setEnabled(enabled);
     m_openBtn->setEnabled(enabled);
+}
+
+void DeviceCard::setIsoVerifySummary(const QString& summary)
+{
+    if (!m_isoSummaryLabel) {
+        return;
+    }
+    if (summary.isEmpty()) {
+        m_isoSummaryLabel->clear();
+        m_isoSummaryLabel->setVisible(false);
+        return;
+    }
+    m_isoSummaryLabel->setText(QStringLiteral("Images: %1").arg(summary));
+    m_isoSummaryLabel->setStyleSheet(QString("color: %1;")
+                                         .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+    m_isoSummaryLabel->setVisible(true);
 }
 
 void DeviceCard::setProgressVisible(bool visible)

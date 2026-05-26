@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCoreApplication>
 #include <QLoggingCategory>
 #include <QFileInfo>
 #include <QTimer>
@@ -19,6 +20,7 @@
 #include "MainWindow.h"
 #include "StyleManager.h"
 #include "Types.h"
+#include "VerifyCli.h"
 
 using namespace FlashSentry;
 
@@ -122,27 +124,15 @@ void printVersion()
 
 int main(int argc, char* argv[])
 {
-    // Set application attributes before creating QApplication
-    QApplication::setApplicationName("FlashSentry");
+    QCoreApplication::setApplicationName("FlashSentry");
 #ifdef FLASHSENTRY_VERSION
     QApplication::setApplicationVersion(QLatin1String(FLASHSENTRY_VERSION));
 #else
-    QApplication::setApplicationVersion(QStringLiteral("1.1.4"));
+    QApplication::setApplicationVersion(QStringLiteral("1.1.5"));
 #endif
-    QApplication::setOrganizationName("FlashSentry");
-    QApplication::setOrganizationDomain("flashsentry.io");
-    
-    // Enable high DPI scaling
-    QApplication::setHighDpiScaleFactorRoundingPolicy(
-        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
-    
-    // Create application instance
-    QApplication app(argc, argv);
-    
-    // Install custom message handler
-    qInstallMessageHandler(messageHandler);
-    
-    // Parse command line arguments
+    QCoreApplication::setOrganizationName("FlashSentry");
+    QCoreApplication::setOrganizationDomain("flashsentry.io");
+
     QCommandLineParser parser;
     parser.setApplicationDescription("USB Flash Drive Security Monitor");
     parser.addHelpOption();
@@ -184,8 +174,74 @@ int main(int argc, char* argv[])
         "Open the settings dialog on startup"
     );
     parser.addOption(settingsOption);
-    
+
+    QCommandLineOption verifyIsoOption(QStringLiteral("verify-iso"), QStringLiteral("Verify one image file and exit"), QStringLiteral("path"));
+    QCommandLineOption verifyMountOption(QStringLiteral("verify-mount"), QStringLiteral("Verify images on mount point and exit"), QStringLiteral("path"));
+    QCommandLineOption verifyDirOption(QStringLiteral("verify-dir"), QStringLiteral("Verify images in directory and exit"), QStringLiteral("path"));
+    QCommandLineOption updateCatalogOption(QStringLiteral("update-catalog"), QStringLiteral("Refresh ISO catalog manifest from remote"));
+    QCommandLineOption exportReportOption(QStringLiteral("export-report"), QStringLiteral("Verify path and print report"), QStringLiteral("path"));
+    QCommandLineOption reportFormatOption(QStringLiteral("report-format"), QStringLiteral("Report format: text, csv, html, or json"), QStringLiteral("format"), QStringLiteral("text"));
+    QCommandLineOption listPublishersOption(QStringLiteral("list-publishers"), QStringLiteral("List built-in ISO publisher IDs and exit"));
+    QCommandLineOption trustHashOption(QStringLiteral("trust-hash"), QStringLiteral("Save user-trusted SHA-256 for a filename (TOFU)"), QStringLiteral("file:hash"));
+    QCommandLineOption jsonOption(QStringLiteral("json"), QStringLiteral("Machine-readable JSON on stdout (verify/export commands)"));
+    QCommandLineOption quietOption(QStringLiteral("quiet"), QStringLiteral("Print summary only (no per-file report body)"));
+    parser.addOption(verifyIsoOption);
+    parser.addOption(verifyMountOption);
+    parser.addOption(verifyDirOption);
+    parser.addOption(updateCatalogOption);
+    parser.addOption(exportReportOption);
+    parser.addOption(reportFormatOption);
+    parser.addOption(listPublishersOption);
+    parser.addOption(trustHashOption);
+    parser.addOption(jsonOption);
+    parser.addOption(quietOption);
+
+    QApplication::setHighDpiScaleFactorRoundingPolicy(
+        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+
+    QApplication app(argc, argv);
+    qInstallMessageHandler(messageHandler);
     parser.process(app);
+
+    if (parser.isSet(configOption)) {
+        VerifyCli::setConfigFilePath(parser.value(configOption));
+    }
+    if (parser.isSet(jsonOption)) {
+        VerifyCli::setJsonOutput(true);
+    }
+    if (parser.isSet(quietOption)) {
+        VerifyCli::setQuietOutput(true);
+    }
+
+    if (parser.isSet(listPublishersOption)) {
+        return VerifyCli::runListPublishers();
+    }
+    if (parser.isSet(trustHashOption)) {
+        const QString spec = parser.value(trustHashOption);
+        const int colon = spec.indexOf(QLatin1Char(':'));
+        if (colon <= 0) {
+            std::cerr << "trust-hash format: Win11.iso:abcdef...64hex\n";
+            return VerifyCli::ExitError;
+        }
+        return VerifyCli::runTrustHash(spec.left(colon), spec.mid(colon + 1));
+    }
+    if (parser.isSet(updateCatalogOption)) {
+        return VerifyCli::runUpdateCatalog(true);
+    }
+    if (parser.isSet(verifyIsoOption)) {
+        return VerifyCli::runVerifyIso(parser.value(verifyIsoOption));
+    }
+    if (parser.isSet(verifyMountOption)) {
+        return VerifyCli::runVerifyMount(parser.value(verifyMountOption));
+    }
+    if (parser.isSet(verifyDirOption)) {
+        return VerifyCli::runVerifyDir(parser.value(verifyDirOption));
+    }
+    if (parser.isSet(exportReportOption)) {
+        const QString path = parser.value(exportReportOption);
+        const QString fmt = parser.value(reportFormatOption);
+        return VerifyCli::runExportReport(path, fmt);
+    }
 
     if (parser.isSet(debugOption)) {
         QLoggingCategory::setFilterRules(QStringLiteral("*.debug=true"));

@@ -6,6 +6,8 @@
 #include <QString>
 #include <QFuture>
 
+#include <atomic>
+
 namespace FlashSentry {
 
 /**
@@ -25,12 +27,14 @@ public:
 signals:
     void verificationStarted(const QString& mountPoint, const QString& deviceNode);
     void verificationProgress(const QString& message);
+    void verificationFileProgress(int current, int total, const QString& fileName);
     void verificationFinished(const QString& mountPoint, const QString& deviceNode,
                               const QList<IsoVerifyResult>& results);
     void verificationFailed(const QString& mountPoint, const QString& error);
 
 private:
     bool m_cancelled = false;
+    std::atomic<bool> m_cancelledFlag{false};
     QFuture<void> m_activeJob;
 };
 

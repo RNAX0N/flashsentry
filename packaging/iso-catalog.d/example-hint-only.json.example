@@ -1,0 +1,14 @@
+{
+  "manifest_version": 2,
+  "entries": [
+    {
+      "publisher_id": "example",
+      "publisher_name": "Example (rename to .json to enable)",
+      "file_pattern": "^example-.*\\.iso$",
+      "release_label": "Place example.iso.sha256 beside the file",
+      "sha256": "",
+      "hint_only": true,
+      "reference_url": "https://example.com/downloads/"
+    }
+  ]
+}

@@ -57,7 +57,7 @@ Built with Qt6 for Arch Linux: tray integration, polkit for safe mounting, and a
 
 ## Who is this for?
 
-- **Anyone who copies Linux ISOs to USB** (Rufus, Ventoy, `cp`, etc.) and wants a clear pass/fail report
+- **Anyone who puts Linux/Windows images on USB** (`dd`, Rufus, `cp`, multiboot sticks, etc.) and wants a clear pass/fail report
 - **Users who care about specific folders** on a stick (documents, `EFI`, a project tree) without hashing every sector
 - **Power users** who still want full-disk fingerprints or custom hash algorithms
 
@@ -65,7 +65,9 @@ If you only need “is this entire stick bit-for-bit the same as last time?”, 
 
 ## Screenshots
 
-UI screenshots are planned for a future release. After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. Contributions of screenshots (PNG, no personal data on drives) are welcome in [`docs/images/`](docs/images/).
+![FlashSentry main window](docs/images/main-window.png)
+
+After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/) (ISO verify report, watch lists).
 
 | View | Status |
 |------|--------|
@@ -118,7 +120,7 @@ Log out and back in after adding the `storage` group.
 3. Plug in a stick that contains a supported `.iso` (e.g. `archlinux-*-x86_64.iso`, `ubuntu-*-desktop-amd64.iso`).
 4. Read the report in the log panel, or switch **Mode** to **Automatic ISO verification** for the full ISO UI.
 
-Supported publisher matching (by filename): **Arch Linux**, **Ubuntu**, **Debian**, **Fedora**, **Linux Mint**, **openSUSE Leap**, **openSUSE Tumbleweed**, **Manjaro**. Others can still use local `.sha256` / `.sig` / `.asc` sidecars on the drive.
+Supported publisher matching (by filename): **Arch Linux**, **Ubuntu** (including **Ubuntu for Raspberry Pi** `.img.xz`), **Kubuntu**, **Xubuntu**, **Lubuntu**, **Ubuntu MATE**, **Ubuntu Studio**, **Debian**, **Fedora**, **Linux Mint**, **openSUSE**, **Manjaro**, **Kali**, **Rocky/Alma/CentOS Stream**, **elementary**, **Pop!_OS**, **EndeavourOS**, **Garuda**, **CachyOS**, **Nobara**, **Raspberry Pi OS**, **Alpine**, **Void Linux**, **Armbian**, **NixOS**, and **Microsoft Windows** (embedded catalog + `.sha256` sidecars). Scans `.iso`, `.img.xz`, `.img`, and `.zip` on mounted volumes; skips boot-loader config trees and works with desktop automount — see [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ### Verify specific folders on a USB stick
 
@@ -186,7 +188,7 @@ cmake -DFLASHSENTRY_BUILD_TESTS=ON ..
 cmake --build . && ctest --test-dir build --output-on-failure
 ```
 
-Six tests: `test_types`, `test_database_manager`, `test_merkle`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`.
+Ten tests: `test_types`, `test_database_manager`, `test_merkle`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`, `test_verify_report`, `test_iso_verify_integration`, `test_iso_verify_publisher_mock`, `test_iso_http_mock` (fixtures under `tests/fixtures/`).
 
 Install (binary, polkit policy, udev rules, and docs under `/usr/share/doc/flashsentry/`):
 

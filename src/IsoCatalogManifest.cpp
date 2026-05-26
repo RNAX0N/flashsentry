@@ -214,6 +214,9 @@ bool IsoCatalogManifest::lastEmbeddedIntegrityOk()
 bool IsoCatalogManifest::refreshRemoteIfStale(int maxAgeSeconds, bool force)
 {
     ensureLoaded();
+    if (qEnvironmentVariableIsSet("FLASHSENTRY_SKIP_REMOTE_CATALOG")) {
+        return true;
+    }
     if (g_remoteUrl.isEmpty()) {
         return false;
     }

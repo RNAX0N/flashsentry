@@ -33,6 +33,8 @@ private slots:
     void armbianMatches();
     void verifiableImageExtensions();
     void embeddedManifestIntegrity();
+    void publisherFilenameTable_data();
+    void publisherFilenameTable();
 };
 
 void TestIsoCatalog::archIsoMatches()
@@ -263,6 +265,46 @@ void TestIsoCatalog::embeddedManifestIntegrity()
     IsoCatalogManifest::ensureLoaded();
     QVERIFY(IsoCatalogManifest::lastEmbeddedIntegrityOk());
     QVERIFY(IsoCatalogManifest::entryCount() >= 4);
+}
+
+void TestIsoCatalog::publisherFilenameTable_data()
+{
+    QTest::addColumn<QString>("path");
+    QTest::addColumn<QString>("publisherId");
+
+    QTest::newRow("arch") << QStringLiteral("/mnt/archlinux-2024.11.01-x86_64.iso")
+                          << QStringLiteral("archlinux");
+    QTest::newRow("ubuntu") << QStringLiteral("/tmp/ubuntu-24.04.2-desktop-amd64.iso")
+                            << QStringLiteral("ubuntu");
+    QTest::newRow("debian") << QStringLiteral("/iso/debian-12.5.0-amd64-netinst.iso")
+                            << QStringLiteral("debian");
+    QTest::newRow("fedora") << QStringLiteral("/iso/Fedora-Workstation-Live-41-1.4.x86_64.iso")
+                            << QStringLiteral("fedora");
+    QTest::newRow("manjaro") << QStringLiteral("/usb/manjaro-kde-25.0.0-250527-linux612.iso")
+                             << QStringLiteral("manjaro");
+    QTest::newRow("kali") << QStringLiteral("/iso/kali-linux-2024.4-live-amd64.iso")
+                          << QStringLiteral("kali");
+    QTest::newRow("rocky") << QStringLiteral("/iso/Rocky-9.4-x86_64-minimal.iso")
+                           << QStringLiteral("rocky");
+    QTest::newRow("garuda") << QStringLiteral("/iso/garuda-hyprland-linux-zen-250308.iso")
+                            << QStringLiteral("garuda");
+    QTest::newRow("nobara") << QStringLiteral("/iso/Nobara-43-Official-2026-04-19.iso")
+                            << QStringLiteral("nobara");
+    QTest::newRow("raspios") << QStringLiteral("/pi/2024-11-19-raspios-bookworm-arm64.img.xz")
+                             << QStringLiteral("raspios");
+    QTest::newRow("alpine") << QStringLiteral("/iso/alpine-standard-3.20.3-x86_64.iso")
+                            << QStringLiteral("alpine");
+    QTest::newRow("nixos") << QStringLiteral("/iso/nixos-24.05-minimal-x86_64-linux.iso")
+                           << QStringLiteral("nixos");
+}
+
+void TestIsoCatalog::publisherFilenameTable()
+{
+    QFETCH(QString, path);
+    QFETCH(QString, publisherId);
+    const auto match = IsoCatalog::matchIso(path);
+    QVERIFY2(match.has_value(), qPrintable(path));
+    QCOMPARE(match->publisherId, publisherId);
 }
 
 QTEST_MAIN(TestIsoCatalog)

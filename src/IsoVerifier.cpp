@@ -126,47 +126,6 @@ QString hashFileSha256(const QString& path, QString* errorOut)
     return QByteArray(reinterpret_cast<char*>(hash), static_cast<int>(len)).toHex();
 }
 
-QString findChecksumSidecar(const QString& isoPath)
-{
-    const QFileInfo iso(isoPath);
-    const QString base = iso.absolutePath() + QLatin1Char('/') + iso.completeBaseName();
-    const QStringList candidates = {
-        base + QStringLiteral(".sha256"),
-        base + QStringLiteral(".sha256sum"),
-        iso.absoluteFilePath() + QStringLiteral(".sha256"),
-        iso.absoluteFilePath() + QStringLiteral(".sha256sum"),
-        iso.absoluteFilePath() + QStringLiteral(".sha"),
-        iso.absolutePath() + QStringLiteral("/SHA256SUMS"),
-        iso.absolutePath() + QStringLiteral("/sha256sums.txt"),
-        iso.absolutePath() + QStringLiteral("/sha256sum.txt"),
-        iso.absolutePath() + QStringLiteral("/CHECKSUM"),
-        iso.absoluteFilePath() + QStringLiteral(".CHECKSUM"),
-    };
-    for (const QString& c : candidates) {
-        if (QFileInfo::exists(c)) return c;
-    }
-    return {};
-}
-
-QString findSignatureSidecar(const QString& isoPath)
-{
-    const QFileInfo iso(isoPath);
-    const QString base = iso.absolutePath() + QLatin1Char('/') + iso.completeBaseName();
-    const QStringList candidates = {
-        base + QStringLiteral(".asc"),
-        iso.absoluteFilePath() + QStringLiteral(".asc"),
-        iso.absolutePath() + QStringLiteral("/SHA256SUMS.gpg"),
-        iso.absolutePath() + QStringLiteral("/sha256sums.txt.sig"),
-        iso.absolutePath() + QStringLiteral("/sha256sum.txt.gpg"),
-        base + QStringLiteral(".sig"),
-        iso.absoluteFilePath() + QStringLiteral(".sig"),
-    };
-    for (const QString& c : candidates) {
-        if (QFileInfo::exists(c)) return c;
-    }
-    return {};
-}
-
 QString cacheDir()
 {
     QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
@@ -405,6 +364,51 @@ QStringList IsoVerifier::findIsoFiles(const QString& directory)
     return result;
 }
 
+QString IsoVerifier::findChecksumSidecar(const QString& isoPath)
+{
+    const QFileInfo iso(isoPath);
+    const QString base = iso.absolutePath() + QLatin1Char('/') + iso.completeBaseName();
+    const QStringList candidates = {
+        base + QStringLiteral(".sha256"),
+        base + QStringLiteral(".sha256sum"),
+        iso.absoluteFilePath() + QStringLiteral(".sha256"),
+        iso.absoluteFilePath() + QStringLiteral(".sha256sum"),
+        iso.absoluteFilePath() + QStringLiteral(".sha"),
+        iso.absolutePath() + QStringLiteral("/SHA256SUMS"),
+        iso.absolutePath() + QStringLiteral("/sha256sums.txt"),
+        iso.absolutePath() + QStringLiteral("/sha256sum.txt"),
+        iso.absolutePath() + QStringLiteral("/CHECKSUM"),
+        iso.absoluteFilePath() + QStringLiteral(".CHECKSUM"),
+    };
+    for (const QString& c : candidates) {
+        if (QFileInfo::exists(c)) {
+            return c;
+        }
+    }
+    return {};
+}
+
+QString IsoVerifier::findSignatureSidecar(const QString& isoPath)
+{
+    const QFileInfo iso(isoPath);
+    const QString base = iso.absolutePath() + QLatin1Char('/') + iso.completeBaseName();
+    const QStringList candidates = {
+        base + QStringLiteral(".asc"),
+        iso.absoluteFilePath() + QStringLiteral(".asc"),
+        iso.absolutePath() + QStringLiteral("/SHA256SUMS.gpg"),
+        iso.absolutePath() + QStringLiteral("/sha256sums.txt.sig"),
+        iso.absolutePath() + QStringLiteral("/sha256sum.txt.gpg"),
+        base + QStringLiteral(".sig"),
+        iso.absoluteFilePath() + QStringLiteral(".sig"),
+    };
+    for (const QString& c : candidates) {
+        if (QFileInfo::exists(c)) {
+            return c;
+        }
+    }
+    return {};
+}
+
 IsoVerifyResult IsoVerifier::verifyIso(const QString& isoPath, const QString& mountPoint,
                                        const QString& deviceNode)
 {
@@ -445,7 +449,7 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
     IsoCatalogManifest::refreshRemoteIfStale();
 
     if (g_verifyOptions.preferOfflineSidecars) {
-        const QString checksumPath = findChecksumSidecar(isoPath);
+        const QString checksumPath = IsoVerifier::findChecksumSidecar(isoPath);
         if (!checksumPath.isEmpty()) {
             QFile f(checksumPath);
             if (f.open(QIODevice::ReadOnly)) {
@@ -553,7 +557,7 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
 
     // 2) Local sidecars on drive (Rufus users often copy .sha256 + .asc alongside)
     if (r.expectedSha256.isEmpty()) {
-        const QString checksumPath = findChecksumSidecar(isoPath);
+        const QString checksumPath = IsoVerifier::findChecksumSidecar(isoPath);
         if (!checksumPath.isEmpty()) {
             QFile f(checksumPath);
             if (f.open(QIODevice::ReadOnly)) {
@@ -574,7 +578,7 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
             "Add a .sha256 sidecar or update the catalog.");
     }
 
-    const QString sigPath = findSignatureSidecar(isoPath);
+    const QString sigPath = IsoVerifier::findSignatureSidecar(isoPath);
     if (!sigPath.isEmpty() && !r.pgpChecked) {
         ensureGpgHome(nullptr);
         r.pgpChecked = true;

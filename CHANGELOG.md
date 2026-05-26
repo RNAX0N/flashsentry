@@ -4,6 +4,18 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-05-21
+
+### Added
+
+- Integration test `test_iso_verify_integration` with offline fixture tree (Ventoy layout, sidecars, user TOFU)
+- Data-driven `publisherFilenameTable` test for 12 core distros
+- `IsoVerifier::findChecksumSidecar()` / `findSignatureSidecar()` as public helpers
+
+### Changed
+
+- `FLASHSENTRY_SKIP_REMOTE_CATALOG` env skips network manifest refresh (used in tests)
+
 ## [1.2.1] - 2026-05-21
 
 ### Added

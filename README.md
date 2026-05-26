@@ -186,7 +186,7 @@ cmake -DFLASHSENTRY_BUILD_TESTS=ON ..
 cmake --build . && ctest --test-dir build --output-on-failure
 ```
 
-Seven tests: `test_types`, `test_database_manager`, `test_merkle`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`, `test_verify_report`.
+Eight tests: `test_types`, `test_database_manager`, `test_merkle`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`, `test_verify_report`, `test_iso_verify_integration` (offline fixtures under `tests/fixtures/`).
 
 Install (binary, polkit policy, udev rules, and docs under `/usr/share/doc/flashsentry/`):
 

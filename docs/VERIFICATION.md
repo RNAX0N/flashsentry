@@ -218,6 +218,14 @@ Exit codes: `0` pass, `1` verify failure, `2` error. ISO options are read from `
 
 Run `test_iso_catalog` after editing `IsoCatalog.cpp` or `embedded-manifest.json`.
 
+### Integration tests (offline fixtures)
+
+`tests/fixtures/` provides a Ventoy-style tree, per-file `.sha256` sidecars, directory `SHA256SUMS`, and mismatch cases. `test_iso_verify_integration` runs without network when `FLASHSENTRY_SKIP_REMOTE_CATALOG=1` is set (automatic in CI).
+
+```bash
+ctest --test-dir build -R test_iso_verify_integration --output-on-failure
+```
+
 ## Windows ISO verification
 
 Microsoft publishes SHA-256 values on their [Windows 11](https://www.microsoft.com/software-download/windows11) and [Windows 10](https://www.microsoft.com/software-download/windows10) download pages, but not at a stable per-file URL. FlashSentry uses:

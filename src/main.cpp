@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
     QCommandLineOption verifyDirOption(QStringLiteral("verify-dir"), QStringLiteral("Verify images in directory and exit"), QStringLiteral("path"));
     QCommandLineOption updateCatalogOption(QStringLiteral("update-catalog"), QStringLiteral("Refresh ISO catalog manifest from remote"));
     QCommandLineOption exportReportOption(QStringLiteral("export-report"), QStringLiteral("Verify path and print report"), QStringLiteral("path"));
-    QCommandLineOption reportFormatOption(QStringLiteral("report-format"), QStringLiteral("Report format: text, csv, or html"), QStringLiteral("format"), QStringLiteral("text"));
+    QCommandLineOption reportFormatOption(QStringLiteral("report-format"), QStringLiteral("Report format: text, csv, html, or json"), QStringLiteral("format"), QStringLiteral("text"));
     QCommandLineOption listPublishersOption(QStringLiteral("list-publishers"), QStringLiteral("List built-in ISO publisher IDs and exit"));
     QCommandLineOption trustHashOption(QStringLiteral("trust-hash"), QStringLiteral("Save user-trusted SHA-256 for a filename (TOFU)"), QStringLiteral("file:hash"));
     QCommandLineOption jsonOption(QStringLiteral("json"), QStringLiteral("Machine-readable JSON on stdout (verify/export commands)"));

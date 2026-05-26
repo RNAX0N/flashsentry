@@ -4,6 +4,24 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-05-21
+
+### Added
+
+- Status bar **ISO catalog** indicator with integrity tooltip
+- Persistent warning banner on the ISO verification tab when embedded catalog checks fail
+- GUI report export includes **JSON** format
+
+### Fixed
+
+- Embedded catalog OpenPGP verify ignores a stale or missing `GNUPGHOME` (uses `--keyring` only)
+- `test_iso_catalog` clears invalid `GNUPGHOME` before integrity checks
+
+### Changed
+
+- `IsoCatalogManifest::integrityStatusText()` and granular SHA-256 / GPG status accessors
+- [VERIFICATION.md](docs/VERIFICATION.md): documents `--json`, `--quiet`, and audit log tray action
+
 ## [1.3.1] - 2026-05-21
 
 ### Added

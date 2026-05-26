@@ -1,4 +1,5 @@
 #include <QtTest>
+#include <QDir>
 #include "IsoCatalog.h"
 #include "IsoCatalogManifest.h"
 
@@ -8,6 +9,7 @@ class TestIsoCatalog : public QObject {
     Q_OBJECT
 
 private slots:
+    void initTestCase();
     void archIsoMatches();
     void ubuntuIsoMatches();
     void linuxMintUsesMajorVersionPath();
@@ -36,6 +38,14 @@ private slots:
     void publisherFilenameTable_data();
     void publisherFilenameTable();
 };
+
+void TestIsoCatalog::initTestCase()
+{
+    const QByteArray gpgHome = qgetenv("GNUPGHOME");
+    if (!gpgHome.isEmpty() && !QDir(QString::fromUtf8(gpgHome)).exists()) {
+        qunsetenv("GNUPGHOME");
+    }
+}
 
 void TestIsoCatalog::archIsoMatches()
 {
@@ -262,12 +272,15 @@ void TestIsoCatalog::verifiableImageExtensions()
 
 void TestIsoCatalog::embeddedManifestIntegrity()
 {
-    IsoCatalogManifest::ensureLoaded();
+    IsoCatalogManifest::reload();
+    QVERIFY(IsoCatalogManifest::lastEmbeddedSha256Ok());
+    QVERIFY(IsoCatalogManifest::lastEmbeddedGpgOk());
     QVERIFY(IsoCatalogManifest::lastEmbeddedIntegrityOk());
     QVERIFY(IsoCatalogManifest::entryCount() >= 4);
+    QVERIFY(IsoCatalogManifest::integrityStatusText().contains(QStringLiteral("OK")));
     if (QFile::exists(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.asc"))) {
         QVERIFY2(IsoCatalogManifest::lastEmbeddedIntegrityOk(),
-                 "Embedded manifest SHA-256 or OpenPGP integrity check failed");
+                 qPrintable(IsoCatalogManifest::integrityStatusText()));
     }
 }
 

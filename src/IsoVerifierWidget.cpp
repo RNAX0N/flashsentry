@@ -29,6 +29,11 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
 {
     auto* layout = new QVBoxLayout(this);
 
+    m_catalogBanner = new QLabel;
+    m_catalogBanner->setWordWrap(true);
+    m_catalogBanner->setVisible(false);
+    layout->addWidget(m_catalogBanner);
+
     layout->addWidget(new QLabel(
         QStringLiteral("<b>Fully automated ISO verification</b> — built for people who want confidence without learning hashes or PGP.<br>"
                        "Plug in a stick with a copied <code>.iso</code> or <code>.img.xz</code> (Rufus, Ventoy, etc.): we detect it, fetch the publisher checksums, "
@@ -124,6 +129,7 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
                 m_summaryLabel->setText(QStringLiteral("Verification failed: %1").arg(err));
                 emit logMessageRequested(QStringLiteral("ISO verify failed (%1): %2").arg(mount, err));
             });
+    updateCatalogIntegrityBanner();
 }
 
 IsoVerifierWidget::~IsoVerifierWidget() = default;
@@ -190,12 +196,14 @@ void IsoVerifierWidget::onExportReport()
     }
     const QString path = QFileDialog::getSaveFileName(
         this, QStringLiteral("Export report"), QStringLiteral("flashsentry-report.html"),
-        QStringLiteral("HTML (*.html);;CSV (*.csv);;Text (*.txt)"));
+        QStringLiteral("HTML (*.html);;JSON (*.json);;CSV (*.csv);;Text (*.txt)"));
     if (path.isEmpty()) {
         return;
     }
     QString body;
-    if (path.endsWith(QStringLiteral(".csv"), Qt::CaseInsensitive)) {
+    if (path.endsWith(QStringLiteral(".json"), Qt::CaseInsensitive)) {
+        body = IsoVerifyReport::buildJson(m_lastResults);
+    } else if (path.endsWith(QStringLiteral(".csv"), Qt::CaseInsensitive)) {
         body = IsoVerifyReport::buildCsv(m_lastResults);
     } else if (path.endsWith(QStringLiteral(".html"), Qt::CaseInsensitive)) {
         body = IsoVerifyReport::buildHtml(m_lastResults);
@@ -221,9 +229,29 @@ void IsoVerifierWidget::onUpdateCatalog()
 {
     m_summaryLabel->setText(QStringLiteral("Updating ISO catalog…"));
     const bool ok = IsoCatalogManifest::refreshRemoteIfStale(0, true);
+    updateCatalogIntegrityBanner();
     m_summaryLabel->setText(ok ? QStringLiteral("Catalog updated (%1 entries)")
                                          .arg(IsoCatalogManifest::entryCount())
                                : QStringLiteral("Catalog update failed (using embedded copy)"));
+}
+
+void IsoVerifierWidget::updateCatalogIntegrityBanner()
+{
+    IsoCatalogManifest::ensureLoaded();
+    if (!m_catalogBanner) {
+        return;
+    }
+    if (IsoCatalogManifest::lastEmbeddedIntegrityOk()) {
+        m_catalogBanner->setVisible(false);
+        return;
+    }
+    m_catalogBanner->setText(
+        QStringLiteral("⚠ %1 — use <b>Update catalog</b> or reinstall if this persists.")
+            .arg(IsoCatalogManifest::integrityStatusText()));
+    m_catalogBanner->setStyleSheet(
+        QStringLiteral("background-color: rgba(255, 180, 0, 0.15); color: #e6a700; padding: 8px; "
+                       "border-radius: 4px; border: 1px solid #e6a700;"));
+    m_catalogBanner->setVisible(true);
 }
 
 void IsoVerifierWidget::onPasteTrustedHash()

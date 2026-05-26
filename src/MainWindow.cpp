@@ -348,7 +348,12 @@ void MainWindow::createStatusBar()
     m_statusLabel->setStyleSheet(QString("color: %1;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     status->addWidget(m_statusLabel, 1);
-    
+
+    m_catalogStatusLabel = new QLabel;
+    m_catalogStatusLabel->setStyleSheet(QString("color: %1;").arg(
+        FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+    status->addPermanentWidget(m_catalogStatusLabel);
+
     m_hashStatusLabel = new QLabel;
     m_hashStatusLabel->setStyleSheet(QString("color: %1;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary)));
@@ -1359,9 +1364,27 @@ void MainWindow::updateStatusBar()
 {
     int connected = m_deviceCards.size();
     int whitelisted = m_database->deviceCount();
-    
+
     m_statusLabel->setText(QString("Connected: %1 | Whitelisted: %2")
-        .arg(connected).arg(whitelisted));
+                             .arg(connected)
+                             .arg(whitelisted));
+
+    if (!m_catalogStatusLabel) {
+        return;
+    }
+    IsoCatalogManifest::ensureLoaded();
+    const QString catalogDetail = IsoCatalogManifest::integrityStatusText();
+    m_catalogStatusLabel->setToolTip(catalogDetail);
+    if (!IsoCatalogManifest::lastEmbeddedIntegrityOk()) {
+        m_catalogStatusLabel->setText(QStringLiteral("⚠ ISO catalog"));
+        m_catalogStatusLabel->setStyleSheet(QString("color: %1; font-weight: 600;")
+                                                .arg(FSStyle.colorCss(StyleManager::ColorRole::Warning)));
+    } else {
+        m_catalogStatusLabel->setText(
+            QStringLiteral("Catalog: %1").arg(IsoCatalogManifest::entryCount()));
+        m_catalogStatusLabel->setStyleSheet(QString("color: %1;")
+                                                .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+    }
 }
 
 // ============================================================================

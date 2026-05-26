@@ -25,6 +25,11 @@ public:
     static bool trustUserHash(const QString& fileName, const QString& sha256Hex);
 
     static bool lastEmbeddedIntegrityOk();
+    static bool lastEmbeddedSha256Ok();
+    static bool lastEmbeddedGpgOk();
+
+    /** Human-readable detail for tooltips and banners. */
+    static QString integrityStatusText();
 };
 
 } // namespace FlashSentry

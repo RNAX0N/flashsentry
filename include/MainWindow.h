@@ -334,6 +334,7 @@ private:
 
     // UI - Status bar
     QLabel* m_statusLabel = nullptr;
+    QLabel* m_catalogStatusLabel = nullptr;
     QLabel* m_hashStatusLabel = nullptr;
 
     // Device tracking

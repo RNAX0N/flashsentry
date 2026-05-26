@@ -51,8 +51,10 @@ private slots:
 private:
     void setResults(const QList<IsoVerifyResult>& results);
     void appendReport(const QString& text);
+    void updateCatalogIntegrityBanner();
 
     IsoVerifierWorker* m_worker = nullptr;
+    QLabel* m_catalogBanner = nullptr;
     QLineEdit* m_dirEdit = nullptr;
     QTableWidget* m_table = nullptr;
     QLabel* m_summaryLabel = nullptr;

@@ -154,21 +154,32 @@ Load order (later overrides earlier for matching filenames):
 ## Audit log and reports
 
 - **Audit:** `~/.config/flashsentry/audit.log` — one JSON object per line after each verify
-- **Reports:** `IsoVerifyReport` — plain text, CSV, HTML; CLI `--export-report PATH --report-format csv`
+- **Reports:** `IsoVerifyReport` — plain text, CSV, HTML, JSON; GUI export or CLI `--export-report`
+- **Tray:** **Open audit log** opens `~/.config/flashsentry/audit.log`
 
 ## Command-line interface
 
 ```bash
 flashsentry --list-publishers
+flashsentry --list-publishers --json
 flashsentry --verify-iso /path/to/file.iso
-flashsentry --verify-mount /run/media/$USER/Ventoy
-flashsentry --verify-dir ~/Downloads/isos
+flashsentry --verify-dir ~/Downloads/isos --json
+flashsentry --verify-mount /run/media/$USER/Ventoy --quiet
 flashsentry --update-catalog
-flashsentry --export-report /path --report-format html
+flashsentry --export-report /path --report-format json
+flashsentry --export-report /path --json
 flashsentry --trust-hash Win11.iso:41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54
 ```
 
+| Flag | Purpose |
+|------|---------|
+| `--json` | Machine-readable JSON on stdout (verify, export, catalog, publishers, trust-hash) |
+| `--quiet` | Summary line only (no per-file report body) |
+| `--report-format` | `text`, `csv`, `html`, or `json` for `--export-report` |
+
 Exit codes: `0` pass, `1` verify failure, `2` error. ISO options are read from `FlashSentry.conf` (`iso/verifyParallel`, etc.); use `-c /path/to/FlashSentry.conf` to override.
+
+Embedded catalog integrity (SHA-256 + OpenPGP) is shown in the status bar and ISO verification tab when checks fail.
 
 ## Configuration keys (QSettings)
 

@@ -197,6 +197,9 @@ bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
                      sigPath,
                      manifestPath});
     proc.setProcessChannelMode(QProcess::MergedChannels);
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.remove(QStringLiteral("GNUPGHOME"));
+    proc.setProcessEnvironment(env);
     proc.start();
     if (!proc.waitForFinished(30000)) {
         proc.kill();
@@ -297,6 +300,36 @@ bool IsoCatalogManifest::lastEmbeddedIntegrityOk()
 {
     ensureLoaded();
     return g_embeddedShaOk && g_embeddedGpgOk;
+}
+
+bool IsoCatalogManifest::lastEmbeddedSha256Ok()
+{
+    ensureLoaded();
+    return g_embeddedShaOk;
+}
+
+bool IsoCatalogManifest::lastEmbeddedGpgOk()
+{
+    ensureLoaded();
+    return g_embeddedGpgOk;
+}
+
+QString IsoCatalogManifest::integrityStatusText()
+{
+    ensureLoaded();
+    if (g_embeddedShaOk && g_embeddedGpgOk) {
+        return QStringLiteral("Embedded ISO catalog integrity OK (%1 manifest entries).")
+            .arg(entryCount());
+    }
+    QStringList issues;
+    if (!g_embeddedShaOk) {
+        issues << QStringLiteral("SHA-256 digest mismatch");
+    }
+    if (!g_embeddedGpgOk) {
+        issues << QStringLiteral("OpenPGP signature check failed (missing gpg or invalid signature)");
+    }
+    return QStringLiteral("Embedded catalog integrity failed: %1")
+        .arg(issues.join(QStringLiteral("; ")));
 }
 
 bool IsoCatalogManifest::refreshRemoteIfStale(int maxAgeSeconds, bool force)

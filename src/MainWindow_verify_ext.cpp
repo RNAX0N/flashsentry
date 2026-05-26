@@ -283,16 +283,19 @@ void MainWindow::warnIfCatalogIntegrityFailed()
     if (IsoCatalogManifest::lastEmbeddedIntegrityOk()) {
         return;
     }
+    const QString detail = IsoCatalogManifest::integrityStatusText();
     logMessage(QStringLiteral("Embedded ISO catalog integrity check failed — verification may be unreliable"),
                LogLevel::Security);
     QMessageBox::warning(
         this,
         QStringLiteral("ISO catalog integrity"),
         QStringLiteral(
-            "The built-in ISO catalog failed its cryptographic integrity check (SHA-256 or OpenPGP).\n\n"
+            "%1\n\n"
             "Image verification may be unreliable until you reinstall FlashSentry or run "
             "\"Update catalog\" from the ISO verification tab.\n\n"
-            "If you did not modify system files, treat this as a possible installation problem."));
+            "If you did not modify system files, treat this as a possible installation problem.")
+            .arg(detail));
+    updateStatusBar();
 }
 
 void MainWindow::handleIsoVerificationReport(const QString& deviceNode,

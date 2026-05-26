@@ -218,13 +218,11 @@ Publisher mirrors and keys are defined in the application; see [VERIFICATION.md]
 
 ---
 
-## Screenshots
+## UI reference images
 
-| USB monitor | ISO verification |
-|-------------|------------------|
-| ![Main window](../docs/images/main-window.png) | ![ISO verify report](../docs/images/iso-verify-report.png) |
-
-Watch folder setup: ![Watch lists](../docs/images/watch-lists.png)
+The images under `docs/images/` are stylized UI mockups/reference concepts. They do not necessarily
+match the current installed Qt widget interface. Use the workflows in this guide as the source of
+truth for the current application behavior.
 
 ## Command-line verification (1.2.0+)
 

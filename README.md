@@ -63,17 +63,15 @@ Built with Qt6 for Arch Linux: tray integration, polkit for safe mounting, and a
 
 If you only need “is this entire stick bit-for-bit the same as last time?”, enable full-partition hashing in **Settings → Security**.
 
-## Screenshots
+## UI status
 
-![FlashSentry main window](docs/images/main-window.png)
+The installed application currently uses FlashSentry's Qt widget interface. Some images under
+[`docs/images/`](docs/images/) are **stylized UI mockups/reference concepts**, not screenshots of the
+current released application. They are useful for future UI direction, but they should not be treated
+as a promise that the installed app already matches that design.
 
-After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/) (ISO verify report, watch lists).
-
-| View | Status |
-|------|--------|
-| USB monitor with device cards | Coming soon |
-| ISO verification report | Coming soon |
-| Watch lists dialog | Coming soon |
+After `sudo cmake --install build --prefix /usr`, open the installed guides under
+`/usr/share/doc/flashsentry/` for walkthroughs.
 
 ## Installation
 

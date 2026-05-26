@@ -26,6 +26,11 @@ void MainWindow::applyAppModule()
             }
             m_isoWidget->refreshCatalogStatus();
         }
+    } else if (m_settings.appModule == AppModule::BadUsbMonitor) {
+        m_appModeStack->setCurrentWidget(m_badUsbWidget);
+        if (m_titleLabel) {
+            m_titleLabel->setText(QStringLiteral("FlashSentry"));
+        }
     } else {
         m_appModeStack->setCurrentWidget(m_splitter);
         if (m_titleLabel) {

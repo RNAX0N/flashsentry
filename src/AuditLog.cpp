@@ -56,4 +56,12 @@ void AuditLog::appendIsoVerify(const IsoVerifyResult& result)
     appendLine(QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact)));
 }
 
+void AuditLog::appendBadUsbEvent(const BadUsbAnomalyResult& result)
+{
+    QJsonObject obj = result.toJson();
+    obj.insert(QStringLiteral("ts"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    obj.insert(QStringLiteral("event"), QStringLiteral("badusb_anomaly"));
+    appendLine(QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact)));
+}
+
 } // namespace FlashSentry

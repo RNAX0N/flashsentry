@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(flashsentry
-    VERSION 1.2.2
+    VERSION 1.3.0
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )
@@ -37,8 +37,11 @@ set(SOURCES
     src/MerkleTree.cpp
     src/ManifestService.cpp
     src/ManifestWorker.cpp
-    src/IsoCatalog.cpp
+    src/iso_catalog/IsoCatalogBuilders.cpp
+    src/iso_catalog/IsoCatalogMatch.cpp
+    src/iso_catalog/IsoCatalogUtil.cpp
     src/IsoCatalogManifest.cpp
+    src/IsoHttpClient.cpp
     src/IsoChecksum.cpp
     src/IsoVerifyCache.cpp
     src/IsoVerifyReport.cpp
@@ -69,7 +72,9 @@ set(HEADERS
     include/ManifestService.h
     include/ManifestWorker.h
     include/IsoCatalog.h
+    include/IsoCatalogInternal.h
     include/IsoCatalogManifest.h
+    include/IsoHttpClient.h
     include/IsoChecksum.h
     include/IsoVerifyOptions.h
     include/IsoVerifyCache.h

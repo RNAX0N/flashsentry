@@ -5,12 +5,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "resources" / "iso-catalog" / "embedded-manifest.json"
 HASH_FILE = MANIFEST.with_suffix(MANIFEST.suffix + ".sha256")
+ASC_FILE = MANIFEST.with_suffix(MANIFEST.suffix + ".asc")
+PUB_FILE = ROOT / "resources" / "iso-catalog" / "catalog-signing.pub"
 
 
 def main() -> int:
@@ -73,9 +77,29 @@ def main() -> int:
             print(msg, file=sys.stderr)
         return 1
 
+    gpg_note = "GPG signature not checked"
+    if ASC_FILE.is_file() and PUB_FILE.is_file() and shutil.which("gpg"):
+        verify = subprocess.run(
+            [
+                "gpg",
+                "--verify",
+                "--keyring",
+                str(PUB_FILE),
+                str(ASC_FILE),
+                str(MANIFEST),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if verify.returncode != 0:
+            print(verify.stderr or verify.stdout, file=sys.stderr)
+            return 1
+        gpg_note = "OpenPGP signature valid"
+
     print(
         f"OK: embedded-manifest.json v{version}, "
-        f"{len(entries)} entries, SHA-256 verified"
+        f"{len(entries)} entries, SHA-256 verified, {gpg_note}"
     )
     return 0
 

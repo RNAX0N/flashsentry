@@ -4,6 +4,23 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-21
+
+### Added
+
+- **OpenPGP-signed embedded catalog**: `embedded-manifest.json.asc` + `catalog-signing.pub`; SHA-256 and GPG checked at load
+- **`IsoHttpClient`**: injectable HTTP layer for tests (`IsoHttpClient::setHandler`)
+- **Modular ISO catalog**: `src/iso_catalog/` (`IsoCatalogBuilders`, `IsoCatalogMatch`, `IsoCatalogUtil`)
+- **Tests**: `test_iso_verify_publisher_mock` (local SHA256SUMS + `.gpg` + trusted key), `test_iso_http_mock`
+- **Docs screenshots**: `docs/images/main-window.png`, `iso-verify-report.png`, `watch-lists.png`
+- **Tools**: `tools/sign-embedded-manifest.sh`, `tools/gen-catalog-signing-key.sh`
+
+### Changed
+
+- Manifest drop-ins support `signature_url_template`, `signing_key_ids`, `trusted_fingerprints`
+- `importPublisherKeys` uses local keyring before contacting a keyserver
+- `tools/validate-iso-manifest.py` verifies OpenPGP signature when `gpg` is available
+
 ## [1.2.2] - 2026-05-21
 
 ### Added

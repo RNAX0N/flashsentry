@@ -265,6 +265,10 @@ void TestIsoCatalog::embeddedManifestIntegrity()
     IsoCatalogManifest::ensureLoaded();
     QVERIFY(IsoCatalogManifest::lastEmbeddedIntegrityOk());
     QVERIFY(IsoCatalogManifest::entryCount() >= 4);
+    if (QFile::exists(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.asc"))) {
+        QVERIFY2(IsoCatalogManifest::lastEmbeddedIntegrityOk(),
+                 "Embedded manifest SHA-256 or OpenPGP integrity check failed");
+    }
 }
 
 void TestIsoCatalog::publisherFilenameTable_data()

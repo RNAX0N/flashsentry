@@ -21,5 +21,7 @@
     <qresource prefix="/iso-catalog">
         <file>iso-catalog/embedded-manifest.json</file>
         <file>iso-catalog/embedded-manifest.json.sha256</file>
+        <file>iso-catalog/embedded-manifest.json.asc</file>
+        <file>iso-catalog/catalog-signing.pub</file>
     </qresource>
 </RCC>

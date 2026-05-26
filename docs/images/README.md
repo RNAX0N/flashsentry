@@ -1,11 +1,11 @@
 # FlashSentry screenshots
 
-Place UI screenshots here for the README and release notes. The main README links here until real captures are added.
+UI reference images for the README and user guide. These are stylized mockups for documentation (replace with your own captures from a real session if you prefer).
 
-Suggested filenames:
+| File | Description |
+|------|-------------|
+| [main-window.png](main-window.png) | USB monitor with device cards |
+| [iso-verify-report.png](iso-verify-report.png) | ISO verification results table |
+| [watch-lists.png](watch-lists.png) | Watch list editor |
 
-- `main-window.png` — USB monitor with device cards
-- `iso-verify-report.png` — ISO verification results
-- `watch-lists.png` — Watch list editor
-
-Do not commit images that show personal file names, serial numbers, or drive labels you do not want public.
+Do not commit screenshots that show personal file names, serial numbers, or drive labels you do not want public.

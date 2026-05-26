@@ -218,6 +218,14 @@ Publisher mirrors and keys are defined in the application; see [VERIFICATION.md]
 
 ---
 
+## Screenshots
+
+| USB monitor | ISO verification |
+|-------------|------------------|
+| ![Main window](../docs/images/main-window.png) | ![ISO verify report](../docs/images/iso-verify-report.png) |
+
+Watch folder setup: ![Watch lists](../docs/images/watch-lists.png)
+
 ## Command-line verification (1.2.0+)
 
 Headless checks exit with `0` on full pass, `1` if any image fails, `2` on usage errors:

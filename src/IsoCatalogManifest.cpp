@@ -14,6 +14,8 @@
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QEventLoop>
+#include <QProcess>
+#include <QTemporaryDir>
 #include <QTimer>
 
 namespace FlashSentry {
@@ -28,6 +30,9 @@ struct ManifestEntry {
     QString sha256;
     QString referenceUrl;
     QString checksumUrlTemplate;
+    QString signatureUrlTemplate;
+    QStringList signingKeyIds;
+    QStringList trustedFingerprints;
     bool hintOnly = false;
     bool userTofu = false;
     QRegularExpression regex;
@@ -37,7 +42,8 @@ QVector<ManifestEntry> g_entries;
 int g_manifestVersion = 0;
 QString g_remoteUrl;
 bool g_loaded = false;
-bool g_embeddedIntegrityOk = true;
+bool g_embeddedShaOk = true;
+bool g_embeddedGpgOk = true;
 
 QString manifestCachePath()
 {
@@ -71,6 +77,22 @@ bool parseEntryObject(const QJsonObject& obj, ManifestEntry* out, bool userTofu 
     e.sha256 = obj.value(QStringLiteral("sha256")).toString().trimmed().toLower();
     e.referenceUrl = obj.value(QStringLiteral("reference_url")).toString();
     e.checksumUrlTemplate = obj.value(QStringLiteral("checksum_url_template")).toString();
+    e.signatureUrlTemplate = obj.value(QStringLiteral("signature_url_template")).toString();
+    const QJsonArray keyIds = obj.value(QStringLiteral("signing_key_ids")).toArray();
+    for (const QJsonValue& kid : keyIds) {
+        const QString id = kid.toString().trimmed();
+        if (!id.isEmpty()) {
+            e.signingKeyIds.append(id);
+        }
+    }
+    const QJsonArray fps = obj.value(QStringLiteral("trusted_fingerprints")).toArray();
+    for (const QJsonValue& fp : fps) {
+        QString f = fp.toString().trimmed();
+        if (!f.isEmpty()) {
+            f.remove(QLatin1Char(' '));
+            e.trustedFingerprints.append(f.toUpper());
+        }
+    }
     e.hintOnly = obj.value(QStringLiteral("hint_only")).toBool(false);
     e.userTofu = userTofu;
     if (e.publisherId.isEmpty() || e.filePattern.isEmpty()) {
@@ -112,7 +134,7 @@ void mergeManifestDocument(const QJsonDocument& doc, bool prependUserTofu = fals
     }
 }
 
-bool verifyEmbeddedIntegrity(const QByteArray& manifestBytes)
+bool verifyEmbeddedSha256(const QByteArray& manifestBytes)
 {
     QFile hashFile(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.sha256"));
     if (!hashFile.open(QIODevice::ReadOnly)) {
@@ -125,6 +147,64 @@ bool verifyEmbeddedIntegrity(const QByteArray& manifestBytes)
     const QByteArray digest =
         QCryptographicHash::hash(manifestBytes, QCryptographicHash::Sha256).toHex();
     return QString::fromLatin1(digest) == expected;
+}
+
+bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
+{
+    QFile sigFile(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.asc"));
+    QFile pubFile(QStringLiteral(":/iso-catalog/iso-catalog/catalog-signing.pub"));
+    if (!sigFile.exists() || !pubFile.exists()) {
+        return true;
+    }
+    if (!sigFile.open(QIODevice::ReadOnly) || !pubFile.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+    const QByteArray sig = sigFile.readAll();
+    const QByteArray pub = pubFile.readAll();
+    if (sig.isEmpty() || pub.isEmpty()) {
+        return false;
+    }
+
+    QTemporaryDir temp;
+    if (!temp.isValid()) {
+        return false;
+    }
+    const QString manifestPath = temp.filePath(QStringLiteral("embedded-manifest.json"));
+    const QString sigPath = temp.filePath(QStringLiteral("embedded-manifest.json.asc"));
+    const QString pubPath = temp.filePath(QStringLiteral("catalog-signing.pub"));
+
+    QFile manifestOut(manifestPath);
+    QFile sigOut(sigPath);
+    QFile pubOut(pubPath);
+    if (!manifestOut.open(QIODevice::WriteOnly) || !sigOut.open(QIODevice::WriteOnly)
+        || !pubOut.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    manifestOut.write(manifestBytes);
+    sigOut.write(sig);
+    pubOut.write(pub);
+    manifestOut.close();
+    sigOut.close();
+    pubOut.close();
+
+    QProcess proc;
+    proc.setProgram(QStringLiteral("gpg"));
+    proc.setArguments({QStringLiteral("--verify"),
+                     QStringLiteral("--keyring"),
+                     pubPath,
+                     QStringLiteral("--status-fd"),
+                     QStringLiteral("1"),
+                     sigPath,
+                     manifestPath});
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start();
+    if (!proc.waitForFinished(30000)) {
+        proc.kill();
+        return false;
+    }
+    const QString output = QString::fromUtf8(proc.readAllStandardOutput());
+    return proc.exitCode() == 0
+           && output.contains(QStringLiteral("VALIDSIG"), Qt::CaseInsensitive);
 }
 
 void loadFromFile(const QString& path, bool userTofu = false)
@@ -155,12 +235,14 @@ void reloadAll()
     g_entries.clear();
     g_manifestVersion = 0;
     g_remoteUrl.clear();
-    g_embeddedIntegrityOk = true;
+    g_embeddedShaOk = true;
+    g_embeddedGpgOk = true;
 
     QFile embedded(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json"));
     if (embedded.open(QIODevice::ReadOnly)) {
         const QByteArray bytes = embedded.readAll();
-        g_embeddedIntegrityOk = verifyEmbeddedIntegrity(bytes);
+        g_embeddedShaOk = verifyEmbeddedSha256(bytes);
+        g_embeddedGpgOk = verifyEmbeddedGpgSignature(bytes);
         mergeManifestDocument(QJsonDocument::fromJson(bytes));
     }
 
@@ -187,6 +269,12 @@ IsoPublisherMatch entryToMatch(const ManifestEntry& e, const QString& fileName)
         match.checksumUrl = e.checksumUrlTemplate;
         match.checksumUrl.replace(QStringLiteral("{filename}"), fileName);
     }
+    if (!e.signatureUrlTemplate.isEmpty()) {
+        match.signatureUrl = e.signatureUrlTemplate;
+        match.signatureUrl.replace(QStringLiteral("{filename}"), fileName);
+    }
+    match.signingKeyIds = e.signingKeyIds;
+    match.trustedFingerprints = e.trustedFingerprints;
     return match;
 }
 
@@ -208,7 +296,7 @@ void IsoCatalogManifest::ensureLoaded()
 bool IsoCatalogManifest::lastEmbeddedIntegrityOk()
 {
     ensureLoaded();
-    return g_embeddedIntegrityOk;
+    return g_embeddedShaOk && g_embeddedGpgOk;
 }
 
 bool IsoCatalogManifest::refreshRemoteIfStale(int maxAgeSeconds, bool force)

@@ -65,7 +65,9 @@ If you only need “is this entire stick bit-for-bit the same as last time?”, 
 
 ## Screenshots
 
-UI screenshots are planned for a future release. After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. Contributions of screenshots (PNG, no personal data on drives) are welcome in [`docs/images/`](docs/images/).
+![FlashSentry main window](docs/images/main-window.png)
+
+After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/) (ISO verify report, watch lists).
 
 | View | Status |
 |------|--------|
@@ -186,7 +188,7 @@ cmake -DFLASHSENTRY_BUILD_TESTS=ON ..
 cmake --build . && ctest --test-dir build --output-on-failure
 ```
 
-Eight tests: `test_types`, `test_database_manager`, `test_merkle`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`, `test_verify_report`, `test_iso_verify_integration` (offline fixtures under `tests/fixtures/`).
+Ten tests: `test_types`, `test_database_manager`, `test_merkle`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`, `test_verify_report`, `test_iso_verify_integration`, `test_iso_verify_publisher_mock`, `test_iso_http_mock` (fixtures under `tests/fixtures/`).
 
 Install (binary, polkit policy, udev rules, and docs under `/usr/share/doc/flashsentry/`):
 

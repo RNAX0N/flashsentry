@@ -3,6 +3,7 @@
 #include "IsoCatalog.h"
 #include "IsoCatalogManifest.h"
 #include "IsoChecksum.h"
+#include "IsoHttpClient.h"
 #include "IsoVerifyCache.h"
 
 #include <openssl/evp.h>
@@ -156,46 +157,7 @@ QByteArray httpGet(const QString& url, QString* errorOut, int timeoutMs = 90000)
     const QStringList urls = mirrorFallbackUrls(url);
     QString lastErr;
     for (const QString& tryUrl : urls) {
-        QNetworkAccessManager nam;
-        QNetworkRequest req{QUrl(tryUrl)};
-        req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                         QNetworkRequest::NoLessSafeRedirectPolicy);
-#ifdef FLASHSENTRY_VERSION
-        req.setHeader(QNetworkRequest::UserAgentHeader,
-                      QStringLiteral("FlashSentry/" FLASHSENTRY_VERSION));
-#else
-        req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("FlashSentry/1.1.5"));
-#endif
-
-        QNetworkReply* reply = nam.get(req);
-        QEventLoop loop;
-        QTimer timer;
-        timer.setSingleShot(true);
-        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-        QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-        timer.start(timeoutMs);
-        loop.exec();
-
-        if (!reply->isFinished()) {
-            lastErr = QStringLiteral("Download timed out");
-            reply->abort();
-            reply->deleteLater();
-            continue;
-        }
-        if (reply->error() != QNetworkReply::NoError) {
-            lastErr = reply->errorString();
-            reply->deleteLater();
-            continue;
-        }
-
-        const QByteArray data = reply->readAll();
-        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        reply->deleteLater();
-
-        if (status >= 400) {
-            lastErr = QStringLiteral("HTTP %1 for %2").arg(status).arg(tryUrl);
-            continue;
-        }
+        const QByteArray data = IsoHttpClient::get(tryUrl, &lastErr, timeoutMs);
         if (!data.isEmpty()) {
             return data;
         }
@@ -243,16 +205,41 @@ QString runGpg(const QStringList& args, QString* outputOut, QString* errorOut, i
     return out.trimmed();
 }
 
+bool publisherKeyAvailable(const QString& keyId)
+{
+    QString listOut;
+    QString err;
+    runGpg({QStringLiteral("--list-keys"), QStringLiteral("--with-colons")}, &listOut, &err);
+    QString needle = keyId.trimmed();
+    if (needle.startsWith(QStringLiteral("0x"), Qt::CaseInsensitive)) {
+        needle = needle.mid(2);
+    }
+    return listOut.contains(needle, Qt::CaseInsensitive);
+}
+
 bool importPublisherKeys(const QStringList& keyIds, const QString& keyserver, QString* logOut)
 {
-    if (!ensureGpgHome(logOut)) return false;
+    if (!ensureGpgHome(logOut)) {
+        return false;
+    }
     for (const QString& keyId : keyIds) {
+        if (publisherKeyAvailable(keyId)) {
+            continue;
+        }
+        if (qEnvironmentVariableIsSet("FLASHSENTRY_SKIP_KEYSERVER_IMPORT")) {
+            if (logOut) {
+                *logOut = QStringLiteral("Signing key not in local GPG homedir: %1").arg(keyId);
+            }
+            return false;
+        }
         QString err;
         const QString out = runGpg(
             {QStringLiteral("--keyserver"), keyserver, QStringLiteral("--recv-keys"), keyId},
             logOut, &err, 180000);
         if (out.isEmpty() && !err.isEmpty()) {
-            if (logOut) *logOut = err;
+            if (logOut) {
+                *logOut = err;
+            }
             return false;
         }
     }
@@ -582,7 +569,21 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
     if (!sigPath.isEmpty() && !r.pgpChecked) {
         ensureGpgHome(nullptr);
         r.pgpChecked = true;
-        const GpgVerifyDetails vd = gpgVerifyDetached(sigPath, isoPath);
+        QString signedDataPath = isoPath;
+        const QFileInfo sigFi(sigPath);
+        const QString dir = sigFi.absolutePath();
+        const QStringList sumsNames = {QStringLiteral("SHA256SUMS"),
+                                       QStringLiteral("sha256sums.txt"),
+                                       QStringLiteral("sha256sum.txt"),
+                                       QStringLiteral("CHECKSUM")};
+        for (const QString& name : sumsNames) {
+            const QString candidate = dir + QLatin1Char('/') + name;
+            if (QFileInfo::exists(candidate)) {
+                signedDataPath = candidate;
+                break;
+            }
+        }
+        const GpgVerifyDetails vd = gpgVerifyDetached(sigPath, signedDataPath);
         r.pgpValid = vd.valid;
         r.pgpSummary = vd.summary;
         r.signingKeyFingerprint = vd.fingerprint;

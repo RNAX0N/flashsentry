@@ -23,9 +23,15 @@ target_include_directories(test_merkle PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPE
 target_link_libraries(test_merkle PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
 add_test(NAME test_merkle COMMAND test_merkle)
 
+set(ISO_CATALOG_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/iso_catalog/IsoCatalogBuilders.cpp
+    ${CMAKE_SOURCE_DIR}/src/iso_catalog/IsoCatalogMatch.cpp
+    ${CMAKE_SOURCE_DIR}/src/iso_catalog/IsoCatalogUtil.cpp
+)
+
 add_executable(test_iso_catalog
     test_iso_catalog.cpp
-    ${CMAKE_SOURCE_DIR}/src/IsoCatalog.cpp
+    ${ISO_CATALOG_SOURCES}
     ${CMAKE_SOURCE_DIR}/src/IsoCatalogManifest.cpp
 )
 target_include_directories(test_iso_catalog PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -55,8 +61,9 @@ add_test(NAME test_verify_report COMMAND test_verify_report)
 set(FLASHSENTRY_TEST_FIXTURES_DIR "${CMAKE_SOURCE_DIR}/tests/fixtures")
 set(ISO_VERIFY_TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/IsoVerifier.cpp
-    ${CMAKE_SOURCE_DIR}/src/IsoCatalog.cpp
+    ${ISO_CATALOG_SOURCES}
     ${CMAKE_SOURCE_DIR}/src/IsoCatalogManifest.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoHttpClient.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoChecksum.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoVerifyCache.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoVerifyReport.cpp
@@ -75,3 +82,23 @@ target_compile_definitions(test_iso_verify_integration PRIVATE
 )
 target_sources(test_iso_verify_integration PRIVATE ${CMAKE_SOURCE_DIR}/resources/resources.qrc)
 add_test(NAME test_iso_verify_integration COMMAND test_iso_verify_integration)
+
+add_executable(test_iso_verify_publisher_mock
+    test_iso_verify_publisher_mock.cpp
+    ${ISO_VERIFY_TEST_SOURCES}
+)
+target_include_directories(test_iso_verify_publisher_mock PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_iso_verify_publisher_mock PRIVATE
+    Qt6::Test Qt6::Core Qt6::Concurrent Qt6::Network ${OPENSSL_LIBRARIES})
+target_compile_definitions(test_iso_verify_publisher_mock PRIVATE
+    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+    FLASHSENTRY_TEST_FIXTURES_DIR="${FLASHSENTRY_TEST_FIXTURES_DIR}"
+)
+target_sources(test_iso_verify_publisher_mock PRIVATE ${CMAKE_SOURCE_DIR}/resources/resources.qrc)
+add_test(NAME test_iso_verify_publisher_mock COMMAND test_iso_verify_publisher_mock)
+
+add_executable(test_iso_http_mock test_iso_http_mock.cpp ${CMAKE_SOURCE_DIR}/src/IsoHttpClient.cpp)
+target_include_directories(test_iso_http_mock PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_iso_http_mock PRIVATE Qt6::Test Qt6::Core Qt6::Network)
+target_compile_definitions(test_iso_http_mock PRIVATE FLASHSENTRY_VERSION="${PROJECT_VERSION}")
+add_test(NAME test_iso_http_mock COMMAND test_iso_http_mock)

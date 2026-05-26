@@ -230,7 +230,7 @@ ctest --test-dir build -R test_iso_verify_integration --output-on-failure
 
 Microsoft publishes SHA-256 values on their [Windows 11](https://www.microsoft.com/software-download/windows11) and [Windows 10](https://www.microsoft.com/software-download/windows10) download pages, but not at a stable per-file URL. FlashSentry uses:
 
-1. **Embedded manifest** — shipped at `:/iso-catalog/embedded-manifest.json` (also installed under `share/flashsentry/iso-catalog/`). Includes known hashes (e.g. `Win11_24H2_English_x64.iso`) and `hint_only` patterns for other `Win11_*` / `Win10_*` names.
+1. **Embedded manifest** — shipped at `:/iso-catalog/embedded-manifest.json` (also installed under `share/flashsentry/iso-catalog/`). Includes known hashes (e.g. `Win11_24H2_English_x64.iso`) and `hint_only` patterns for other `Win11_*` / `Win10_*` names. Integrity is checked with **SHA-256** (`embedded-manifest.json.sha256`) and **OpenPGP** (`embedded-manifest.json.asc` + `catalog-signing.pub`). Re-sign after edits: `tools/sign-embedded-manifest.sh`.
 2. **Remote refresh** — the manifest’s `remote_url` (GitHub raw) is cached weekly under `~/.cache/FlashSentry/iso-catalog-manifest.json` so hashes can be updated without rebuilding the app.
 3. **Local sidecar** — place `Win11_24H2_English_x64.iso.sha256` (single hex line or `hash  filename` format) next to the ISO on the USB stick.
 

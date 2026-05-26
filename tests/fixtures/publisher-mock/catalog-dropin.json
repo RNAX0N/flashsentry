@@ -1,0 +1,15 @@
+{
+  "manifest_version": 2,
+  "entries": [
+    {
+      "publisher_id": "mock-publisher",
+      "publisher_name": "FlashSentry Mock Publisher",
+      "file_pattern": "^mock-distro-.*\\.iso$",
+      "release_label": "Mock distro test image",
+      "sha256": "",
+      "hint_only": false,
+      "signing_key_ids": ["541DFAEB302C380671E666C7BBD811EF6FBA0EBC"],
+      "trusted_fingerprints": ["541DFAEB302C380671E666C7BBD811EF6FBA0EBC"]
+    }
+  ]
+}

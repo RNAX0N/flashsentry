@@ -31,6 +31,9 @@ int openDevice(const QString& deviceNode);
 
 uint64_t deviceSize(int fd, const QString& deviceNode);
 
+/** Close a device fd from openDevice(); ignores fd < 0. */
+void closeDevice(int fd);
+
 /** Hash using an already-open fd. Caller closes fd. */
 HashResult hashOpenFd(int fd, const Options& options);
 

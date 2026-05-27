@@ -12,6 +12,9 @@
 #include <QTextStream>
 #include <QElapsedTimer>
 
+#include <cerrno>
+#include <cstring>
+
 using namespace FlashSentry;
 
 static void printResult(const HashResult& result, qint64 durationMs)
@@ -64,7 +67,7 @@ int main(int argc, char* argv[])
     }
 
     HashResult result = RawDeviceHash::hashOpenFd(fd, options);
-    close(fd);
+    RawDeviceHash::closeDevice(fd);
     result.durationMs = static_cast<uint64_t>(timer.elapsed());
 
     printResult(result, timer.elapsed());

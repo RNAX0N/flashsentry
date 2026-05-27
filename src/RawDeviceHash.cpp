@@ -349,6 +349,14 @@ uint64_t deviceSize(int fd, const QString& deviceNode)
     return size;
 }
 
+void closeDevice(int fd)
+{
+    if (fd >= 0) {
+        ::close(fd);
+    }
+}
+
+
 HashResult hashOpenFd(int fd, const Options& options)
 {
     HashResult result;

@@ -50,7 +50,7 @@ QString HashWorker::startHash(const HashJob& job)
     const int fd = RawDeviceHash::openDevice(job.deviceNode);
     if (fd >= 0) {
         state->totalBytes.store(RawDeviceHash::deviceSize(fd, job.deviceNode));
-        close(fd);
+        RawDeviceHash::closeDevice(fd);
     } else {
         state->totalBytes.store(0);
     }
@@ -235,7 +235,7 @@ HashResult HashWorker::executeHash(std::shared_ptr<JobState> state)
         const int fd = RawDeviceHash::openDevice(state->config.deviceNode);
         if (fd >= 0) {
             state->totalBytes.store(RawDeviceHash::deviceSize(fd, state->config.deviceNode));
-            close(fd);
+            RawDeviceHash::closeDevice(fd);
         }
     }
 
@@ -259,7 +259,7 @@ uint64_t HashWorker::getDeviceSize(const QString& deviceNode)
         return 0;
     }
     const uint64_t size = RawDeviceHash::deviceSize(fd, deviceNode);
-    close(fd);
+    RawDeviceHash::closeDevice(fd);
     return size;
 }
 

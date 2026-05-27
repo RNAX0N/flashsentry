@@ -270,6 +270,7 @@ private:
     void appendEventRow(const QString& event, const QString& device, const QString& type,
                         const QString& result, const QString& details, LogLevel level);
     void updateNavigationState(int index);
+    QWidget* createDashboardInfoPage(const QString& title, const QString& body);
 
     /**
      * @brief Show the new device dialog
@@ -380,6 +381,7 @@ private:
 
     // Device tracking
     QHash<QString, DeviceCard*> m_deviceCards;  // deviceNode -> card
+    QHash<QString, HidDeviceInfo> m_hidDashboardDevices;
     QHash<QString, QString> m_hashJobDevices;   // jobId -> deviceNode
 
     enum class PendingHashAction {

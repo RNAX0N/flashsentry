@@ -45,6 +45,8 @@ void MainWindow::onHidChanged(const HidDeviceInfo& device)
 
 void MainWindow::onHidDisconnected(const QString& stableId)
 {
+    m_hidDashboardDevices.remove(stableId);
+    refreshDeviceTable();
     if (m_badUsbWidget) {
         m_badUsbWidget->removeDevice(stableId);
     }
@@ -106,6 +108,8 @@ void MainWindow::processBadUsbDevice(const HidDeviceInfo& device)
         device, baseline, relatedStorage, history.size(), m_settings);
 
     const bool trusted = baseline.has_value() && baseline->trusted;
+    m_hidDashboardDevices.insert(stableId, device);
+    refreshDeviceTable();
     if (m_badUsbWidget) {
         m_badUsbWidget->updateDevice(device, trusted);
     }

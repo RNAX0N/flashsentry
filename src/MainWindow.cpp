@@ -16,6 +16,7 @@
 #include <QMenu>
 #include <QAction>
 #include <QHeaderView>
+#include <QToolButton>
 #include <QDateTime>
 #include <QStandardPaths>
 #include <QFileInfo>
@@ -145,8 +146,11 @@ void MainWindow::setupUi()
         button->setMinimumHeight(42);
         button->setToolTip(tip);
         connect(button, &QPushButton::clicked, this, [this, index]() {
-            if (index >= 0) {
+            if (index >= 0 && index <= 2) {
                 onModeTabChanged(index);
+            } else if (index >= 0 && m_appModeStack) {
+                m_appModeStack->setCurrentIndex(index);
+                updateNavigationState(index);
             } else {
                 onSettingsClicked();
             }
@@ -156,12 +160,12 @@ void MainWindow::setupUi()
     };
 
     addNavButton(QStringLiteral("▣  USB Monitor"), 0);
-    addNavButton(QStringLiteral("◴  Device History"), 0, QStringLiteral("Recent events are shown on the dashboard"));
-    addNavButton(QStringLiteral("☑  Allow / Block List"), 0, QStringLiteral("Allow/block management is integrated with device prompts"));
-    addNavButton(QStringLiteral("⚠  Alerts"), 2, QStringLiteral("BadUSB and behavior alerts"));
+    addNavButton(QStringLiteral("◴  Device History"), 3);
+    addNavButton(QStringLiteral("☑  Allow / Block List"), 4);
+    addNavButton(QStringLiteral("⚠  Alerts"), 5);
     addNavButton(QStringLiteral("▤  Reports"), 1, QStringLiteral("ISO verification and reports"));
     addNavButton(QStringLiteral("⚙  Settings"), -1);
-    addNavButton(QStringLiteral("ⓘ  About"), -1);
+    addNavButton(QStringLiteral("ⓘ  About"), 6);
     navLayout->addStretch();
 
     auto* protection = new QLabel(QStringLiteral("🛡  Protection Active\nAll systems are protected."));
@@ -225,6 +229,24 @@ void MainWindow::setupUi()
         }
     });
     m_appModeStack->addWidget(m_badUsbWidget);
+    m_appModeStack->addWidget(createDashboardInfoPage(
+        QStringLiteral("Device History"),
+        QStringLiteral("Recent USB and HID events are shown on the USB Monitor dashboard. "
+                       "A full searchable history view will be backed by the audit log.")));
+    m_appModeStack->addWidget(createDashboardInfoPage(
+        QStringLiteral("Allow / Block List"),
+        QStringLiteral("Known storage devices are managed through the device database. "
+                       "BadUSB HID baselines are stored separately with user-confirmed categories. "
+                       "Dedicated editing controls will appear here.")));
+    m_appModeStack->addWidget(createDashboardInfoPage(
+        QStringLiteral("Alerts"),
+        QStringLiteral("Security alerts from hash mismatches, manifest mismatches, ISO failures, "
+                       "and BadUSB anomalies are summarized in the Recent Events table. "
+                       "This page will become the focused alert queue.")));
+    m_appModeStack->addWidget(createDashboardInfoPage(
+        QStringLiteral("About FlashSentry"),
+        QStringLiteral("FlashSentry monitors USB storage, verifies watched content and ISO images, "
+                       "and builds BadUSB behavior baselines for HID devices.")));
     contentLayout->addWidget(m_appModeStack, 1);
 
     auto* footer = new QWidget;
@@ -481,6 +503,32 @@ QWidget* MainWindow::createMainContent()
     scroll->setWidget(page);
     m_splitter = scroll;
     return scroll;
+}
+
+QWidget* MainWindow::createDashboardInfoPage(const QString& title, const QString& body)
+{
+    auto* page = new QWidget;
+    page->setObjectName(QStringLiteral("UsbDashboardPage"));
+    auto* layout = new QVBoxLayout(page);
+    layout->setContentsMargins(28, 28, 28, 28);
+    layout->setSpacing(18);
+
+    auto* titleLabel = new QLabel(title);
+    titleLabel->setObjectName(QStringLiteral("PageTitle"));
+    titleLabel->setFont(FSFont(Heading1));
+    layout->addWidget(titleLabel);
+
+    auto* panel = new QWidget;
+    panel->setObjectName(QStringLiteral("DashboardPanel"));
+    auto* panelLayout = new QVBoxLayout(panel);
+    panelLayout->setContentsMargins(18, 18, 18, 18);
+    auto* text = new QLabel(body);
+    text->setWordWrap(true);
+    text->setObjectName(QStringLiteral("PageSubtitle"));
+    panelLayout->addWidget(text);
+    layout->addWidget(panel);
+    layout->addStretch();
+    return page;
 }
 
 QWidget* MainWindow::createDeviceListArea()
@@ -1030,6 +1078,16 @@ void MainWindow::applyStyle()
         QTableWidget#DashboardTable::item {
             padding: 8px;
             border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        QToolButton#DashboardActionButton {
+            background: %2;
+            color: %6;
+            border: 1px solid %5;
+            border-radius: 6px;
+            padding: 6px 10px;
+        }
+        QToolButton#DashboardActionButton::menu-indicator {
+            image: none;
         }
         QHeaderView::section {
             background: %2;
@@ -1900,6 +1958,9 @@ void MainWindow::syncModeTabFromSettings()
     } else if (m_settings.appModule == AppModule::BadUsbMonitor) {
         index = 2;
     }
+    if (m_appModeStack && m_appModeStack->currentIndex() > 2) {
+        index = m_appModeStack->currentIndex();
+    }
     if (m_modeTabBar->currentIndex() != index) {
         m_modeTabBar->blockSignals(true);
         m_modeTabBar->setCurrentIndex(index);
@@ -1917,6 +1978,15 @@ void MainWindow::onModeTabChanged(int index)
         m_settings.appModule = AppModule::IsoVerifier;
     } else if (index == 2) {
         m_settings.appModule = AppModule::BadUsbMonitor;
+    } else if (index > 2) {
+        if (m_appModeStack) {
+            m_appModeStack->setCurrentIndex(index);
+        }
+        if (m_searchEdit) {
+            m_searchEdit->setVisible(false);
+        }
+        updateNavigationState(index);
+        return;
     } else {
         m_settings.appModule = AppModule::UsbMonitor;
     }
@@ -2165,6 +2235,31 @@ void MainWindow::refreshDeviceTable()
         return;
     }
     m_deviceTable->setRowCount(0);
+    auto addActionButton = [this](int row, const QString& key, bool hid) {
+        auto* button = new QToolButton;
+        button->setText(QStringLiteral("Actions"));
+        button->setPopupMode(QToolButton::InstantPopup);
+        button->setObjectName(QStringLiteral("DashboardActionButton"));
+        auto* menu = new QMenu(button);
+        if (hid) {
+            QAction* trust = menu->addAction(QStringLiteral("Trust / baseline"));
+            connect(trust, &QAction::triggered, this, [this, key]() { onBadUsbTrustRequested(key); });
+            QAction* capture = menu->addAction(QStringLiteral("Capture USB traffic"));
+            connect(capture, &QAction::triggered, this, [this, key]() { onBadUsbCaptureRequested(key); });
+        } else {
+            QAction* mount = menu->addAction(QStringLiteral("Mount"));
+            connect(mount, &QAction::triggered, this, [this, key]() { onMountRequested(key); });
+            QAction* unmount = menu->addAction(QStringLiteral("Unmount"));
+            connect(unmount, &QAction::triggered, this, [this, key]() { onUnmountRequested(key); });
+            QAction* verify = menu->addAction(QStringLiteral("Verify / hash"));
+            connect(verify, &QAction::triggered, this, [this, key]() { onRehashRequested(key); });
+            QAction* watch = menu->addAction(QStringLiteral("Watch lists"));
+            connect(watch, &QAction::triggered, this, [this, key]() { onWatchListRequested(key); });
+        }
+        button->setMenu(menu);
+        m_deviceTable->setCellWidget(row, 6, button);
+    };
+
     const QList<DeviceCard*> cards = m_deviceCards.values();
     for (DeviceCard* card : cards) {
         const DeviceInfo device = card->device();
@@ -2206,7 +2301,34 @@ void MainWindow::refreshDeviceTable()
         setItem(3, capacity);
         setItem(4, vendorModel.isEmpty() ? QStringLiteral("—") : vendorModel);
         setItem(5, connectedAt);
-        setItem(6, QStringLiteral("Actions ▾"));
+        addActionButton(row, device.deviceNode, false);
+    }
+
+    for (const HidDeviceInfo& hid : m_hidDashboardDevices) {
+        const int row = m_deviceTable->rowCount();
+        m_deviceTable->insertRow(row);
+        const QString stableId = hid.stableId();
+        const auto baseline = m_badUsbBaselineStore ? m_badUsbBaselineStore->matchDevice(hid) : std::nullopt;
+        const bool trusted = baseline.has_value() && baseline->trusted;
+        auto setItem = [this, row](int column, const QString& text, const QColor& foreground = QColor()) {
+            auto* item = new QTableWidgetItem(text);
+            item->setToolTip(text);
+            if (foreground.isValid()) {
+                item->setForeground(foreground);
+            }
+            m_deviceTable->setItem(row, column, item);
+        };
+        setItem(0, hid.displayName() + QStringLiteral("\n") + stableId);
+        setItem(1, QStringLiteral("HID Device"));
+        setItem(2, trusted ? QStringLiteral("Allowed") : QStringLiteral("Learning"),
+                trusted ? FSStyle.color(StyleManager::ColorRole::Success)
+                        : FSStyle.color(StyleManager::ColorRole::Warning));
+        setItem(3, QStringLiteral("—"));
+        setItem(4, QStringList{hid.manufacturer, hid.product}.filter(QRegularExpression(QStringLiteral(".+"))).join(QStringLiteral("\n")));
+        setItem(5, hid.seenAtUtc.isValid()
+                       ? hid.seenAtUtc.toLocalTime().toString(QStringLiteral("M/d/yyyy h:mm:ss AP"))
+                       : QStringLiteral("—"));
+        addActionButton(row, stableId, true);
     }
     m_deviceTable->resizeRowsToContents();
 }
@@ -2256,11 +2378,13 @@ void MainWindow::appendEventRow(const QString& event, const QString& device, con
 void MainWindow::updateNavigationState(int index)
 {
     for (int i = 0; i < m_navButtons.size(); ++i) {
-        // The first nav item maps to USB, fourth to BadUSB, fifth to Reports/ISO.
-        const bool active =
-            (index == 0 && i <= 2)
-            || (index == 2 && i == 3)
-            || (index == 1 && i == 4);
+        bool active = false;
+        if (index == 0 && i == 0) active = true;
+        if (index == 3 && i == 1) active = true;
+        if (index == 4 && i == 2) active = true;
+        if ((index == 2 || index == 5) && i == 3) active = true;
+        if (index == 1 && i == 4) active = true;
+        if (index == 6 && i == 6) active = true;
         m_navButtons.at(i)->setChecked(active);
     }
 }

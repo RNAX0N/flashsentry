@@ -82,7 +82,7 @@ After `sudo cmake --install build --prefix /usr`, open the installed guides unde
 ```bash
 git clone https://github.com/RNAX0N/flashsentry.git
 cd flashsentry/packaging
-makepkg -si
+./build-package.sh -si
 ```
 
 ### Runtime dependencies

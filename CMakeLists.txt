@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" _flashsentry_version_raw)
+    string(STRIP "${_flashsentry_version_raw}" FLASHSENTRY_PROJECT_VERSION)
+else()
+    set(FLASHSENTRY_PROJECT_VERSION "1.4.2")
+endif()
 project(flashsentry
-    VERSION 1.4.2
+    VERSION ${FLASHSENTRY_PROJECT_VERSION}
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )

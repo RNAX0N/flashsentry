@@ -25,6 +25,23 @@ target_include_directories(test_merkle PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPE
 target_link_libraries(test_merkle PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
 add_test(NAME test_merkle COMMAND test_merkle)
 
+add_executable(test_manifest_service
+    test_manifest_service.cpp
+    ${CMAKE_SOURCE_DIR}/src/ManifestService.cpp
+    ${CMAKE_SOURCE_DIR}/src/MerkleTree.cpp
+)
+target_include_directories(test_manifest_service PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_manifest_service PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
+add_test(NAME test_manifest_service COMMAND test_manifest_service)
+
+add_executable(test_raw_device_hash
+    test_raw_device_hash.cpp
+    ${CMAKE_SOURCE_DIR}/src/RawDeviceHash.cpp
+)
+target_include_directories(test_raw_device_hash PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_raw_device_hash PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
+add_test(NAME test_raw_device_hash COMMAND test_raw_device_hash)
+
 set(ISO_CATALOG_SOURCES
     ${CMAKE_SOURCE_DIR}/src/iso_catalog/IsoCatalogBuilders.cpp
     ${CMAKE_SOURCE_DIR}/src/iso_catalog/IsoCatalogMatch.cpp

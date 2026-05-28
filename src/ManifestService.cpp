@@ -330,6 +330,9 @@ ManifestService::VerifyResult ManifestService::verifyManifest(const QString& mou
 
     combined.computedRootHex = manifestRootHex(manifest);
     combined.expectedRootHex = manifest.manifestRoot;
+    if (!combined.expectedRootHex.isEmpty() && combined.computedRootHex != combined.expectedRootHex) {
+        combined.matches = false;
+    }
     combined.durationMs = static_cast<uint64_t>(timer.elapsed());
     return combined;
 }

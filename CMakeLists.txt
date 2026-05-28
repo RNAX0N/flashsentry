@@ -71,6 +71,10 @@ set(SOURCES
     src/IsoVerifierWorker.cpp
     src/WatchListDialog.cpp
     src/WatchListsPanel.cpp
+    src/NavSidebar.cpp
+    src/UsbMonitorPage.cpp
+    src/PlaceholderModulePage.cpp
+    src/EventDetailDialog.cpp
     src/IsoVerifierWidget.cpp
     src/DatabaseManager.cpp
     src/MountManager.cpp
@@ -116,6 +120,12 @@ set(HEADERS
     include/IsoVerifierWorker.h
     include/WatchListDialog.h
     include/WatchListsPanel.h
+    include/AppNavigation.h
+    include/NavSidebar.h
+    include/UsbMonitorPage.h
+    include/PlaceholderModulePage.h
+    include/EventDetailDialog.h
+    include/UiEventTypes.h
     include/IsoVerifierWidget.h
     include/DatabaseManager.h
     include/MountManager.h

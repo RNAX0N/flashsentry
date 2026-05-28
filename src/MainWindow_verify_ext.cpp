@@ -13,38 +13,13 @@ namespace FlashSentry {
 
 void MainWindow::applyAppModule()
 {
-    if (!m_appModeStack) {
-        return;
+    if (m_isoWidget) {
+        if (!m_settings.isoScanDirectory.isEmpty()) {
+            m_isoWidget->setScanDirectory(m_settings.isoScanDirectory);
+        }
+        m_isoWidget->refreshCatalogStatus();
     }
-    if (m_settings.appModule == AppModule::IsoVerifier) {
-        m_appModeStack->setCurrentWidget(m_isoWidget);
-        if (m_titleLabel) {
-            m_titleLabel->setText(QStringLiteral("FlashSentry"));
-        }
-        if (m_isoWidget) {
-            if (!m_settings.isoScanDirectory.isEmpty()) {
-                m_isoWidget->setScanDirectory(m_settings.isoScanDirectory);
-            }
-            m_isoWidget->refreshCatalogStatus();
-        }
-    } else if (m_settings.appModule == AppModule::BadUsbMonitor) {
-        m_appModeStack->setCurrentWidget(m_badUsbWidget);
-        if (m_titleLabel) {
-            m_titleLabel->setText(QStringLiteral("FlashSentry"));
-        }
-    } else if (m_modeTabBar && m_modeTabBar->currentIndex() == 2 && m_watchListsPanel) {
-        m_appModeStack->setCurrentWidget(m_watchListsPanel);
-        refreshWatchListsPanel();
-        if (m_titleLabel) {
-            m_titleLabel->setText(QStringLiteral("FlashSentry"));
-        }
-    } else {
-        m_appModeStack->setCurrentIndex(0);
-        if (m_titleLabel) {
-            m_titleLabel->setText(QStringLiteral("FlashSentry"));
-        }
-    }
-    syncModeTabFromSettings();
+    Q_UNUSED(m_settings.appModule);
 }
 
 void MainWindow::onIsoLogMessage(const QString& message)

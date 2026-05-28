@@ -33,6 +33,11 @@
 #include "IsoVerifierWidget.h"
 #include "BadUsbWidget.h"
 #include "WatchListsPanel.h"
+#include "AppNavigation.h"
+#include "NavSidebar.h"
+#include "UsbMonitorPage.h"
+#include "PlaceholderModulePage.h"
+#include "UiEventTypes.h"
 #include "BadUsbBaselineStore.h"
 #include "HidDeviceMonitor.h"
 #include "UsbmonCapture.h"
@@ -271,6 +276,10 @@ private:
     void updateSidebarStats();
     void refreshVerifyHistoryPanel(const QString& deviceNodeFilter = {});
     void refreshWatchListsPanel();
+    void refreshUsbMonitorHome();
+    void appendUiEvent(const UiEventEntry& entry);
+    void showDeviceActionsMenu(const QString& deviceNode);
+    void onNavPageSelected(AppPage page);
     void recordVerifyHistory(const VerifyHistoryEntry& entry);
 
     /**
@@ -337,9 +346,17 @@ private:
     AppSettings m_settings;
     std::unique_ptr<QSettings> m_qsettings;
 
-    // UI - Main structure
+    // UI - Shell (left nav + page stack)
     QWidget* m_centralWidget = nullptr;
     QVBoxLayout* m_mainLayout = nullptr;
+    NavSidebar* m_navSidebar = nullptr;
+    QStackedWidget* m_pageStack = nullptr;
+    UsbMonitorPage* m_usbMonitorPage = nullptr;
+    PlaceholderModulePage* m_settingsPage = nullptr;
+    QWidget* m_hiddenDeviceHost = nullptr;
+    QVBoxLayout* m_hiddenDeviceLayout = nullptr;
+
+    // Legacy stacked modules (ISO / BadUSB) — retained for backend, not in nav yet
     QSplitter* m_contentSplitter = nullptr;
 
     // UI - Header
@@ -405,6 +422,12 @@ private:
     QSet<QString> m_unmountBeforeHash;
     QSet<QString> m_isoVerifyTriggeredMounts;
     QHash<QString, QList<QDateTime>> m_hidConnectHistory;
+
+    QList<UiEventEntry> m_uiEvents;
+    QHash<QString, QDateTime> m_deviceConnectedAt;
+    QHash<QString, QDateTime> m_deviceDisconnectedAt;
+    QHash<QString, QString> m_userDeviceNames;
+    int m_maxUiEvents = 100;
 
     // State
     bool m_isClosing = false;

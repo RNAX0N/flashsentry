@@ -10,6 +10,7 @@ public:
     static QString logPath();
 
     static void appendIsoVerify(const IsoVerifyResult& result);
+    static void appendBadUsbEvent(const BadUsbAnomalyResult& result);
     static void appendEvent(const QString& event, const QString& detail = {});
 
 private:

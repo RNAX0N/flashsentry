@@ -333,9 +333,40 @@ void DeviceCard::setIsoVerifySummary(const QString& summary)
     m_isoSummaryLabel->setVisible(true);
 }
 
+void DeviceCard::setHashEta(double etaSeconds)
+{
+    if (!m_etaLabel) return;
+    if (etaSeconds <= 1.0) {
+        m_etaLabel->clear();
+        return;
+    }
+    const int mins = static_cast<int>(etaSeconds) / 60;
+    const int secs = static_cast<int>(etaSeconds) % 60;
+    if (mins > 0) {
+        m_etaLabel->setText(QString("ETA %1m %2s").arg(mins).arg(secs, 2, 10, QChar('0')));
+    } else {
+        m_etaLabel->setText(QString("ETA %1s").arg(secs));
+    }
+}
+
+void DeviceCard::setHashBytes(quint64 processed, quint64 total)
+{
+    if (!m_progressLabel || total == 0) return;
+    const double pct = 100.0 * static_cast<double>(processed) / static_cast<double>(total);
+    const double doneGb = static_cast<double>(processed) / (1024.0 * 1024.0 * 1024.0);
+    const double totalGb = static_cast<double>(total) / (1024.0 * 1024.0 * 1024.0);
+    m_progressLabel->setText(QString("Hashing %1% · %2 / %3 GB")
+                                 .arg(static_cast<int>(pct))
+                                 .arg(doneGb, 0, 'f', 2)
+                                 .arg(totalGb, 0, 'f', 2));
+}
+
 void DeviceCard::setProgressVisible(bool visible)
 {
     m_progressWidget->setVisible(visible);
+    if (m_cancelHashBtn) {
+        m_cancelHashBtn->setVisible(visible);
+    }
     
     if (visible) {
         setVerificationStatus(VerificationStatus::Hashing);

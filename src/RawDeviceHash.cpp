@@ -1,7 +1,9 @@
 #include "RawDeviceHash.h"
+#include "RawDeviceHashAdvanced.h"
 
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QDir>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -38,6 +40,36 @@ bool cancelled(const Options& options)
     return options.cancelled && options.cancelled->load();
 }
 
+bool isUnderDev(const QString& path)
+{
+    const QString clean = QDir::cleanPath(QDir::fromNativeSeparators(path));
+    return clean == QStringLiteral("/dev") || clean.startsWith(QStringLiteral("/dev/"));
+}
+
+QString validatedDevicePath(const QString& deviceNode, int* errorCode)
+{
+    const QString requested = QDir::cleanPath(QDir::fromNativeSeparators(deviceNode.trimmed()));
+    if (!QDir::isAbsolutePath(requested) || !isUnderDev(requested)) {
+        if (errorCode) *errorCode = EINVAL;
+        return {};
+    }
+
+    const QFileInfo info(requested);
+    if (!info.exists()) {
+        if (errorCode) *errorCode = ENOENT;
+        return {};
+    }
+
+    const QString canonical = info.canonicalFilePath();
+    if (canonical.isEmpty() || !isUnderDev(canonical)) {
+        if (errorCode) *errorCode = EINVAL;
+        return {};
+    }
+
+    if (errorCode) *errorCode = 0;
+    return canonical;
+}
+
 void reportProgress(const Options& options, uint64_t value)
 {
     if (options.bytesProcessed) {
@@ -63,7 +95,7 @@ HashResult hashReadLoop(int fd, const Options& options, uint64_t /*deviceSize*/)
         return result;
     }
 
-    const size_t bufferSize = static_cast<size_t>(options.bufferSizeKB) * 1024;
+    const size_t bufferSize = static_cast<size_t>(normalizedBufferSizeKB(options.bufferSizeKB)) * 1024;
     void* buffer = nullptr;
     if (posix_memalign(&buffer, 4096, bufferSize) != 0) {
         EVP_MD_CTX_free(mdctx);
@@ -81,7 +113,12 @@ HashResult hashReadLoop(int fd, const Options& options, uint64_t /*deviceSize*/)
             result.errorMessage = "Cancelled";
             return result;
         }
-        EVP_DigestUpdate(mdctx, buffer, static_cast<size_t>(bytesRead));
+        if (EVP_DigestUpdate(mdctx, buffer, static_cast<size_t>(bytesRead)) != 1) {
+            free(buffer);
+            EVP_MD_CTX_free(mdctx);
+            result.errorMessage = "Failed to update hash";
+            return result;
+        }
         totalRead += static_cast<uint64_t>(bytesRead);
         reportProgress(options, totalRead);
     }
@@ -95,7 +132,12 @@ HashResult hashReadLoop(int fd, const Options& options, uint64_t /*deviceSize*/)
 
     unsigned char hash[EVP_MAX_MD_SIZE];
     unsigned int hashLen = 0;
-    EVP_DigestFinal_ex(mdctx, hash, &hashLen);
+    if (EVP_DigestFinal_ex(mdctx, hash, &hashLen) != 1) {
+        free(buffer);
+        EVP_MD_CTX_free(mdctx);
+        result.errorMessage = "Failed to finalize hash";
+        return result;
+    }
 
     QByteArray hashHex;
     hashHex.reserve(static_cast<int>(hashLen * 2));
@@ -154,7 +196,12 @@ HashResult hashMmapLoop(int fd, const Options& options, uint64_t deviceSize)
         }
 
         madvise(mapped, mapSize, MADV_SEQUENTIAL);
-        EVP_DigestUpdate(mdctx, mapped, mapSize);
+        if (EVP_DigestUpdate(mdctx, mapped, mapSize) != 1) {
+            munmap(mapped, mapSize);
+            EVP_MD_CTX_free(mdctx);
+            result.errorMessage = "Failed to update hash";
+            return result;
+        }
         munmap(mapped, mapSize);
 
         offset += mapSize;
@@ -163,7 +210,11 @@ HashResult hashMmapLoop(int fd, const Options& options, uint64_t deviceSize)
 
     unsigned char hash[EVP_MAX_MD_SIZE];
     unsigned int hashLen = 0;
-    EVP_DigestFinal_ex(mdctx, hash, &hashLen);
+    if (EVP_DigestFinal_ex(mdctx, hash, &hashLen) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        result.errorMessage = "Failed to finalize hash";
+        return result;
+    }
 
     QByteArray hashHex;
     hashHex.reserve(static_cast<int>(hashLen * 2));
@@ -234,7 +285,7 @@ HashResult hashViaPkexec(const Options& options, const QString& helperPath)
         QStringLiteral("hash"),
         options.deviceNode,
         algorithmName(options.algorithm),
-        QString::number(options.bufferSizeKB),
+        QString::number(normalizedBufferSizeKB(options.bufferSizeKB)),
         options.useMemoryMapping ? QStringLiteral("1") : QStringLiteral("0"),
     });
     proc.setProcessEnvironment(QProcessEnvironment::systemEnvironment());
@@ -318,11 +369,57 @@ Algorithm algorithmFromName(const QString& name)
     return Algorithm::SHA256;
 }
 
+int normalizedBufferSizeKB(int requestedKB)
+{
+    if (requestedKB <= 0) {
+        return kDefaultBufferSizeKB;
+    }
+    if (requestedKB < kMinBufferSizeKB) {
+        return kMinBufferSizeKB;
+    }
+    if (requestedKB > kMaxBufferSizeKB) {
+        return kMaxBufferSizeKB;
+    }
+    return requestedKB;
+}
+
 int openDevice(const QString& deviceNode)
 {
-    int fd = open(deviceNode.toUtf8().constData(), O_RDONLY | O_DIRECT);
+    int validationError = 0;
+    const QString path = validatedDevicePath(deviceNode, &validationError);
+    if (path.isEmpty()) {
+        errno = validationError == 0 ? EINVAL : validationError;
+        return -1;
+    }
+
+    const QByteArray encodedPath = QFile::encodeName(path);
+    int fd = open(encodedPath.constData(), O_RDONLY | O_DIRECT | O_CLOEXEC);
     if (fd < 0) {
-        fd = open(deviceNode.toUtf8().constData(), O_RDONLY);
+        fd = open(encodedPath.constData(), O_RDONLY | O_CLOEXEC);
+    }
+    if (fd < 0) {
+        return -1;
+    }
+
+    struct stat st;
+    if (fstat(fd, &st) != 0) {
+        const int savedErrno = errno;
+        close(fd);
+        errno = savedErrno;
+        return -1;
+    }
+    if (!S_ISBLK(st.st_mode)) {
+        close(fd);
+        errno = ENOTBLK;
+        return -1;
+    }
+
+    uint64_t size = 0;
+    if (ioctl(fd, BLKGETSIZE64, &size) != 0) {
+        const int savedErrno = errno == ENOTTY ? ENOTBLK : errno;
+        close(fd);
+        errno = savedErrno;
+        return -1;
     }
     return fd;
 }
@@ -340,7 +437,7 @@ uint64_t deviceSize(int fd, const QString& deviceNode)
         }
     }
 
-    const int tmpFd = open(deviceNode.toUtf8().constData(), O_RDONLY);
+    const int tmpFd = openDevice(deviceNode);
     if (tmpFd < 0) {
         return 0;
     }
@@ -363,6 +460,15 @@ HashResult hashOpenFd(int fd, const Options& options)
     result.deviceNode = options.deviceNode;
 
     const uint64_t size = deviceSize(fd, options.deviceNode);
+    if (size == 0) {
+        result.errorMessage = QStringLiteral("Device size is 0");
+        return result;
+    }
+
+    if (options.scanMode == ScanMode::QuickSample || options.checkpointOut
+        || options.resumeFromBytes > 0) {
+        return hashAdvanced(fd, options, size);
+    }
 
     if (options.useMemoryMapping && size > 0) {
         result = hashMmapLoop(fd, options, size);

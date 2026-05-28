@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" _flashsentry_version_raw)
+    string(STRIP "${_flashsentry_version_raw}" FLASHSENTRY_PROJECT_VERSION)
+else()
+    set(FLASHSENTRY_PROJECT_VERSION "1.4.2")
+endif()
 project(flashsentry
-    VERSION 1.4.2
+    VERSION ${FLASHSENTRY_PROJECT_VERSION}
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )
@@ -31,9 +37,14 @@ set(SOURCES
     src/main.cpp
     src/MainWindow.cpp
     src/MainWindow_verify_ext.cpp
+    src/MainWindow_badusb_ext.cpp
     src/DeviceMonitor.cpp
+    src/HidDeviceMonitor.cpp
     src/HashWorker.cpp
     src/RawDeviceHash.cpp
+    src/RawDeviceHashAdvanced.cpp
+    src/HashCheckpoint.cpp
+    src/HashOptionsDialog.cpp
     src/MerkleTree.cpp
     src/ManifestService.cpp
     src/ManifestWorker.cpp
@@ -46,9 +57,14 @@ set(SOURCES
     src/IsoVerifyCache.cpp
     src/IsoVerifyReport.cpp
     src/AuditLog.cpp
+    src/BadUsbBaselineStore.cpp
+    src/BadUsbAnalyzer.cpp
+    src/BadUsbWidget.cpp
+    src/UsbmonCapture.cpp
     src/VerifyCli.cpp
     src/IsoVerifySettingsLoader.cpp
     src/SettingsProfiles.cpp
+    src/VerifyHistory.cpp
     src/WelcomeWizard.cpp
     src/IsoScanRules.cpp
     src/IsoVerifier.cpp
@@ -67,8 +83,12 @@ set(SOURCES
 set(HEADERS
     include/MainWindow.h
     include/DeviceMonitor.h
+    include/HidDeviceMonitor.h
     include/HashWorker.h
     include/RawDeviceHash.h
+    include/RawDeviceHashAdvanced.h
+    include/HashCheckpoint.h
+    include/HashOptionsDialog.h
     include/MerkleTree.h
     include/ManifestService.h
     include/ManifestWorker.h
@@ -81,9 +101,14 @@ set(HEADERS
     include/IsoVerifyCache.h
     include/IsoVerifyReport.h
     include/AuditLog.h
+    include/BadUsbBaselineStore.h
+    include/BadUsbAnalyzer.h
+    include/BadUsbWidget.h
+    include/UsbmonCapture.h
     include/VerifyCli.h
     include/IsoVerifySettingsLoader.h
     include/SettingsProfiles.h
+    include/VerifyHistory.h
     include/WelcomeWizard.h
     include/IsoScanRules.h
     include/IsoVerifier.h
@@ -139,6 +164,7 @@ configure_file(
 add_executable(flashsentry-read-helper
     src/flashsentry-read-helper.cpp
     src/RawDeviceHash.cpp
+    src/RawDeviceHashAdvanced.cpp
 )
 target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
 target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})

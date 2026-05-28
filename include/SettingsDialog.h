@@ -163,9 +163,34 @@ private:
     QCheckBox* m_confirmModifiedCheck = nullptr;
     QCheckBox* m_blockModifiedCheck = nullptr;
     QComboBox* m_defaultTrustCombo = nullptr;
+    QComboBox* m_appModuleCombo = nullptr;
+    QComboBox* m_defaultProfileCombo = nullptr;
+    QLineEdit* m_isoDirEdit = nullptr;
+    QCheckBox* m_isoAutoVerifyCheck = nullptr;
+    QCheckBox* m_isoAutoVerifyOnUsbMountCheck = nullptr;
+    QComboBox* m_settingsProfileCombo = nullptr;
+    QLabel* m_profileDescriptionLabel = nullptr;
+    QCheckBox* m_blockMountOnIsoFailCheck = nullptr;
+    QCheckBox* m_isoVerifyDecompressedCheck = nullptr;
+    QCheckBox* m_isoPreferOfflineCheck = nullptr;
+    QSpinBox* m_isoParallelSpin = nullptr;
+    QCheckBox* m_badUsbEnabledCheck = nullptr;
+    QCheckBox* m_badUsbAlertNewKeyboardCheck = nullptr;
+    QCheckBox* m_badUsbAlertCompositeCheck = nullptr;
+    QCheckBox* m_badUsbAlertInterfaceDriftCheck = nullptr;
+    QCheckBox* m_badUsbAlertRapidReconnectCheck = nullptr;
+    QCheckBox* m_badUsbAutoBaselineCheck = nullptr;
+    QCheckBox* m_badUsbConfirmCheck = nullptr;
+    QCheckBox* m_badUsbUsbmonCheck = nullptr;
+    QCheckBox* m_badUsbUsbmonOnAnomalyCheck = nullptr;
+    QLineEdit* m_badUsbUsbmonCommandEdit = nullptr;
 
     // Hashing tab
     QComboBox* m_hashAlgorithmCombo = nullptr;
+    QComboBox* m_defaultHashScopeCombo = nullptr;
+    QComboBox* m_defaultHashScanModeCombo = nullptr;
+    QCheckBox* m_hashResumeCheckpointsCheck = nullptr;
+    QCheckBox* m_promptHashOptionsCheck = nullptr;
     QSpinBox* m_bufferSizeSpin = nullptr;
     QCheckBox* m_useMemoryMappingCheck = nullptr;
     QSpinBox* m_maxConcurrentSpin = nullptr;

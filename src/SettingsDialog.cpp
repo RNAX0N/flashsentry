@@ -42,6 +42,47 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     m_confirmNewDeviceCheck->setChecked(settings.requireConfirmationForNew);
     m_confirmModifiedCheck->setChecked(settings.requireConfirmationForModified);
     m_blockModifiedCheck->setChecked(settings.blockModifiedDevices);
+    for (int i = 0; i < m_appModuleCombo->count(); ++i) {
+        if (m_appModuleCombo->itemData(i).toInt() == static_cast<int>(settings.appModule)) {
+            m_appModuleCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+    for (int i = 0; i < m_defaultProfileCombo->count(); ++i) {
+        if (m_defaultProfileCombo->itemData(i).toInt() == static_cast<int>(settings.defaultVerificationProfile)) {
+            m_defaultProfileCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+    m_isoDirEdit->setText(settings.isoScanDirectory);
+    m_isoAutoVerifyCheck->setChecked(settings.isoAutoVerifyOnScan);
+    if (m_isoAutoVerifyOnUsbMountCheck)
+        m_isoAutoVerifyOnUsbMountCheck->setChecked(settings.isoAutoVerifyOnUsbMount);
+    if (m_blockMountOnIsoFailCheck)
+        m_blockMountOnIsoFailCheck->setChecked(settings.blockMountOnIsoVerifyFailure);
+    if (m_isoVerifyDecompressedCheck)
+        m_isoVerifyDecompressedCheck->setChecked(settings.isoVerifyDecompressed);
+    if (m_isoPreferOfflineCheck)
+        m_isoPreferOfflineCheck->setChecked(settings.isoPreferOfflineSidecars);
+    if (m_isoParallelSpin)
+        m_isoParallelSpin->setValue(settings.isoVerifyParallel);
+    if (m_settingsProfileCombo) {
+        const QString profileId = SettingsProfiles::normalizeProfileId(settings.settingsProfile);
+        const int idx = m_settingsProfileCombo->findData(profileId);
+        if (idx >= 0) {
+            m_settingsProfileCombo->setCurrentIndex(idx);
+        }
+    }
+    if (m_badUsbEnabledCheck) m_badUsbEnabledCheck->setChecked(settings.badUsbEnabled);
+    if (m_badUsbAlertNewKeyboardCheck) m_badUsbAlertNewKeyboardCheck->setChecked(settings.badUsbAlertNewKeyboard);
+    if (m_badUsbAlertCompositeCheck) m_badUsbAlertCompositeCheck->setChecked(settings.badUsbAlertCompositeStorage);
+    if (m_badUsbAlertInterfaceDriftCheck) m_badUsbAlertInterfaceDriftCheck->setChecked(settings.badUsbAlertInterfaceDrift);
+    if (m_badUsbAlertRapidReconnectCheck) m_badUsbAlertRapidReconnectCheck->setChecked(settings.badUsbAlertRapidReconnect);
+    if (m_badUsbAutoBaselineCheck) m_badUsbAutoBaselineCheck->setChecked(settings.badUsbAutoBaselineTrusted);
+    if (m_badUsbConfirmCheck) m_badUsbConfirmCheck->setChecked(settings.badUsbConfirmAnomalies);
+    if (m_badUsbUsbmonCheck) m_badUsbUsbmonCheck->setChecked(settings.badUsbUsbmonEnabled);
+    if (m_badUsbUsbmonOnAnomalyCheck) m_badUsbUsbmonOnAnomalyCheck->setChecked(settings.badUsbUsbmonOnAnomalyOnly);
+    if (m_badUsbUsbmonCommandEdit) m_badUsbUsbmonCommandEdit->setText(settings.badUsbUsbmonCommand);
     m_defaultTrustCombo->setCurrentIndex(settings.defaultTrustLevel);
     
     // Hashing
@@ -52,6 +93,20 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     m_bufferSizeSpin->setValue(settings.hashBufferSizeKB);
     m_useMemoryMappingCheck->setChecked(settings.useMemoryMapping);
     m_maxConcurrentSpin->setValue(settings.maxConcurrentHashes);
+    if (m_defaultHashScopeCombo) {
+        const int si = m_defaultHashScopeCombo->findData(hashScopeToString(settings.defaultHashScope));
+        m_defaultHashScopeCombo->setCurrentIndex(si >= 0 ? si : 0);
+    }
+    if (m_defaultHashScanModeCombo) {
+        const int mi = m_defaultHashScanModeCombo->findData(hashScanModeToString(settings.defaultHashScanMode));
+        m_defaultHashScanModeCombo->setCurrentIndex(mi >= 0 ? mi : 0);
+    }
+    if (m_hashResumeCheckpointsCheck) {
+        m_hashResumeCheckpointsCheck->setChecked(settings.hashResumeCheckpoints);
+    }
+    if (m_promptHashOptionsCheck) {
+        m_promptHashOptionsCheck->setChecked(settings.promptHashOptionsOnManual);
+    }
     
     // Appearance
     int themeIndex = m_themeList.indexOf(FSStyle.currentTheme());
@@ -86,6 +141,35 @@ AppSettings SettingsDialog::getSettings() const
     settings.requireConfirmationForNew = m_confirmNewDeviceCheck->isChecked();
     settings.requireConfirmationForModified = m_confirmModifiedCheck->isChecked();
     settings.blockModifiedDevices = m_blockModifiedCheck->isChecked();
+    settings.appModule = static_cast<AppModule>(m_appModuleCombo->currentData().toInt());
+    settings.defaultVerificationProfile = static_cast<VerificationProfile>(
+        m_defaultProfileCombo->currentData().toInt());
+    settings.isoScanDirectory = m_isoDirEdit->text().trimmed();
+    settings.isoAutoVerifyOnScan = m_isoAutoVerifyCheck->isChecked();
+    if (m_isoAutoVerifyOnUsbMountCheck)
+        settings.isoAutoVerifyOnUsbMount = m_isoAutoVerifyOnUsbMountCheck->isChecked();
+    if (m_blockMountOnIsoFailCheck)
+        settings.blockMountOnIsoVerifyFailure = m_blockMountOnIsoFailCheck->isChecked();
+    if (m_isoVerifyDecompressedCheck)
+        settings.isoVerifyDecompressed = m_isoVerifyDecompressedCheck->isChecked();
+    if (m_isoPreferOfflineCheck)
+        settings.isoPreferOfflineSidecars = m_isoPreferOfflineCheck->isChecked();
+    if (m_isoParallelSpin)
+        settings.isoVerifyParallel = m_isoParallelSpin->value();
+    if (m_settingsProfileCombo) {
+        settings.settingsProfile =
+            SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->currentData().toString());
+    }
+    if (m_badUsbEnabledCheck) settings.badUsbEnabled = m_badUsbEnabledCheck->isChecked();
+    if (m_badUsbAlertNewKeyboardCheck) settings.badUsbAlertNewKeyboard = m_badUsbAlertNewKeyboardCheck->isChecked();
+    if (m_badUsbAlertCompositeCheck) settings.badUsbAlertCompositeStorage = m_badUsbAlertCompositeCheck->isChecked();
+    if (m_badUsbAlertInterfaceDriftCheck) settings.badUsbAlertInterfaceDrift = m_badUsbAlertInterfaceDriftCheck->isChecked();
+    if (m_badUsbAlertRapidReconnectCheck) settings.badUsbAlertRapidReconnect = m_badUsbAlertRapidReconnectCheck->isChecked();
+    if (m_badUsbAutoBaselineCheck) settings.badUsbAutoBaselineTrusted = m_badUsbAutoBaselineCheck->isChecked();
+    if (m_badUsbConfirmCheck) settings.badUsbConfirmAnomalies = m_badUsbConfirmCheck->isChecked();
+    if (m_badUsbUsbmonCheck) settings.badUsbUsbmonEnabled = m_badUsbUsbmonCheck->isChecked();
+    if (m_badUsbUsbmonOnAnomalyCheck) settings.badUsbUsbmonOnAnomalyOnly = m_badUsbUsbmonOnAnomalyCheck->isChecked();
+    if (m_badUsbUsbmonCommandEdit) settings.badUsbUsbmonCommand = m_badUsbUsbmonCommandEdit->text().trimmed();
     settings.defaultTrustLevel = m_defaultTrustCombo->currentIndex();
     
     // Hashing
@@ -93,6 +177,18 @@ AppSettings SettingsDialog::getSettings() const
     settings.hashBufferSizeKB = m_bufferSizeSpin->value();
     settings.useMemoryMapping = m_useMemoryMappingCheck->isChecked();
     settings.maxConcurrentHashes = m_maxConcurrentSpin->value();
+    if (m_defaultHashScopeCombo) {
+        settings.defaultHashScope = hashScopeFromString(m_defaultHashScopeCombo->currentData().toString());
+    }
+    if (m_defaultHashScanModeCombo) {
+        settings.defaultHashScanMode = hashScanModeFromString(m_defaultHashScanModeCombo->currentData().toString());
+    }
+    if (m_hashResumeCheckpointsCheck) {
+        settings.hashResumeCheckpoints = m_hashResumeCheckpointsCheck->isChecked();
+    }
+    if (m_promptHashOptionsCheck) {
+        settings.promptHashOptionsOnManual = m_promptHashOptionsCheck->isChecked();
+    }
     
     // Appearance
     settings.theme = m_themeCombo->currentText();
@@ -179,6 +275,139 @@ QWidget* SettingsDialog::createGeneralTab()
     
     layout->addStretch();
     
+    return tab;
+}
+
+
+QWidget* SettingsDialog::createVerificationTab()
+{
+    QWidget* tab = new QWidget;
+    QVBoxLayout* layout = new QVBoxLayout(tab);
+
+    auto* intro = new QLabel(QStringLiteral(
+        "Recommended for most users: <b>ISO verification</b> (no PGP/Kleopatra knowledge needed) "
+        "or <b>watch lists</b> that hash only the folders you care about. "
+        "Full raw-partition hashing is available but slow — enable it under Security if you need it."));
+    intro->setWordWrap(true);
+    layout->addWidget(intro);
+
+    QGroupBox* presetGroup = new QGroupBox(QStringLiteral("Quick profile"));
+    QFormLayout* presetForm = new QFormLayout(presetGroup);
+    m_settingsProfileCombo = new QComboBox;
+    for (const QString& id : SettingsProfiles::profileIds()) {
+        m_settingsProfileCombo->addItem(SettingsProfiles::profileDisplayName(id), id);
+    }
+    connect(m_settingsProfileCombo, &QComboBox::currentIndexChanged, this, [this](int index) {
+        if (m_blockSignals || index < 0) {
+            return;
+        }
+        AppSettings s = getSettings();
+        const QString pid = SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->itemData(index).toString());
+        SettingsProfiles::applyProfile(pid, s);
+        if (m_profileDescriptionLabel) {
+            m_profileDescriptionLabel->setText(SettingsProfiles::profileDescription(pid));
+        }
+        loadSettings(s);
+        m_hasChanges = true;
+    });
+    m_profileDescriptionLabel = new QLabel(SettingsProfiles::profileDescription(
+        SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->currentData().toString())));
+    m_profileDescriptionLabel->setWordWrap(true);
+    m_profileDescriptionLabel->setStyleSheet(QString("color: %1;").arg(
+        FSStyle.colorCss(StyleManager::ColorRole::TextMuted)));
+    presetForm->addRow(QStringLiteral("Preset:"), m_settingsProfileCombo);
+    presetForm->addRow(QString(), m_profileDescriptionLabel);
+    layout->addWidget(presetGroup);
+
+    QGroupBox* moduleGroup = new QGroupBox(QStringLiteral("Application mode"));
+    QFormLayout* moduleForm = new QFormLayout(moduleGroup);
+    m_appModuleCombo = new QComboBox;
+    m_appModuleCombo->addItem(QStringLiteral("USB drive monitor"), static_cast<int>(AppModule::UsbMonitor));
+    m_appModuleCombo->addItem(QStringLiteral("Automatic ISO verification"), static_cast<int>(AppModule::IsoVerifier));
+    m_appModuleCombo->addItem(QStringLiteral("BadUSB behavior monitor"), static_cast<int>(AppModule::BadUsbMonitor));
+    connect(m_appModuleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsDialog::onSettingChanged);
+    moduleForm->addRow(QStringLiteral("Mode:"), m_appModuleCombo);
+    layout->addWidget(moduleGroup);
+
+    QGroupBox* profileGroup = new QGroupBox(QStringLiteral("USB file-tree verification (default)"));
+    QFormLayout* profileForm = new QFormLayout(profileGroup);
+    m_defaultProfileCombo = new QComboBox;
+    m_defaultProfileCombo->addItem(QStringLiteral("Watch folders only (Merkle, recommended)"),
+                                   static_cast<int>(VerificationProfile::WatchManifest));
+    m_defaultProfileCombo->addItem(QStringLiteral("Full partition (raw hash, advanced)"),
+                                   static_cast<int>(VerificationProfile::FullPartition));
+    m_defaultProfileCombo->addItem(QStringLiteral("Hybrid (watch + full hash)"),
+                                   static_cast<int>(VerificationProfile::Hybrid));
+    connect(m_defaultProfileCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsDialog::onSettingChanged);
+    profileForm->addRow(QStringLiteral("Default:"), m_defaultProfileCombo);
+    layout->addWidget(profileGroup);
+
+    QGroupBox* isoGroup = new QGroupBox(QStringLiteral("ISO verification module"));
+    QFormLayout* isoForm = new QFormLayout(isoGroup);
+    m_isoDirEdit = new QLineEdit;
+    m_isoDirEdit->setPlaceholderText(QStringLiteral("~/Downloads"));
+    connect(m_isoDirEdit, &QLineEdit::textChanged, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral("Scan folder:"), m_isoDirEdit);
+    m_isoAutoVerifyCheck = new QCheckBox(QStringLiteral("Verify ISOs automatically after scan"));
+    m_isoAutoVerifyOnUsbMountCheck = new QCheckBox(
+        QStringLiteral("Automatically verify images when a USB drive is mounted"));
+    m_isoAutoVerifyOnUsbMountCheck->setToolTip(
+        QStringLiteral("Works with desktop automount: verifies the existing mount without remounting. "
+                       "Skips boot-loader and multiboot config folders (EFI, vendor trees)."));
+    m_isoAutoVerifyOnUsbMountCheck->setChecked(true);
+    connect(m_isoAutoVerifyOnUsbMountCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    connect(m_isoAutoVerifyCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_isoAutoVerifyCheck);
+    isoForm->addRow(QStringLiteral(""), m_isoAutoVerifyOnUsbMountCheck);
+    m_blockMountOnIsoFailCheck = new QCheckBox(QStringLiteral("Block mount when any image on the stick fails verification"));
+    connect(m_blockMountOnIsoFailCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_blockMountOnIsoFailCheck);
+    m_isoParallelSpin = new QSpinBox;
+    m_isoParallelSpin->setRange(1, 8);
+    m_isoParallelSpin->setValue(2);
+    connect(m_isoParallelSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral("Parallel verify:"), m_isoParallelSpin);
+    m_isoVerifyDecompressedCheck = new QCheckBox(QStringLiteral("Verify decompressed .img.xz payload (requires xz)"));
+    connect(m_isoVerifyDecompressedCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_isoVerifyDecompressedCheck);
+    m_isoPreferOfflineCheck = new QCheckBox(QStringLiteral("Prefer local .sha256 sidecars before downloading checksums"));
+    connect(m_isoPreferOfflineCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_isoPreferOfflineCheck);
+    layout->addWidget(isoGroup);
+
+    QGroupBox* badUsbGroup = new QGroupBox(QStringLiteral("BadUSB behavior monitoring"));
+    QFormLayout* badUsbForm = new QFormLayout(badUsbGroup);
+    m_badUsbEnabledCheck = new QCheckBox(QStringLiteral("Monitor USB HID keyboards, mice, and controllers"));
+    connect(m_badUsbEnabledCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    badUsbForm->addRow(QStringLiteral(""), m_badUsbEnabledCheck);
+    m_badUsbAlertNewKeyboardCheck = new QCheckBox(QStringLiteral("Alert on new untrusted keyboards"));
+    m_badUsbAlertCompositeCheck = new QCheckBox(QStringLiteral("Alert on keyboard + storage composites"));
+    m_badUsbAlertInterfaceDriftCheck = new QCheckBox(QStringLiteral("Alert when a HID interface changes from baseline"));
+    m_badUsbAlertRapidReconnectCheck = new QCheckBox(QStringLiteral("Alert on rapid HID reconnect behavior"));
+    m_badUsbAutoBaselineCheck = new QCheckBox(QStringLiteral("Automatically trust non-anomalous HID devices"));
+    m_badUsbConfirmCheck = new QCheckBox(QStringLiteral("Show an alert dialog for anomalies"));
+    for (QCheckBox* box : {m_badUsbAlertNewKeyboardCheck, m_badUsbAlertCompositeCheck,
+                           m_badUsbAlertInterfaceDriftCheck, m_badUsbAlertRapidReconnectCheck,
+                           m_badUsbAutoBaselineCheck, m_badUsbConfirmCheck}) {
+        connect(box, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+        badUsbForm->addRow(QStringLiteral(""), box);
+    }
+    m_badUsbUsbmonCheck = new QCheckBox(QStringLiteral("Start usbmon/tcpdump capture on anomalies"));
+    m_badUsbUsbmonOnAnomalyCheck = new QCheckBox(QStringLiteral("Capture only when an anomaly is detected"));
+    connect(m_badUsbUsbmonCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    connect(m_badUsbUsbmonOnAnomalyCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    badUsbForm->addRow(QStringLiteral(""), m_badUsbUsbmonCheck);
+    badUsbForm->addRow(QStringLiteral(""), m_badUsbUsbmonOnAnomalyCheck);
+    m_badUsbUsbmonCommandEdit = new QLineEdit;
+    m_badUsbUsbmonCommandEdit->setPlaceholderText(QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1"));
+    m_badUsbUsbmonCommandEdit->setToolTip(QStringLiteral("Template variables: {bus}, {out}, {stable_id}, {rule_id}"));
+    connect(m_badUsbUsbmonCommandEdit, &QLineEdit::textChanged, this, &SettingsDialog::onSettingChanged);
+    badUsbForm->addRow(QStringLiteral("Capture command:"), m_badUsbUsbmonCommandEdit);
+    layout->addWidget(badUsbGroup);
+
+    layout->addStretch();
     return tab;
 }
 
@@ -302,8 +531,36 @@ QWidget* SettingsDialog::createHashingTab()
             this, &SettingsDialog::onSettingChanged);
     perfLayout->addRow("Max concurrent hashes:", m_maxConcurrentSpin);
     
+    QGroupBox* smartGroup = new QGroupBox(QStringLiteral("Smarter hashing"));
+    QFormLayout* smartLayout = new QFormLayout(smartGroup);
+
+    m_defaultHashScopeCombo = new QComboBox;
+    m_defaultHashScopeCombo->addItem(QStringLiteral("This partition only"), QStringLiteral("partition"));
+    m_defaultHashScopeCombo->addItem(QStringLiteral("Entire drive (all partitions)"), QStringLiteral("whole_disk"));
+    connect(m_defaultHashScopeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsDialog::onSettingChanged);
+    smartLayout->addRow(QStringLiteral("Default target:"), m_defaultHashScopeCombo);
+
+    m_defaultHashScanModeCombo = new QComboBox;
+    m_defaultHashScanModeCombo->addItem(QStringLiteral("Full partition read"), QStringLiteral("full"));
+    m_defaultHashScanModeCombo->addItem(QStringLiteral("Quick sample"), QStringLiteral("quick"));
+    m_defaultHashScanModeCombo->addItem(QStringLiteral("Watch folders only (no raw read)"), QStringLiteral("watch"));
+    connect(m_defaultHashScanModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsDialog::onSettingChanged);
+    smartLayout->addRow(QStringLiteral("Default scan:"), m_defaultHashScanModeCombo);
+
+    m_hashResumeCheckpointsCheck = new QCheckBox(QStringLiteral("Save resume checkpoints (64 MiB blocks)"));
+    connect(m_hashResumeCheckpointsCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    smartLayout->addRow(m_hashResumeCheckpointsCheck);
+
+    m_promptHashOptionsCheck = new QCheckBox(QStringLiteral("Ask before manual Rehash / Verify"));
+    connect(m_promptHashOptionsCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    smartLayout->addRow(m_promptHashOptionsCheck);
+
+    layout->addWidget(smartGroup);
+
     layout->addWidget(perfGroup);
-    
+
     layout->addStretch();
     
     return tab;

@@ -215,6 +215,20 @@ void TrayIcon::notifyIsoVerifySummary(const QString& deviceName, int passed, int
     showNotification(QStringLiteral("ISO verification"), message, icon);
 }
 
+void TrayIcon::notifyBadUsbAnomaly(const BadUsbAnomalyResult& anomaly)
+{
+    if (!m_notificationsEnabled) {
+        return;
+    }
+    const bool critical = anomaly.severity == BadUsbSeverity::Critical;
+    setIconState(critical ? IconState::Error : IconState::Warning);
+    showNotification(critical ? QStringLiteral("BadUSB critical alert")
+                              : QStringLiteral("BadUSB behavior alert"),
+                     QStringLiteral("%1\n%2").arg(anomaly.summary, anomaly.device.displayName()),
+                     critical ? QSystemTrayIcon::Critical : QSystemTrayIcon::Warning,
+                     8000);
+}
+
 void TrayIcon::updateDeviceList(const QList<DeviceInfo>& devices)
 {
     m_currentDevices = devices;

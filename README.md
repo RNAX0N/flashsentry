@@ -24,12 +24,38 @@ FlashSentry monitors USB flash drives, maintains a cryptographic whitelist of tr
 
 ## Features
 
-- **🔍 Real-time Device Monitoring** — Instant detection of USB storage devices via libudev
-- **🔐 Cryptographic Verification** — SHA-256, SHA-512, or BLAKE2b hashing with memory-mapped I/O
-- **🎨 Futuristic UI** — Cyberpunk-inspired themes with smooth animations and glow effects
-- **📌 System Tray Integration** — Runs in the background with desktop notifications
-- **🔑 No Root Required** — Uses polkit for secure privilege escalation
-- **📦 Pacman Integration** — Full PKGBUILD for seamless Arch Linux installation
+### Recommended for most users
+
+| Feature | What it does |
+|--------|----------------|
+| **Automatic ISO verification** | Detects `.iso` files on mounted USB sticks (e.g. after Rufus), downloads official SHA-256 lists and signatures, verifies OpenPGP and signing-key fingerprints |
+| **Watch-folder verification** | You choose folders/files on a drive; FlashSentry builds a Merkle baseline and alerts when watched content changes — fast, no full-disk read |
+| **Dedicated ISO mode** | Switch the app to **Automatic ISO verification** for a focused workflow |
+
+### USB monitoring (all modes)
+
+| **Verify history** | Sidebar log of hash, manifest, and ISO results; click a device card to filter and open ISO verify |
+- **Real-time device monitoring** — libudev, no polling
+- **Whitelist & trust levels** — remember devices, prompt on unknown or modified content
+- **Secure mounting** — UDisks2 + polkit (`noexec`, `nosuid`, `nodev` by default)
+- **System tray** — background operation with notifications (optional libnotify)
+- **Smarter hashing** — partition or whole-disk target, quick sample vs full read, cancel + ETA, resume checkpoints
+- **Themes** — Cyber Dark, Neon Purple, Matrix Green, Blade Runner, Ghost White
+
+### Advanced (optional)
+
+| Feature | What it does |
+|--------|----------------|
+| **Full partition hash** | Raw SHA-256/SHA-512/BLAKE2b over the entire block device — slow, byte-level tamper detection |
+| **Hybrid profile** | Watch folders first, then optional full partition hash |
+
+## Who is this for?
+
+- **Anyone who puts Linux/Windows images on USB** (`dd`, Rufus, `cp`, multiboot sticks, etc.) and wants a clear pass/fail report
+- **Users who care about specific folders** on a stick (documents, `EFI`, a project tree) without hashing every sector
+- **Power users** who still want full-disk fingerprints or custom hash algorithms
+
+If you only need “is this entire stick bit-for-bit the same as last time?”, enable full-partition hashing in **Settings → Security**.
 
 ## Screenshots
 
@@ -37,7 +63,7 @@ FlashSentry monitors USB flash drives, maintains a cryptographic whitelist of tr
 |:---:|:---:|
 | ![Main Window](docs/images/main-window.png) | ![ISO verify](docs/images/iso-verify-report.png) |
 
-## Installation
+After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/). See [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) for capture guidance.
 
 ### From AUR (Recommended)
 
@@ -53,9 +79,7 @@ paru -S flashsentry
 # Clone the repository
 git clone https://github.com/flashsentry/flashsentry.git
 cd flashsentry/packaging
-
-# Build and install
-makepkg -si
+./build-package.sh -si
 ```
 
 ### Post-Installation Setup

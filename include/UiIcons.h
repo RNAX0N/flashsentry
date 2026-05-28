@@ -10,6 +10,7 @@ namespace FlashSentry::UiIcons {
 
 inline QIcon icon(const char* resourcePath, int size = 24)
 {
+    Q_UNUSED(size);
     QIcon ico(QString::fromUtf8(resourcePath));
     if (!ico.isNull()) {
         return ico;

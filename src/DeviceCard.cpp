@@ -202,7 +202,7 @@ void DeviceCard::setupUi()
     m_unmountBtn = createActionButton("Unmount", "Safely unmount this device");
     m_ejectBtn = createActionButton(QStringLiteral("Eject"), "Eject and power off device");
     m_rehashBtn = createActionButton(QStringLiteral("Rehash"), "Recalculate device hash");
-    m_watchBtn = createActionButton(QStringLiteral("Watch"), "Edit Merkle watch groups");
+    m_watchBtn = createActionButton(QStringLiteral("Watch folder"), "Edit Merkle watch groups");
     m_acceptBtn = createActionButton(QStringLiteral("Accept"), "Store the new fingerprint in the whitelist");
     m_openBtn = createActionButton(QStringLiteral("Open"), "Open in file manager");
     
@@ -597,24 +597,48 @@ void DeviceCard::updateDisplay()
 
 void DeviceCard::updateStatusIndicator()
 {
-    QColor color = statusColor();
-    QString statusText = verificationStatusToString(m_status);
-    
-    m_statusIndicator->setStyleSheet(FSStyle.statusIndicatorStyleSheet(
-        [this]() {
-            switch (m_status) {
-                case VerificationStatus::Verified:  return StyleManager::ColorRole::Verified;
-                case VerificationStatus::Modified:  return StyleManager::ColorRole::Modified;
-                case VerificationStatus::NewDevice: return StyleManager::ColorRole::Unknown;
-                case VerificationStatus::Hashing:   return StyleManager::ColorRole::Hashing;
-                case VerificationStatus::Error:     return StyleManager::ColorRole::Error;
-                default:                            return StyleManager::ColorRole::TextMuted;
-            }
-        }()
-    ));
-    
+    const QString statusText = verificationStatusToString(m_status);
+    StyleManager::ColorRole badgeBg = StyleManager::ColorRole::Surface;
+    StyleManager::ColorRole badgeFg = StyleManager::ColorRole::TextSecondary;
+    StyleManager::ColorRole dotRole = StyleManager::ColorRole::TextMuted;
+
+    switch (m_status) {
+        case VerificationStatus::Verified:
+            badgeBg = StyleManager::ColorRole::Verified;
+            badgeFg = StyleManager::ColorRole::BackgroundDark;
+            dotRole = StyleManager::ColorRole::Verified;
+            break;
+        case VerificationStatus::Modified:
+            badgeBg = StyleManager::ColorRole::Modified;
+            badgeFg = StyleManager::ColorRole::BackgroundDark;
+            dotRole = StyleManager::ColorRole::Modified;
+            break;
+        case VerificationStatus::NewDevice:
+            badgeBg = StyleManager::ColorRole::Unknown;
+            badgeFg = StyleManager::ColorRole::BackgroundDark;
+            dotRole = StyleManager::ColorRole::Unknown;
+            break;
+        case VerificationStatus::Hashing:
+            badgeBg = StyleManager::ColorRole::Hashing;
+            badgeFg = StyleManager::ColorRole::BackgroundDark;
+            dotRole = StyleManager::ColorRole::Hashing;
+            break;
+        case VerificationStatus::Error:
+            badgeBg = StyleManager::ColorRole::Error;
+            badgeFg = StyleManager::ColorRole::BackgroundDark;
+            dotRole = StyleManager::ColorRole::Error;
+            break;
+        default:
+            break;
+    }
+
+    m_statusIndicator->setStyleSheet(FSStyle.statusIndicatorStyleSheet(dotRole));
+    m_statusIndicator->setVisible(m_status == VerificationStatus::Hashing
+                                  || m_status == VerificationStatus::Unknown);
+
+    m_statusLabel->setObjectName(QStringLiteral("StatusBadge"));
     m_statusLabel->setText(statusText);
-    m_statusLabel->setStyleSheet(QString("color: %1;").arg(color.name()));
+    m_statusLabel->setStyleSheet(FSStyle.statusBadgeStyleSheet(badgeBg, badgeFg));
 }
 
 void DeviceCard::updateActionButtons()

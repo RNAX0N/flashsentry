@@ -110,6 +110,11 @@ private:
     QWidget* createGeneralTab();
 
     /**
+     * @brief Create Verification / ISO / profiles tab
+     */
+    QWidget* createVerificationTab();
+
+    /**
      * @brief Create Security settings tab
      */
     QWidget* createSecurityTab();

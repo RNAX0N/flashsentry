@@ -32,6 +32,7 @@
 #include "ManifestWorker.h"
 #include "IsoVerifierWidget.h"
 #include "BadUsbWidget.h"
+#include "WatchListsPanel.h"
 #include "BadUsbBaselineStore.h"
 #include "HidDeviceMonitor.h"
 #include "UsbmonCapture.h"
@@ -160,11 +161,6 @@ private:
     QWidget* createHeader();
 
     /**
-     * @brief Create the main content area
-     */
-    QWidget* createMainContent();
-
-    /**
      * @brief Create the sidebar
      */
     QWidget* createSidebar();
@@ -274,6 +270,7 @@ private:
      */
     void updateSidebarStats();
     void refreshVerifyHistoryPanel(const QString& deviceNodeFilter = {});
+    void refreshWatchListsPanel();
     void recordVerifyHistory(const VerifyHistoryEntry& entry);
 
     /**
@@ -323,6 +320,7 @@ private:
     std::unique_ptr<ManifestWorker> m_manifestWorker;
     IsoVerifierWidget* m_isoWidget = nullptr;
     BadUsbWidget* m_badUsbWidget = nullptr;
+    WatchListsPanel* m_watchListsPanel = nullptr;
     QStackedWidget* m_appModeStack = nullptr;
     QHash<QString, QString> m_manifestJobDevices;
     QHash<QString, ManifestVerifyResult> m_lastManifestResults;
@@ -342,7 +340,7 @@ private:
     // UI - Main structure
     QWidget* m_centralWidget = nullptr;
     QVBoxLayout* m_mainLayout = nullptr;
-    QSplitter* m_splitter = nullptr;
+    QSplitter* m_contentSplitter = nullptr;
 
     // UI - Header
     QWidget* m_headerWidget = nullptr;

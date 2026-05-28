@@ -762,6 +762,14 @@ QString StyleManager::statusIndicatorStyleSheet(ColorRole statusColor) const
     .arg(colorCss(statusColor));
 }
 
+QString StyleManager::statusBadgeStyleSheet(ColorRole background, ColorRole foreground) const
+{
+    return QStringLiteral(
+               "QLabel#StatusBadge { background-color: %1; color: %2; padding: 4px 12px; "
+               "border-radius: 10px; font-weight: 600; letter-spacing: 0.5px; }")
+        .arg(colorCss(background), colorCss(foreground));
+}
+
 std::unique_ptr<QPropertyAnimation> StyleManager::createGlowAnimation(
     QWidget* target, 
     const QColor& glowColor,

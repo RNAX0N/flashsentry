@@ -70,6 +70,7 @@ set(SOURCES
     src/IsoVerifier.cpp
     src/IsoVerifierWorker.cpp
     src/WatchListDialog.cpp
+    src/WatchListsPanel.cpp
     src/IsoVerifierWidget.cpp
     src/DatabaseManager.cpp
     src/MountManager.cpp
@@ -114,6 +115,7 @@ set(HEADERS
     include/IsoVerifier.h
     include/IsoVerifierWorker.h
     include/WatchListDialog.h
+    include/WatchListsPanel.h
     include/IsoVerifierWidget.h
     include/DatabaseManager.h
     include/MountManager.h

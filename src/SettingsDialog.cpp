@@ -1,4 +1,5 @@
 #include "SettingsDialog.h"
+#include "SettingsProfiles.h"
 #include "UiIcons.h"
 
 #include <QApplication>
@@ -210,6 +211,7 @@ void SettingsDialog::setupUi()
     // Tab widget
     m_tabWidget = new QTabWidget;
     m_tabWidget->addTab(createGeneralTab(), "General");
+    m_tabWidget->addTab(createVerificationTab(), "Verification");
     m_tabWidget->addTab(createSecurityTab(), "Security");
     m_tabWidget->addTab(createHashingTab(), "Hashing");
     m_tabWidget->addTab(createAppearanceTab(), "Appearance");

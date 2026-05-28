@@ -254,6 +254,7 @@ public:
      * @brief Get stylesheet for status indicators
      */
     QString statusIndicatorStyleSheet(ColorRole statusColor) const;
+    QString statusBadgeStyleSheet(ColorRole background, ColorRole foreground) const;
 
     // ========================================================================
     // Animation Helpers

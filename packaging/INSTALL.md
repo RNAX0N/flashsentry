@@ -1,25 +1,49 @@
 # Installing FlashSentry on Arch Linux
 
-## Why `makepkg` used to fetch `archive/v1.4.2`
+## The `CMakeLists.txt` / `flashsentry-1.4.2.rNN.gHASH` error
 
-The old `PKGBUILD` always downloaded:
+If CMake says the source directory is something like:
 
-`https://github.com/RNAX0N/flashsentry/archive/v1.4.2.tar.gz`
+`packaging/src/flashsentry-1.4.2.r74.g9aebc47`
 
-That only works when a matching **git tag** `v1.4.2` exists on GitHub. The repo had CMake/CHANGELOG at **1.4.2** on `main`, but the newest tag was **v1.1.4**, so the download failed (404) even though the URL looked plausible.
+and that folder has **no** `CMakeLists.txt`, you are on an **old PKGBUILD** (before PR #31) or have **stale `packaging/src`** from that era.
+
+What happened:
+
+1. `pkgver()` computed `1.4.2.r<commits>.g<hash>` (your commit hash appears in the path).
+2. `prepare()` copied sources into `src/flashsentry-1.4.2`.
+3. makepkg **renamed** that directory to `src/flashsentry-1.4.2.rNN.gHASH` **before** or **without** moving the rsynced files, so CMake ran in an **empty** tree.
+
+**Fix (pacman package):**
+
+```bash
+git fetch origin main
+git checkout main
+git pull origin main   # must include merge 5e708db (PR #31) or later
+grep -n '^pkgver()' packaging/PKGBUILD   # must print nothing
+
+cd packaging
+rm -rf pkg src
+./build-package.sh -si
+```
+
+Success looks like: CMake uses `.../src/flashsentry-1.4.2` (no `.rNN.gHASH` in the path).
+
+**Fix (no makepkg):**
+
+```bash
+cd packaging
+./install-local.sh
+```
 
 ## Recommended: install from your checkout
-
-From the repository root:
 
 ```bash
 cd packaging
 ./build-package.sh -si
 ```
 
-This **rsyncs the parent directory** into the build (no `git+file://` download).
-
-If an older PKGBUILD failed with *“is not a clone of file://…packaging/..”*, run `./build-package.sh -C` once to clear `pkg/` and `src/`, then `./build-package.sh -si` again. The package version is `1.4.2.r<commits>.g<hash>` from `VERSION` plus git metadata.
+This rsyncs the repository into `src/flashsentry-1.4.2` and builds there. Package version stays **`1.4.2`** (no git hash in the pacman `pkgver`).
 
 ## Release tarball install (maintainers)
 
@@ -34,10 +58,10 @@ FLASHSENTRY_RELEASE=1 makepkg -si
 
 | File | Role |
 |------|------|
-| `VERSION` | Single source for release number (e.g. `1.4.2`) |
-| `CMakeLists.txt` | Reads `VERSION` for `PROJECT_VERSION` / `flashsentry --version` |
-| `packaging/PKGBUILD` | `pkgver` base from `VERSION`; git builds append `.rN.gHASH` |
-| `CHANGELOG.md` | Human-readable release notes |
+| `VERSION` | Release number (e.g. `1.4.2`) |
+| `CMakeLists.txt` | Reads `VERSION` for `flashsentry --version` |
+| `packaging/PKGBUILD` | `pkgver=1.4.2` for local builds (static; no `pkgver()` suffix) |
+| `CHANGELOG.md` | Release notes |
 
 ## After install
 
@@ -49,10 +73,3 @@ flashsentry --version
 ```
 
 **Note:** Do not use `rsync --exclude src` in the PKGBUILD — that excludes the project `src/` directory, not only makepkg's `packaging/src` folder.
-
-## Stable package version (no git hash in pkgver)
-
-Local builds intentionally **do not** use a dynamic `pkgver()` suffix (`1.4.2.rNN.gHASH`). That suffix triggers makepkg to rename `src/flashsentry-1.4.2`, which left an empty tree and broke CMake.
-
-The installed package is **`flashsentry-1.4.2-*`**. Git commit is still visible via `flashsentry --version` (CMake) and `pacman -Qi flashsentry`.
-

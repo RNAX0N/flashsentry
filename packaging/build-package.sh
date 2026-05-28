@@ -14,5 +14,9 @@ if [ ! -d ../.git ]; then
 fi
 
 export FLASHSENTRY_RELEASE="${FLASHSENTRY_RELEASE:-0}"
-echo "==> Building from local git (FLASHSENTRY_RELEASE=${FLASHSENTRY_RELEASE})"
+echo "==> Building from local tree (FLASHSENTRY_RELEASE=${FLASHSENTRY_RELEASE})"
+
+# Drop stale makepkg/git+file artifacts from older PKGBUILDs
+rm -rf pkg src
+
 exec makepkg "$@"

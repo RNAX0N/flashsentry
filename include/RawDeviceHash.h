@@ -16,8 +16,13 @@ enum class Algorithm {
     BLAKE2b,
 };
 
+inline constexpr int kMinBufferSizeKB = 64;
+inline constexpr int kDefaultBufferSizeKB = 1024;
+inline constexpr int kMaxBufferSizeKB = 16 * 1024;
+
 QString algorithmName(Algorithm algo);
 Algorithm algorithmFromName(const QString& name);
+int normalizedBufferSizeKB(int requestedKB);
 
 enum class ScanMode {
     Full,
@@ -27,7 +32,7 @@ enum class ScanMode {
 struct Options {
     QString deviceNode;
     Algorithm algorithm = Algorithm::SHA256;
-    int bufferSizeKB = 1024;
+    int bufferSizeKB = kDefaultBufferSizeKB;
     bool useMemoryMapping = true;
     std::atomic<bool>* cancelled = nullptr;
     std::atomic<uint64_t>* bytesProcessed = nullptr;

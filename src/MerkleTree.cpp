@@ -13,9 +13,15 @@ QByteArray sha256(const QByteArray& data)
     unsigned char hash[EVP_MAX_MD_SIZE];
     unsigned int len = 0;
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
-    EVP_DigestUpdate(ctx, data.constData(), static_cast<size_t>(data.size()));
-    EVP_DigestFinal_ex(ctx, hash, &len);
+    if (!ctx) {
+        return {};
+    }
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1
+        || EVP_DigestUpdate(ctx, data.constData(), static_cast<size_t>(data.size())) != 1
+        || EVP_DigestFinal_ex(ctx, hash, &len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        return {};
+    }
     EVP_MD_CTX_free(ctx);
     return QByteArray(reinterpret_cast<const char*>(hash), static_cast<int>(len));
 }

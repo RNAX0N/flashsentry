@@ -131,8 +131,7 @@ void MainWindow::setupUi()
     m_mainLayout->addWidget(createHeader());
     
     m_appModeStack = new QStackedWidget;
-    m_splitter = nullptr;
-    m_appModeStack->addWidget(createMainContent());
+    m_appModeStack->addWidget(createDeviceListArea());
     m_isoWidget = new IsoVerifierWidget;
     connect(m_isoWidget, &IsoVerifierWidget::logMessageRequested,
             this, &MainWindow::onIsoLogMessage);
@@ -166,9 +165,20 @@ void MainWindow::setupUi()
             QDesktopServices::openUrl(QUrl::fromLocalFile(m_usbmonCapture->outputDirectory()));
         }
     });
+    m_watchListsPanel = new WatchListsPanel;
+    connect(m_watchListsPanel, &WatchListsPanel::editDeviceRequested, this,
+            &MainWindow::onWatchListRequested);
+    m_appModeStack->addWidget(m_watchListsPanel);
     m_appModeStack->addWidget(m_badUsbWidget);
-    m_mainLayout->addWidget(m_appModeStack, 1);
-    
+
+    m_contentSplitter = new QSplitter(Qt::Horizontal);
+    m_contentSplitter->setHandleWidth(1);
+    m_contentSplitter->setChildrenCollapsible(false);
+    m_contentSplitter->addWidget(m_appModeStack);
+    m_contentSplitter->addWidget(createSidebar());
+    m_contentSplitter->setSizes({820, SIDEBAR_WIDTH});
+    m_mainLayout->addWidget(m_contentSplitter, 1);
+
     // Create status bar
     createStatusBar();
     
@@ -193,6 +203,11 @@ QWidget* MainWindow::createHeader()
     QLabel* logoLabel = new QLabel;
     logoLabel->setFixedSize(40, 40);
     UiIcons::setLabelPixmap(logoLabel, ":/icons/flashsentry.svg", 36);
+    auto* logoGlow = new QGraphicsDropShadowEffect(logoLabel);
+    logoGlow->setBlurRadius(18);
+    logoGlow->setColor(FSColor(AccentPrimary));
+    logoGlow->setOffset(0, 0);
+    logoLabel->setGraphicsEffect(logoGlow);
     titleLayout->addWidget(logoLabel);
     
     QVBoxLayout* titleTextLayout = new QVBoxLayout;
@@ -214,9 +229,9 @@ QWidget* MainWindow::createHeader()
     layout->addSpacing(12);
 
     m_modeTabBar = new QTabBar;
-    m_modeTabBar->addTab(QStringLiteral("USB devices"));
-    m_modeTabBar->addTab(QStringLiteral("ISO verify"));
-    m_modeTabBar->addTab(QStringLiteral("BadUSB"));
+    m_modeTabBar->addTab(QStringLiteral("Connected Devices"));
+    m_modeTabBar->addTab(QStringLiteral("ISO Verifier"));
+    m_modeTabBar->addTab(QStringLiteral("Watch Lists"));
     m_modeTabBar->setDocumentMode(true);
     m_modeTabBar->setExpanding(false);
     m_modeTabBar->setStyleSheet(FSStyle.tabBarStyleSheet());
@@ -254,24 +269,6 @@ QWidget* MainWindow::createHeader()
     layout->addWidget(m_settingsBtn);
     
     return m_headerWidget;
-}
-
-QWidget* MainWindow::createMainContent()
-{
-    m_splitter = new QSplitter(Qt::Horizontal);
-    m_splitter->setHandleWidth(1);
-    m_splitter->setChildrenCollapsible(false);
-    
-    // Left side - Device list
-    m_splitter->addWidget(createDeviceListArea());
-    
-    // Right side - Sidebar
-    m_splitter->addWidget(createSidebar());
-    
-    // Set splitter sizes
-    m_splitter->setSizes({700, SIDEBAR_WIDTH});
-    
-    return m_splitter;
 }
 
 QWidget* MainWindow::createDeviceListArea()
@@ -779,7 +776,8 @@ void MainWindow::applyStyle()
     m_headerWidget->setStyleSheet(QString(R"(
         QWidget#HeaderWidget {
             background-color: %1;
-            border-bottom: 2px solid %3;
+            border-bottom: 2px solid %2;
+            box-shadow: 0 2px 12px %3;
         }
     )").arg(FSStyle.colorCss(StyleManager::ColorRole::BackgroundAlt))
        .arg(FSStyle.colorCss(StyleManager::ColorRole::Border))
@@ -801,6 +799,12 @@ void MainWindow::applyStyle()
     )").arg(FSStyle.colorCss(StyleManager::ColorRole::BackgroundAlt))
        .arg(FSStyle.colorCss(StyleManager::ColorRole::Border)));
     
+    if (m_contentSplitter) {
+        m_contentSplitter->setStyleSheet(QString(
+            "QSplitter::handle { background-color: %1; }"
+        ).arg(FSStyle.colorCss(StyleManager::ColorRole::Border)));
+    }
+
     // Scroll area styling
     m_deviceScrollArea->setStyleSheet(FSStyle.scrollAreaStyleSheet());
 }
@@ -1786,7 +1790,13 @@ void MainWindow::syncModeTabFromSettings()
     if (m_settings.appModule == AppModule::IsoVerifier) {
         index = 1;
     } else if (m_settings.appModule == AppModule::BadUsbMonitor) {
-        index = 2;
+        if (m_appModeStack && m_badUsbWidget) {
+            m_appModeStack->setCurrentWidget(m_badUsbWidget);
+        }
+        if (m_searchEdit) {
+            m_searchEdit->setVisible(false);
+        }
+        return;
     }
     if (m_modeTabBar->currentIndex() != index) {
         m_modeTabBar->blockSignals(true);
@@ -1802,15 +1812,21 @@ void MainWindow::onModeTabChanged(int index)
 {
     if (index == 1) {
         m_settings.appModule = AppModule::IsoVerifier;
+        m_appModeStack->setCurrentWidget(m_isoWidget);
     } else if (index == 2) {
-        m_settings.appModule = AppModule::BadUsbMonitor;
+        m_settings.appModule = AppModule::UsbMonitor;
+        m_appModeStack->setCurrentWidget(m_watchListsPanel);
+        refreshWatchListsPanel();
     } else {
         m_settings.appModule = AppModule::UsbMonitor;
+        m_appModeStack->setCurrentIndex(0);
     }
     if (m_searchEdit) {
         m_searchEdit->setVisible(index == 0);
     }
-    applyAppModule();
+    if (index != 2) {
+        applyAppModule();
+    }
     saveSettings();
 }
 
@@ -2131,6 +2147,25 @@ void MainWindow::updateEmptyState()
     }
 }
 
+void MainWindow::refreshWatchListsPanel()
+{
+    if (!m_watchListsPanel || !m_deviceMonitor || !m_database) {
+        return;
+    }
+    QList<DeviceInfo> devices;
+    QHash<QString, int> groupCounts;
+    for (const DeviceInfo& d : m_deviceMonitor->connectedDevices()) {
+        devices.append(d);
+        const QString id = canonicalDeviceId(d);
+        int groups = 0;
+        if (auto record = m_database->getDevice(id)) {
+            groups = record->watchManifest.groups.size();
+        }
+        groupCounts.insert(d.deviceNode, groups);
+    }
+    m_watchListsPanel->refresh(devices, groupCounts);
+}
+
 void MainWindow::updateSidebarStats()
 {
     m_connectedCountLabel->setText(QString::number(m_deviceCards.size()));
@@ -2138,6 +2173,7 @@ void MainWindow::updateSidebarStats()
     m_hashingCountLabel->setText(QString::number(m_activeHashCount));
     
     m_trayIcon->setDeviceCount(m_deviceCards.size(), m_database->deviceCount());
+    refreshWatchListsPanel();
 }
 
 bool MainWindow::showNewDriveDialog(const DeviceInfo& device)

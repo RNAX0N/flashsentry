@@ -32,8 +32,14 @@ void MainWindow::applyAppModule()
         if (m_titleLabel) {
             m_titleLabel->setText(QStringLiteral("FlashSentry"));
         }
+    } else if (m_modeTabBar && m_modeTabBar->currentIndex() == 2 && m_watchListsPanel) {
+        m_appModeStack->setCurrentWidget(m_watchListsPanel);
+        refreshWatchListsPanel();
+        if (m_titleLabel) {
+            m_titleLabel->setText(QStringLiteral("FlashSentry"));
+        }
     } else {
-        m_appModeStack->setCurrentWidget(m_splitter);
+        m_appModeStack->setCurrentIndex(0);
         if (m_titleLabel) {
             m_titleLabel->setText(QStringLiteral("FlashSentry"));
         }

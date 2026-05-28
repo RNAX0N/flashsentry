@@ -1,4 +1,5 @@
 #include "WatchListDialog.h"
+#include "StyleManager.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -24,6 +25,7 @@ WatchListDialog::WatchListDialog(const QString& mountPoint, const QString& devic
 {
     setWindowTitle(QStringLiteral("Watch lists — %1").arg(deviceDisplayName));
     resize(640, 480);
+    setStyleSheet(FSStyle.dialogStyleSheet());
 
     auto* layout = new QVBoxLayout(this);
 
@@ -89,6 +91,7 @@ WatchListDialog::WatchListDialog(const QString& mountPoint, const QString& devic
     auto* closeRow = new QHBoxLayout;
     closeRow->addStretch();
     auto* closeBtn = new QPushButton(QStringLiteral("Done"));
+    closeBtn->setStyleSheet(FSStyle.primaryButtonStyleSheet());
     connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
     closeRow->addWidget(closeBtn);
     layout->addLayout(closeRow);

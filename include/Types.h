@@ -587,7 +587,7 @@ inline QString verificationStatusToString(VerificationStatus status) {
         case VerificationStatus::Unknown: return "Unknown";
         case VerificationStatus::Pending: return "Pending";
         case VerificationStatus::Hashing: return "Hashing...";
-        case VerificationStatus::Verified: return "Verified";
+        case VerificationStatus::Verified: return QStringLiteral("VERIFIED");
         case VerificationStatus::Modified: return "MODIFIED";
         case VerificationStatus::NewDevice: return "New Device";
         case VerificationStatus::Error: return "Error";

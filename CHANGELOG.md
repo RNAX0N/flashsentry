@@ -4,6 +4,10 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Arch install** — PKGBUILD builds from local git by default; added VERSION file and packaging/INSTALL.md (fixes failed archive/v1.4.2 download).
+
 ## [1.4.2] - 2026-05-21
 
 ### Added

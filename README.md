@@ -1,34 +1,26 @@
 # FlashSentry
 
+**Disclaimer: FlashSentry is a work in progress, and the result of a test between 3 LLM's asked to vibe-code a working application given certain prompts with very little intervention. Claude Code produced by far the best result, and this is it. It does work, only on Arch, but the functionality is limited and it needs some work to really be something worthwhile. I'll get around to it and it won't take long but I'm working on other things right now. Gemini produced an app that was technically what I asked for, but really the bare-minimum, and needed a bit of work just to get it functioning. The third LLM didn't produce anything functional without lots of intervention. Gemini I do think has value at this stage but needs very specific direction, which can be a good thing to ensure you are getting exactly what you want. But the results of the test are that CC will be much more efficient as you can trust it to follow specific directions while doing a lot more at once. If I had made it myself for my purposes, it would have been a CLI application, but I wanted to see how they could do with QT6 and CC surprised me..**
+
 <p align="center">
   <img src="resources/icons/flashsentry.svg" alt="FlashSentry Logo" width="128" height="128">
 </p>
 
 <p align="center">
-  <strong>USB security and ISO verification for Arch Linux</strong>
-</p>
-
-<p align="center">
-  <a href="https://github.com/RNAX0N/flashsentry/actions/workflows/ci.yml"><img src="https://github.com/RNAX0N/flashsentry/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/RNAX0N/flashsentry/releases"><img src="https://img.shields.io/github/v/release/RNAX0N/flashsentry?label=release" alt="Latest release"></a>
+  <strong>🛡️ USB Flash Drive Security Monitor for Arch Linux</strong>
 </p>
 
 <p align="center">
   <a href="#features">Features</a> •
-  <a href="#who-is-this-for">Who is this for?</a> •
   <a href="#installation">Installation</a> •
-  <a href="#quick-start">Quick start</a> •
-  <a href="#documentation">Documentation</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#configuration">Configuration</a> •
   <a href="#building">Building</a>
 </p>
 
 ---
 
-FlashSentry helps you trust USB sticks and downloaded Linux images **without becoming a cryptography expert**. It monitors removable drives, verifies only the files you care about (or whole images when you need that), and can **automatically check ISO files** against publisher checksums and OpenPGP signatures — no Kleopatra, no manual `sha256sum`, no terminal GPG workflows.
-
-Built with Qt6 for Arch Linux: tray integration, polkit for safe mounting, and a modular C++20 codebase.
-
-> **Note:** FlashSentry started as an experimental LLM-assisted project and is actively evolving. The recommended workflows today are **ISO verification** and **watch-folder (Merkle) checks** on USB volumes; full raw-partition hashing remains available for advanced users.
+FlashSentry monitors USB flash drives, maintains a cryptographic whitelist of trusted devices, and alerts you when a device has been modified. Built with a futuristic Qt6 interface, optimized for speed, and designed the "Arch way" — simple, modular, and well-documented.
 
 ## Features
 
@@ -67,161 +59,228 @@ If you only need “is this entire stick bit-for-bit the same as last time?”, 
 
 ## Screenshots
 
-![FlashSentry main window](docs/images/main-window.png)
+| CyberDark Theme | Device Detection |
+|:---:|:---:|
+| ![Main Window](docs/images/main-window.png) | ![ISO verify](docs/images/iso-verify-report.png) |
 
 After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/). See [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) for capture guidance.
 
-| View | Status |
-|------|--------|
-| USB monitor with device cards | Coming soon |
-| ISO verification report | Coming soon |
-| Watch lists dialog | Coming soon |
-
-## Installation
-
-### From source (Arch)
+### From AUR (Recommended)
 
 ```bash
-git clone https://github.com/RNAX0N/flashsentry.git
+yay -S flashsentry
+# or
+paru -S flashsentry
+```
+
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/flashsentry/flashsentry.git
 cd flashsentry/packaging
 ./build-package.sh -si
 ```
 
-### Runtime dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `qt6-base` | GUI |
-| `openssl` | Hashing |
-| `udisks2`, `polkit` | Mount / privileges |
-| `gpg` | ISO OpenPGP verification (**strongly recommended**) |
-| Network | Fetch publisher checksums for ISO verify |
-| `libnotify` | Desktop notifications (optional) |
-
-### Post-install
+### Post-Installation Setup
 
 ```bash
-# Raw partition hashing (optional)
+# Add your user to the storage group for raw device access
 sudo usermod -aG storage $USER
 
-# Autostart (optional)
+# Enable autostart (optional)
 systemctl --user enable --now flashsentry.service
 
-# Avoid double-mount fights with your DE (recommended)
-gsettings set org.gnome.desktop.media-handling automount false   # GNOME
+# Disable your DE's auto-mount (recommended)
+# GNOME:
+gsettings set org.gnome.desktop.media-handling automount false
+# KDE: System Settings > Removable Storage > Uncheck automount
 ```
 
-Log out and back in after adding the `storage` group.
+**Important:** Log out and back in after adding yourself to the storage group.
 
-## Quick start
+## Usage
 
-### Verify ISOs on a USB stick (easiest path)
-
-1. Install FlashSentry and `gpg`.
-2. Open **Settings → Verification** → enable **Automatically verify ISOs when a USB drive is mounted** (on by default).
-3. Plug in a stick that contains a supported `.iso` (e.g. `archlinux-*-x86_64.iso`, `ubuntu-*-desktop-amd64.iso`).
-4. Read the report in the log panel, or switch **Mode** to **Automatic ISO verification** for the full ISO UI.
-
-Supported publisher matching (by filename): **Arch Linux**, **Ubuntu** (including **Ubuntu for Raspberry Pi** `.img.xz`), **Kubuntu**, **Xubuntu**, **Lubuntu**, **Ubuntu MATE**, **Ubuntu Studio**, **Debian**, **Fedora**, **Linux Mint**, **openSUSE**, **Manjaro**, **Kali**, **Rocky/Alma/CentOS Stream**, **elementary**, **Pop!_OS**, **EndeavourOS**, **Garuda**, **CachyOS**, **Nobara**, **Raspberry Pi OS**, **Alpine**, **Void Linux**, **Armbian**, **NixOS**, and **Microsoft Windows** (embedded catalog + `.sha256` sidecars). Scans `.iso`, `.img.xz`, `.img`, and `.zip` on mounted volumes; skips boot-loader config trees and works with desktop automount — see [docs/VERIFICATION.md](docs/VERIFICATION.md).
-
-### Verify specific folders on a USB stick
-
-1. Connect and mount the device.
-2. On the device card, click **Watch lists**.
-3. Add groups and paths (e.g. `Documents`, `EFI/boot`).
-4. Build a baseline when the content is known-good.
-5. On later connects, FlashSentry verifies the Merkle root against your baseline.
-
-Default profile for new devices: **Watch folders only**.
-
-### Command line
+### Starting FlashSentry
 
 ```bash
-flashsentry              # Normal start
-flashsentry --minimized  # Start in tray
-flashsentry --debug      # Verbose logging
-flashsentry --help
+# Normal start
+flashsentry
+
+# Start minimized to tray
+flashsentry --minimized
+
+# With debug output
+flashsentry --debug
 ```
+
+### Workflow
+
+1. **Connect a USB device** — FlashSentry detects it automatically
+2. **New device?** — You'll be prompted to add it to the whitelist
+3. **Known device?** — Hash verification runs automatically
+4. **Hash matches** — Device is mounted normally
+5. **Hash mismatch** — ⚠️ Security alert! The device has been modified
+6. **Eject** — Re-hash before safe removal (optional)
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+R` | Refresh device list |
+| `Ctrl+,` | Open settings |
+| `Ctrl+Q` | Quit application |
+| `Escape` | Minimize to tray |
 
 ## Configuration
 
-Settings: `~/.config/FlashSentry/FlashSentry.conf`  
-Device database: `~/.config/flashsentry/devices.json`
+Settings are stored in `~/.config/FlashSentry/FlashSentry.conf`
+
+### Key Settings
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| **Mode** | USB drive monitor | Or **Automatic ISO verification** |
-| **Default USB profile** | Watch folders | Or full partition / hybrid |
-| **Auto ISO verify on USB mount** | On | Run ISO checks when a volume mounts |
-| **Auto hash entire partition on connect** | Off | Full raw-device hash (advanced) |
-| **Block modified devices** | Off | Refuse mount after failed verify |
+| Auto-hash on connect | ✅ | Verify devices automatically when plugged in |
+| Auto-hash on eject | ✅ | Re-calculate hash before ejecting |
+| Block modified devices | ❌ | Prevent mounting of modified devices |
+| Hash algorithm | SHA256 | SHA256, SHA512, or BLAKE2b |
+| Buffer size | 1024 KB | Read buffer for hashing (64-16384 KB) |
+| Use memory mapping | ✅ | Use mmap for faster hashing |
 
-See **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** for workflows and troubleshooting.
+### Themes
 
-## Documentation
+FlashSentry includes 5 built-in themes:
 
-| Document | Audience |
-|----------|----------|
-| **[docs/README.md](docs/README.md)** | Documentation index |
-| **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** | End users — ISO verify, watch lists, settings, FAQ |
-| **[docs/VERIFICATION.md](docs/VERIFICATION.md)** | How verification modes work (Merkle, ISO chain, full hash) |
-| **[CLAUDE.md](CLAUDE.md)** | Developers — architecture, components, build |
-| **[CHANGELOG.md](CHANGELOG.md)** | Release history |
-| **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute |
+- **Cyber Dark** — Cyan accents on dark background (default)
+- **Neon Purple** — Magenta/purple neon aesthetic
+- **Matrix Green** — Classic green-on-black terminal look
+- **Blade Runner** — Warm orange/amber tones
+- **Ghost White** — Light theme with blue accents
 
-## Building
+## Building from Source
+
+### Dependencies
 
 ```bash
-# Arch build deps
+# Arch Linux
 sudo pacman -S qt6-base qt6-tools cmake base-devel openssl pkgconf
 
+# The following are runtime dependencies (installed automatically via PKGBUILD)
+# udisks2, polkit, systemd-libs
+```
+
+### Development Build
+
+```bash
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+make -j$(nproc)
+
+# Run
+./FlashSentry
+```
+
+### Release Build
+
+```bash
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . -j$(nproc)
+make -j$(nproc)
 
-# Run from build tree
-./flashsentry
-```
-
-Optional tests:
-
-```bash
-cmake -DFLASHSENTRY_BUILD_TESTS=ON ..
-cmake --build . && ctest --test-dir build --output-on-failure
-```
-
-Ten tests: `test_types`, `test_database_manager`, `test_merkle`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`, `test_verify_report`, `test_iso_verify_integration`, `test_iso_verify_publisher_mock`, `test_iso_http_mock` (fixtures under `tests/fixtures/`).
-
-Install (binary, polkit policy, udev rules, and docs under `/usr/share/doc/flashsentry/`):
-
-```bash
+# Install
 sudo cmake --install . --prefix /usr
 ```
 
+## Kernel Compatibility
+
+FlashSentry works with any Linux kernel that has udev and USB mass storage support:
+
+- ✅ `linux` (standard Arch kernel)
+- ✅ `linux-lts`
+- ✅ `linux-zen`
+- ✅ `linux-hardened`
+- ✅ Custom kernels with standard block device support
+
 ## Troubleshooting
 
-| Problem | What to try |
-|---------|-------------|
-| ISO verify says “unknown publisher” | Filename must match a supported distro pattern, or place `.sha256` / `.asc` next to the ISO |
-| ISO verify needs network | Publisher checksums are downloaded automatically |
-| `gpg` errors | Install `gnupg`; keys are cached under `~/.cache/FlashSentry/iso-verify/` |
-| dd-written live USB, no `.iso` file | Use watch folders or full partition hash; see [docs/VERIFICATION.md](docs/VERIFICATION.md) |
-| Full hash permission denied | Add user to `storage` group, re-login |
-| Device not detected | `udevadm monitor --subsystem-match=block` |
+### Device not detected
+
+```bash
+# Check if udev sees the device
+udevadm monitor --property --udev --subsystem-match=block
+
+# Verify udev rules are loaded
+udevadm control --reload-rules
+udevadm trigger
+```
+
+### Permission denied when hashing
+
+```bash
+# Verify group membership
+groups | grep storage
+
+# If not in storage group, add yourself
+sudo usermod -aG storage $USER
+# Then log out and back in
+```
+
+### Mount operations fail
+
+```bash
+# Check UDisks2 service
+systemctl status udisks2.service
+
+# Ensure polkit agent is running
+pgrep -f polkit
+```
+
+### Hash speed is slow
+
+1. Enable memory mapping in settings
+2. Increase buffer size (try 4096 KB or 8192 KB)
+3. Use a USB 3.0 port if available
 
 ## Security
 
-- Polkit for privileged reads/mounts — not run as root
-- Database `600` permissions, atomic JSON writes
-- ISO path: checksum file signature → compare hash → optional fingerprint allow-list
-- User prompts for unknown devices and manifest/hash mismatches (configurable)
+FlashSentry is designed with security in mind:
+
+- **No root privileges** — Uses polkit for privilege escalation
+- **Secure mount options** — Default: `noexec,nosuid,nodev`
+- **Secure storage** — Database file has 600 permissions
+- **Tamper detection** — Cryptographic hashes detect any byte-level modification
+- **User confirmation** — Always prompts before mounting unknown devices
+
+### Security Best Practices
+
+1. Enable "Block modified devices" for sensitive environments
+2. Use SHA-512 or BLAKE2b for stronger verification
+3. Regularly review the device whitelist
+4. Keep FlashSentry running in the background via systemd
+
+## Contributing
+
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting a pull request.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Qt Project for the excellent GUI framework
+- The Arch Linux community for the "keep it simple" philosophy
+- OpenSSL for robust cryptographic functions
+- freedesktop.org for UDisks2 and polkit standards
 
 ---
 
 <p align="center">
-  Made for the Arch Linux community
+  Made with ❤️ for the Arch Linux community
 </p>

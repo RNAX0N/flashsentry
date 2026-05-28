@@ -1,6 +1,5 @@
 #include "SettingsDialog.h"
-#include "AutostartManager.h"
-#include "SettingsProfiles.h"
+#include "UiIcons.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -34,11 +33,6 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     
     // General
     m_startMinimizedCheck->setChecked(settings.startMinimized);
-    if (const auto enabled = AutostartManager::isLoginAutostartEnabled(); enabled.has_value()) {
-        m_autoStartCheck->setChecked(*enabled);
-    } else {
-        m_autoStartCheck->setChecked(settings.autoStartAtLogin);
-    }
     m_minimizeToTrayCheck->setChecked(settings.minimizeToTray);
     m_showNotificationsCheck->setChecked(settings.showNotifications);
     
@@ -47,7 +41,6 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     m_autoHashOnEjectCheck->setChecked(settings.autoHashOnEject);
     m_confirmNewDeviceCheck->setChecked(settings.requireConfirmationForNew);
     m_confirmModifiedCheck->setChecked(settings.requireConfirmationForModified);
-    m_promptPerPartitionCheck->setChecked(settings.promptPerPartition);
     m_blockModifiedCheck->setChecked(settings.blockModifiedDevices);
     for (int i = 0; i < m_appModuleCombo->count(); ++i) {
         if (m_appModuleCombo->itemData(i).toInt() == static_cast<int>(settings.appModule)) {
@@ -121,6 +114,10 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
         m_themeCombo->setCurrentIndex(themeIndex);
     }
     m_animationsCheck->setChecked(settings.animationsEnabled);
+    if (m_fontSizeSlider) {
+        m_fontSizeSlider->setValue(settings.fontSizePt);
+        m_fontSizeLabel->setText(QString("%1 pt").arg(settings.fontSizePt));
+    }
     
     // Database
     m_databasePathEdit->setText(settings.databasePath);
@@ -135,7 +132,6 @@ AppSettings SettingsDialog::getSettings() const
     
     // General
     settings.startMinimized = m_startMinimizedCheck->isChecked();
-    settings.autoStartAtLogin = m_autoStartCheck->isChecked();
     settings.minimizeToTray = m_minimizeToTrayCheck->isChecked();
     settings.showNotifications = m_showNotificationsCheck->isChecked();
     
@@ -144,7 +140,6 @@ AppSettings SettingsDialog::getSettings() const
     settings.autoHashOnEject = m_autoHashOnEjectCheck->isChecked();
     settings.requireConfirmationForNew = m_confirmNewDeviceCheck->isChecked();
     settings.requireConfirmationForModified = m_confirmModifiedCheck->isChecked();
-    settings.promptPerPartition = m_promptPerPartitionCheck->isChecked();
     settings.blockModifiedDevices = m_blockModifiedCheck->isChecked();
     settings.appModule = static_cast<AppModule>(m_appModuleCombo->currentData().toInt());
     settings.defaultVerificationProfile = static_cast<VerificationProfile>(
@@ -198,6 +193,7 @@ AppSettings SettingsDialog::getSettings() const
     // Appearance
     settings.theme = m_themeCombo->currentText();
     settings.animationsEnabled = m_animationsCheck->isChecked();
+    settings.fontSizePt = m_fontSizeSlider ? m_fontSizeSlider->value() : 10;
     
     // Database
     settings.databasePath = m_databasePathEdit->text();
@@ -215,7 +211,6 @@ void SettingsDialog::setupUi()
     m_tabWidget = new QTabWidget;
     m_tabWidget->addTab(createGeneralTab(), "General");
     m_tabWidget->addTab(createSecurityTab(), "Security");
-    m_tabWidget->addTab(createVerificationTab(), "Verification");
     m_tabWidget->addTab(createHashingTab(), "Hashing");
     m_tabWidget->addTab(createAppearanceTab(), "Appearance");
     m_tabWidget->addTab(createDatabaseTab(), "Database");
@@ -256,18 +251,8 @@ QWidget* SettingsDialog::createGeneralTab()
     startupLayout->addWidget(m_startMinimizedCheck);
     
     m_autoStartCheck = new QCheckBox("Start automatically at login");
-    const QString autostartBackend = AutostartManager::backendDescription();
-    if (AutostartManager::isAvailable()) {
-        m_autoStartCheck->setToolTip(
-            autostartBackend.isEmpty()
-                ? QStringLiteral("Launch FlashSentry when you log in (minimized to tray)")
-                : QStringLiteral("Launch FlashSentry when you log in via %1").arg(autostartBackend));
-        connect(m_autoStartCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
-    } else {
-        m_autoStartCheck->setToolTip(
-            QStringLiteral("Install the Arch package (systemd user service) or use a desktop session with XDG autostart support"));
-        m_autoStartCheck->setEnabled(false);
-    }
+    m_autoStartCheck->setToolTip("Launch FlashSentry when you log in");
+    m_autoStartCheck->setEnabled(false); // TODO: Implement autostart
     startupLayout->addWidget(m_autoStartCheck);
     
     layout->addWidget(startupGroup);
@@ -433,11 +418,11 @@ QWidget* SettingsDialog::createSecurityTab()
     layout->setSpacing(16);
     
     // Auto-hashing group
-    QGroupBox* hashingGroup = new QGroupBox("Full-drive hashing (advanced)");
+    QGroupBox* hashingGroup = new QGroupBox("Automatic Hashing");
     QVBoxLayout* hashingLayout = new QVBoxLayout(hashingGroup);
     
-    m_autoHashOnConnectCheck = new QCheckBox("Hash entire partition when a device is connected");
-    m_autoHashOnConnectCheck->setToolTip("Slow: reads the whole block device. Prefer watch folders or ISO mode unless you need a full-disk fingerprint.");
+    m_autoHashOnConnectCheck = new QCheckBox("Hash devices when connected");
+    m_autoHashOnConnectCheck->setToolTip("Automatically calculate hash when a device is plugged in");
     connect(m_autoHashOnConnectCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     hashingLayout->addWidget(m_autoHashOnConnectCheck);
     
@@ -457,24 +442,13 @@ QWidget* SettingsDialog::createSecurityTab()
     connect(m_confirmNewDeviceCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     confirmLayout->addWidget(m_confirmNewDeviceCheck);
     
-    m_confirmModifiedCheck = new QCheckBox("Show tamper alert when hash does not match");
-    m_confirmModifiedCheck->setToolTip(
-        "When you manually mount a modified partition, show expected vs actual hash "
-        "and require confirmation (uses the verification hash; no re-hash)");
+    m_confirmModifiedCheck = new QCheckBox("Alert when device hash doesn't match");
+    m_confirmModifiedCheck->setToolTip("Show a warning when a known device has been modified");
     connect(m_confirmModifiedCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     confirmLayout->addWidget(m_confirmModifiedCheck);
-
-    m_promptPerPartitionCheck = new QCheckBox("Prompt separately for each partition");
-    m_promptPerPartitionCheck->setToolTip(
-        "Default: one whitelist prompt per physical drive (all partitions). "
-        "Enable to prompt once per partition instead.");
-    connect(m_promptPerPartitionCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
-    confirmLayout->addWidget(m_promptPerPartitionCheck);
     
     m_blockModifiedCheck = new QCheckBox("Block mounting of modified devices");
-    m_blockModifiedCheck->setToolTip(
-        "Prevent automatic mounting when verification fails. You can still use "
-        "\"Accept fingerprint\" on the device card to update the whitelist.");
+    m_blockModifiedCheck->setToolTip("Prevent automatic mounting of devices that fail hash verification");
     connect(m_blockModifiedCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     confirmLayout->addWidget(m_blockModifiedCheck);
     
@@ -733,7 +707,7 @@ QWidget* SettingsDialog::createAboutTab()
     
     // App icon/logo
     QLabel* logoLabel = new QLabel;
-    logoLabel->setText("🛡️");
+    UiIcons::setLabelPixmap(logoLabel, ":/icons/flashsentry.svg", 48);
     logoLabel->setStyleSheet("font-size: 64px;");
     logoLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(logoLabel);
@@ -747,8 +721,7 @@ QWidget* SettingsDialog::createAboutTab()
     layout->addWidget(nameLabel);
     
     // Version
-    QLabel* versionLabel = new QLabel(
-        QStringLiteral("Version %1").arg(QApplication::applicationVersion()));
+    QLabel* versionLabel = new QLabel("Version 1.0.0");
     versionLabel->setAlignment(Qt::AlignCenter);
     versionLabel->setStyleSheet(QString("color: %1;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
@@ -868,7 +841,7 @@ void SettingsDialog::onImportDatabase()
             QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
         
         if (reply != QMessageBox::Cancel) {
-            emit importDatabaseRequested(path, reply == QMessageBox::Yes);
+            emit importDatabaseRequested(path);
         }
     }
 }
@@ -949,6 +922,16 @@ void SettingsDialog::onRejected()
 AppSettings SettingsDialog::defaultSettings() const
 {
     return AppSettings();
+}
+
+void SettingsDialog::setDatabaseStatistics(int deviceCount, const QString& databasePath)
+{
+    if (!m_databaseStatsLabel) {
+        return;
+    }
+    const QString path = databasePath.isEmpty() ? QStringLiteral("(default location)") : databasePath;
+    m_databaseStatsLabel->setText(
+        QStringLiteral("%1 whitelisted device(s)\n%2").arg(deviceCount).arg(path));
 }
 
 } // namespace FlashSentry

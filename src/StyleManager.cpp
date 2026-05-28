@@ -59,7 +59,7 @@ const QHash<StyleManager::Theme, QHash<StyleManager::ColorRole, QColor>> StyleMa
         {ColorRole::TextMuted,       QColor(0x78, 0x68, 0x88)},
         {ColorRole::TextDisabled,    QColor(0x58, 0x48, 0x68)},
         
-        {ColorRole::AccentPrimary,   QColor(0xE0, 0x00, 0xFF)},  // Magenta
+        {ColorRole::AccentPrimary,   QColor(0xE040, 0x00, 0xFF)},  // Magenta
         {ColorRole::AccentSecondary, QColor(0xA0, 0x00, 0xC8)},
         {ColorRole::AccentGlow,      QColor(0xE0, 0x00, 0xFF, 0x40)},
         
@@ -691,6 +691,60 @@ QString StyleManager::tabWidgetStyleSheet() const
     .arg(colorCss(ColorRole::AccentPrimary))
     .arg(m_borderRadius)
     .arg(colorCss(ColorRole::SurfaceHover));
+}
+
+QString StyleManager::tabBarStyleSheet() const
+{
+    return QString(R"(
+        QTabBar {
+            background: transparent;
+        }
+        QTabBar::tab {
+            background-color: transparent;
+            color: %3;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 8px 16px;
+            margin-right: 4px;
+            font-weight: 600;
+        }
+        QTabBar::tab:selected {
+            color: %4;
+            border-bottom: 2px solid %4;
+        }
+        QTabBar::tab:hover:!selected {
+            color: %5;
+            border-bottom: 2px solid %6;
+        }
+    )")
+        .arg(colorCss(ColorRole::Surface))
+        .arg(colorCss(ColorRole::Border))
+        .arg(colorCss(ColorRole::TextSecondary))
+        .arg(colorCss(ColorRole::AccentPrimary))
+        .arg(colorCss(ColorRole::TextPrimary))
+        .arg(colorCss(ColorRole::BorderActive));
+}
+
+QString StyleManager::messageBoxStyleSheet() const
+{
+    return QString(R"(
+        QMessageBox {
+            background-color: %1;
+            color: %2;
+        }
+        QMessageBox QLabel {
+            color: %2;
+            min-width: 320px;
+        }
+        QMessageBox QPushButton {
+            %3
+            min-width: 88px;
+            padding: 8px 16px;
+        }
+    )")
+        .arg(colorCss(ColorRole::Surface))
+        .arg(colorCss(ColorRole::TextPrimary))
+        .arg(buttonStyleSheet());
 }
 
 QString StyleManager::statusIndicatorStyleSheet(ColorRole statusColor) const

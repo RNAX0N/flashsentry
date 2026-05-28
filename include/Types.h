@@ -614,6 +614,7 @@ struct AppSettings {
     int maxConcurrentHashes = 1;
     QString theme = "dark";
     bool animationsEnabled = true;
+    int fontSizePt = 10;
     int refreshIntervalMs = 1000;
     QString databasePath;
     QString logPath;
@@ -663,6 +664,7 @@ struct AppSettings {
         obj["max_concurrent_hashes"] = maxConcurrentHashes;
         obj["theme"] = theme;
         obj["animations_enabled"] = animationsEnabled;
+        obj["font_size_pt"] = fontSizePt;
         obj["refresh_interval_ms"] = refreshIntervalMs;
         obj["database_path"] = databasePath;
         obj["log_path"] = logPath;
@@ -708,6 +710,7 @@ struct AppSettings {
         settings.maxConcurrentHashes = obj["max_concurrent_hashes"].toInt(1);
         settings.theme = obj["theme"].toString("dark");
         settings.animationsEnabled = obj["animations_enabled"].toBool(true);
+        settings.fontSizePt = obj["font_size_pt"].toInt(10);
         settings.refreshIntervalMs = obj["refresh_interval_ms"].toInt(1000);
         settings.databasePath = obj["database_path"].toString();
         settings.logPath = obj["log_path"].toString();

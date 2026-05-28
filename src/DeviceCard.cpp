@@ -1,4 +1,5 @@
 #include "DeviceCard.h"
+#include "UiIcons.h"
 #include "StyleManager.h"
 
 #include <QPainter>
@@ -69,7 +70,7 @@ void DeviceCard::setupUi()
         }
     )").arg(FSStyle.colorCss(StyleManager::ColorRole::BackgroundDark))
        .arg(ICON_SIZE / 4));
-    m_iconLabel->setText("💾");  // USB drive emoji
+    UiIcons::setLabelPixmap(m_iconLabel, ":/icons/usb-drive.svg", 28);
     m_headerLayout->addWidget(m_iconLabel);
     
     // Name and status container
@@ -199,11 +200,19 @@ void DeviceCard::setupUi()
     
     m_mountBtn = createActionButton("Mount", "Mount this device");
     m_unmountBtn = createActionButton("Unmount", "Safely unmount this device");
-    m_ejectBtn = createActionButton("⏏ Eject", "Eject and power off device");
-    m_rehashBtn = createActionButton("↻ Rehash", "Recalculate device hash");
-    m_watchBtn = createActionButton("📋 Watch", "Edit Merkle watch groups");
-    m_acceptBtn = createActionButton("✓ Accept", "Store the new fingerprint in the whitelist");
-    m_openBtn = createActionButton("📂 Open", "Open in file manager");
+    m_ejectBtn = createActionButton(QStringLiteral("Eject"), "Eject and power off device");
+    m_rehashBtn = createActionButton(QStringLiteral("Rehash"), "Recalculate device hash");
+    m_watchBtn = createActionButton(QStringLiteral("Watch"), "Edit Merkle watch groups");
+    m_acceptBtn = createActionButton(QStringLiteral("Accept"), "Store the new fingerprint in the whitelist");
+    m_openBtn = createActionButton(QStringLiteral("Open"), "Open in file manager");
+    
+    UiIcons::setButtonIcon(m_mountBtn, ":/icons/mount.svg", 16);
+    UiIcons::setButtonIcon(m_unmountBtn, ":/icons/unmount.svg", 16);
+    UiIcons::setButtonIcon(m_ejectBtn, ":/icons/eject.svg", 16);
+    UiIcons::setButtonIcon(m_rehashBtn, ":/icons/hash.svg", 16);
+    UiIcons::setButtonIcon(m_watchBtn, ":/icons/hash.svg", 16);
+    UiIcons::setButtonIcon(m_acceptBtn, ":/icons/shield-check.svg", 16);
+    UiIcons::setButtonIcon(m_openBtn, ":/icons/folder-open.svg", 16);
     
     // Style the eject button as danger
     m_ejectBtn->setStyleSheet(FSStyle.dangerButtonStyleSheet());
@@ -572,17 +581,15 @@ void DeviceCard::updateDisplay()
     m_mountPointLabel->setText(m_device.mountPoint.isEmpty() ? "Not mounted" : m_device.mountPoint);
     m_serialLabel->setText(m_device.serial.isEmpty() ? "N/A" : m_device.serial);
     
-    // Update icon based on filesystem type
-    QString icon = "💾";
-    if (m_device.fsType.contains("ntfs", Qt::CaseInsensitive)) {
-        icon = "🪟";  // Windows
-    } else if (m_device.fsType.contains("ext", Qt::CaseInsensitive)) {
-        icon = "🐧";  // Linux
-    } else if (m_device.fsType.contains("fat", Qt::CaseInsensitive) ||
-               m_device.fsType.contains("exfat", Qt::CaseInsensitive)) {
-        icon = "📁";  // Generic
+    const char* deviceIcon = ":/icons/usb-drive.svg";
+    if (m_status == VerificationStatus::Modified) {
+        deviceIcon = ":/icons/shield-alert.svg";
+    } else if (m_status == VerificationStatus::Verified) {
+        deviceIcon = ":/icons/shield-check.svg";
+    } else if (m_status == VerificationStatus::Unknown) {
+        deviceIcon = ":/icons/shield-question.svg";
     }
-    m_iconLabel->setText(icon);
+    UiIcons::setLabelPixmap(m_iconLabel, deviceIcon, 28);
     
     updateStatusIndicator();
     updateActionButtons();

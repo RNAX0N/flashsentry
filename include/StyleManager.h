@@ -244,6 +244,12 @@ public:
      */
     QString tabWidgetStyleSheet() const;
 
+    /** Flat tab bar for header mode switching (QTabBar, not QTabWidget). */
+    QString tabBarStyleSheet() const;
+
+    /** QMessageBox styling aligned with the active theme. */
+    QString messageBoxStyleSheet() const;
+
     /**
      * @brief Get stylesheet for status indicators
      */

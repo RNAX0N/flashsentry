@@ -57,6 +57,9 @@ public:
      */
     bool hasChanges() const { return m_hasChanges; }
 
+    /** Populate database tab summary (device count, path). */
+    void setDatabaseStatistics(int deviceCount, const QString& databasePath);
+
 signals:
     /**
      * @brief Emitted when theme is changed (for live preview)
@@ -71,7 +74,7 @@ signals:
     /**
      * @brief Emitted when user requests database import
      */
-    void importDatabaseRequested(const QString& path, bool merge);
+    void importDatabaseRequested(const QString& path);
 
     /**
      * @brief Emitted when user requests database backup
@@ -110,7 +113,6 @@ private:
      * @brief Create Security settings tab
      */
     QWidget* createSecurityTab();
-    QWidget* createVerificationTab();
 
     /**
      * @brief Create Hashing settings tab
@@ -159,7 +161,6 @@ private:
     QCheckBox* m_autoHashOnEjectCheck = nullptr;
     QCheckBox* m_confirmNewDeviceCheck = nullptr;
     QCheckBox* m_confirmModifiedCheck = nullptr;
-    QCheckBox* m_promptPerPartitionCheck = nullptr;
     QCheckBox* m_blockModifiedCheck = nullptr;
     QComboBox* m_defaultTrustCombo = nullptr;
     QComboBox* m_appModuleCombo = nullptr;

@@ -28,6 +28,7 @@
 #include "TrayIcon.h"
 #include "SettingsDialog.h"
 #include "StyleManager.h"
+#include "VerifyHistory.h"
 #include "ManifestWorker.h"
 #include "IsoVerifierWidget.h"
 
@@ -255,6 +256,8 @@ private:
      * @brief Update sidebar statistics
      */
     void updateSidebarStats();
+    void refreshVerifyHistoryPanel(const QString& deviceNodeFilter = {});
+    void recordVerifyHistory(const VerifyHistoryEntry& entry);
 
     /**
      * @brief Show the new device dialog
@@ -330,6 +333,9 @@ private:
     QLabel* m_connectedCountLabel = nullptr;
     QLabel* m_whitelistedCountLabel = nullptr;
     QLabel* m_hashingCountLabel = nullptr;
+    QListWidget* m_historyList = nullptr;
+    QString m_historyFilterDevice;
+    QLabel* m_historyFilterLabel = nullptr;
     QListWidget* m_logList = nullptr;
 
     // UI - Device list

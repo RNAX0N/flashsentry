@@ -49,6 +49,7 @@ set(SOURCES
     src/VerifyCli.cpp
     src/IsoVerifySettingsLoader.cpp
     src/SettingsProfiles.cpp
+    src/VerifyHistory.cpp
     src/WelcomeWizard.cpp
     src/IsoScanRules.cpp
     src/IsoVerifier.cpp
@@ -84,6 +85,7 @@ set(HEADERS
     include/VerifyCli.h
     include/IsoVerifySettingsLoader.h
     include/SettingsProfiles.h
+    include/VerifyHistory.h
     include/WelcomeWizard.h
     include/IsoScanRules.h
     include/IsoVerifier.h

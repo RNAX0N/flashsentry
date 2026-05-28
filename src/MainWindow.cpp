@@ -4,6 +4,7 @@
 #include "IsoCatalogManifest.h"
 #include "SettingsProfiles.h"
 #include "WelcomeWizard.h"
+#include "VerifyHistory.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -44,9 +45,11 @@ MainWindow::MainWindow(QWidget* parent)
     
     // Load settings
     loadSettings();
+    VerifyHistory::instance().load();
     
     // Apply styling
     applyStyle();
+    refreshVerifyHistoryPanel();
     
     // Setup status update timer
     m_statusUpdateTimer = new QTimer(this);
@@ -333,6 +336,34 @@ QWidget* MainWindow::createSidebar()
     addStatRow(2, "Hashing", m_hashingCountLabel, "⏳");
     
     layout->addWidget(statsWidget);
+
+    m_historyFilterLabel = new QLabel(QStringLiteral("Verify history"));
+    m_historyFilterLabel->setFont(FSFont(Heading3));
+    m_historyFilterLabel->setStyleSheet(QString("color: %1;").arg(
+        FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+    layout->addWidget(m_historyFilterLabel);
+
+    m_historyList = new QListWidget;
+    m_historyList->setFrameShape(QFrame::NoFrame);
+    m_historyList->setMaximumHeight(140);
+    m_historyList->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    m_historyList->setStyleSheet(FSStyle.listWidgetStyleSheet());
+    m_historyList->setToolTip(QStringLiteral("Recent verification results. Click a device card to filter."));
+    connect(m_historyList, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
+        if (!item) return;
+        const QString node = item->data(Qt::UserRole).toString();
+        if (!node.isEmpty() && m_modeTabBar) {
+            auto info = m_deviceMonitor->getDevice(node);
+            if (info && !info->mountPoint.isEmpty()) {
+                m_modeTabBar->setCurrentIndex(1);
+                onModeTabChanged(1);
+                if (m_isoWidget) {
+                    m_isoWidget->focusDevice(node, info->mountPoint, info->displayName());
+                }
+            }
+        }
+    });
+    layout->addWidget(m_historyList);
     
     // Log section
     QLabel* logLabel = new QLabel("Activity Log");
@@ -663,8 +694,12 @@ void MainWindow::showEvent(QShowEvent* event)
         wizardShown = true;
         WelcomeWizard wizard(this);
         if (wizard.exec() == QDialog::Accepted) {
-            m_settings.showFirstRunWizard = false;
-            m_qsettings->setValue("general/showFirstRunWizard", false);
+            wizard.applyToSettings(m_settings);
+            applySettings(m_settings);
+            saveSettings();
+            if (m_isoWidget) {
+                m_isoWidget->setActiveProfile(m_settings.settingsProfile);
+            }
         }
     }
 }
@@ -1010,6 +1045,17 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             }
             
             m_trayIcon->notifyVerificationResult(deviceInfo->displayName(), VerificationStatus::Verified);
+            {
+                VerifyHistoryEntry he;
+                he.deviceNode = deviceNode;
+                he.deviceLabel = deviceInfo->displayName();
+                he.mountPoint = deviceInfo->mountPoint;
+                he.kind = VerifyHistoryKind::Hash;
+                he.status = QStringLiteral("pass");
+                he.summary = QStringLiteral("Hash matches (%1)").arg(result.algorithm);
+                he.durationMs = result.durationMs;
+                recordVerifyHistory(he);
+            }
             finishVerified();
         } else {
             logMessage(QString("ALERT: %1 - hash MISMATCH!").arg(deviceInfo->displayName()), LogLevel::Security);
@@ -1021,6 +1067,17 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             }
 
             m_trayIcon->notifyVerificationResult(deviceInfo->displayName(), VerificationStatus::Modified);
+            {
+                VerifyHistoryEntry he;
+                he.deviceNode = deviceNode;
+                he.deviceLabel = deviceInfo->displayName();
+                he.mountPoint = deviceInfo->mountPoint;
+                he.kind = VerifyHistoryKind::Hash;
+                he.status = QStringLiteral("mismatch");
+                he.summary = QStringLiteral("Hash mismatch");
+                he.durationMs = result.durationMs;
+                recordVerifyHistory(he);
+            }
 
             const bool offerMount = !deviceInfo->isMounted;
             if (m_settings.requireConfirmationForModified) {
@@ -1033,6 +1090,17 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
     } else {
         m_database->updateHash(deviceId, result.hash, result.algorithm, result.durationMs);
         logMessage(QString("Hash stored for %1").arg(deviceInfo->displayName()));
+        {
+            VerifyHistoryEntry he;
+            he.deviceNode = deviceNode;
+            he.deviceLabel = deviceInfo->displayName();
+            he.mountPoint = deviceInfo->mountPoint;
+            he.kind = VerifyHistoryKind::Hash;
+            he.status = QStringLiteral("pass");
+            he.summary = QStringLiteral("Baseline stored (%1)").arg(result.algorithm);
+            he.durationMs = result.durationMs;
+            recordVerifyHistory(he);
+        }
         
         if (card) {
             card->setVerificationStatus(VerificationStatus::Verified);
@@ -1058,6 +1126,16 @@ void MainWindow::onHashFailed(const QString& jobId, const QString& error)
     const PendingHashAction pending = m_pendingHashActions.take(deviceNode);
 
     logMessage(QString("Hash failed for %1: %2").arg(deviceNode, error), LogLevel::Error);
+    {
+        VerifyHistoryEntry he;
+        he.deviceNode = deviceNode;
+        auto info = m_deviceMonitor->getDevice(deviceNode);
+        he.deviceLabel = info ? info->displayName() : deviceNode;
+        he.kind = VerifyHistoryKind::Hash;
+        he.status = QStringLiteral("error");
+        he.summary = error;
+        recordVerifyHistory(he);
+    }
 
     if (pending == PendingHashAction::UnmountAfterVerify) {
         offerUnmountWithoutHash(deviceNode, error);
@@ -1262,8 +1340,71 @@ void MainWindow::onOpenMountPointRequested(const QString& mountPoint)
 
 void MainWindow::onDeviceCardClicked(const QString& deviceNode)
 {
-    // Could expand card or show details
-    Q_UNUSED(deviceNode)
+    m_historyFilterDevice = deviceNode;
+    refreshVerifyHistoryPanel(deviceNode);
+
+    auto info = m_deviceMonitor->getDevice(deviceNode);
+    if (!info) {
+        return;
+    }
+
+    if (!info->mountPoint.isEmpty() && info->isMounted) {
+        if (m_modeTabBar) {
+            m_modeTabBar->setCurrentIndex(1);
+            onModeTabChanged(1);
+        }
+        if (m_isoWidget) {
+            m_isoWidget->focusDevice(deviceNode, info->mountPoint, info->displayName());
+        }
+        logMessage(QStringLiteral("ISO verify: %1 (%2)").arg(info->displayName(), info->mountPoint),
+                   LogLevel::Info);
+        showAndRaise();
+        return;
+    }
+
+    logMessage(QStringLiteral("Verify history filtered to %1").arg(info->displayName()),
+               LogLevel::Info);
+}
+
+
+void MainWindow::recordVerifyHistory(const VerifyHistoryEntry& entry)
+{
+    VerifyHistory::instance().append(entry);
+    refreshVerifyHistoryPanel(m_historyFilterDevice);
+}
+
+void MainWindow::refreshVerifyHistoryPanel(const QString& deviceNodeFilter)
+{
+    if (!m_historyList) {
+        return;
+    }
+    m_historyList->clear();
+
+    const QList<VerifyHistoryEntry> entries =
+        deviceNodeFilter.isEmpty()
+            ? VerifyHistory::instance().recentEntries(30)
+            : VerifyHistory::instance().entriesForDevice(deviceNodeFilter, 20);
+
+    if (m_historyFilterLabel) {
+        if (deviceNodeFilter.isEmpty()) {
+            m_historyFilterLabel->setText(QStringLiteral("Verify history"));
+        } else {
+            auto info = m_deviceMonitor->getDevice(deviceNodeFilter);
+            const QString name = info ? info->displayName() : deviceNodeFilter;
+            m_historyFilterLabel->setText(QStringLiteral("Verify history — %1").arg(name));
+        }
+    }
+
+    for (const VerifyHistoryEntry& e : entries) {
+        auto* item = new QListWidgetItem(VerifyHistory::instance().formatEntryLine(e));
+        item->setData(Qt::UserRole, e.deviceNode);
+        if (e.status == QStringLiteral("pass")) {
+            item->setForeground(FSColor(Verified));
+        } else if (e.status == QStringLiteral("mismatch") || e.status == QStringLiteral("fail")) {
+            item->setForeground(FSColor(Error));
+        }
+        m_historyList->addItem(item);
+    }
 }
 
 // ============================================================================

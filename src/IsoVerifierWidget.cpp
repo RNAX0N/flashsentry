@@ -365,6 +365,23 @@ void IsoVerifierWidget::setScanDirectory(const QString& path)
     updatePageVisibility();
 }
 
+
+void IsoVerifierWidget::focusDevice(const QString& deviceNode, const QString& mountPoint,
+                                    const QString& deviceLabel)
+{
+    m_pageStack->setCurrentIndex(1);
+    if (!deviceLabel.isEmpty()) {
+        m_summaryLabel->setText(QStringLiteral("USB: %1").arg(deviceLabel));
+    }
+    if (!m_lastResults.isEmpty() && m_lastDeviceNode == deviceNode) {
+        setResults(m_lastResults);
+        m_summaryLabel->setText(QStringLiteral("Last ISO report for %1 — click a table row for details")
+                                  .arg(deviceLabel.isEmpty() ? deviceNode : deviceLabel));
+        return;
+    }
+    verifyMountPoint(mountPoint, deviceNode, deviceLabel);
+}
+
 void IsoVerifierWidget::verifyMountPoint(const QString& mountPoint, const QString& deviceNode,
                                          const QString& deviceLabel)
 {

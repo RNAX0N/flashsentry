@@ -168,6 +168,7 @@ private:
     QCheckBox* m_isoAutoVerifyCheck = nullptr;
     QCheckBox* m_isoAutoVerifyOnUsbMountCheck = nullptr;
     QComboBox* m_settingsProfileCombo = nullptr;
+    QLabel* m_profileDescriptionLabel = nullptr;
     QCheckBox* m_blockMountOnIsoFailCheck = nullptr;
     QCheckBox* m_isoVerifyDecompressedCheck = nullptr;
     QCheckBox* m_isoPreferOfflineCheck = nullptr;

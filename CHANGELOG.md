@@ -4,6 +4,17 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Verify history** — persistent sidebar log (`verify-history.json`) for partition hash, watch-folder manifest, and ISO scan results; device-card click filters history and opens the ISO verify tab
+- **First-run wizard** — multi-page setup: security preset, `storage` group check, desktop automount guidance
+- **Security preset descriptions** in Settings and wizard
+- [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) — how to capture real UI screenshots for documentation
+
+### Changed
+
+- **Paranoid** preset strengthened: auto hash on connect/eject, ISO verify on mount and scan, block on failures, single parallel verify job
+
 ## [1.4.2] - 2026-05-21
 
 ### Added

@@ -6,6 +6,7 @@
 #include "IsoCatalogManifest.h"
 #include "IsoScanRules.h"
 #include "SettingsProfiles.h"
+#include "VerifyHistory.h"
 #include <QMessageBox>
 
 namespace FlashSentry {
@@ -175,6 +176,17 @@ void MainWindow::onManifestCompleted(const QString& jobId, const ManifestVerifyR
 
     if (result.matches) {
         logMessage(QStringLiteral("Watch manifest verified: %1").arg(deviceInfo->displayName()));
+        {
+            VerifyHistoryEntry he;
+            he.deviceNode = result.deviceNode;
+            he.deviceLabel = deviceInfo->displayName();
+            he.mountPoint = deviceInfo->mountPoint;
+            he.kind = VerifyHistoryKind::Manifest;
+            he.status = QStringLiteral("pass");
+            he.summary = QStringLiteral("Watch baseline OK");
+            he.durationMs = result.durationMs;
+            recordVerifyHistory(he);
+        }
         if (card) {
             card->setVerificationStatus(VerificationStatus::Verified);
         }
@@ -194,6 +206,18 @@ void MainWindow::onManifestCompleted(const QString& jobId, const ManifestVerifyR
         }
     } else {
         m_lastManifestResults[result.deviceNode] = result;
+        {
+            VerifyHistoryEntry he;
+            he.deviceNode = result.deviceNode;
+            he.deviceLabel = deviceInfo->displayName();
+            he.mountPoint = deviceInfo->mountPoint;
+            he.kind = VerifyHistoryKind::Manifest;
+            he.status = QStringLiteral("mismatch");
+            he.summary = result.changedPaths.isEmpty() ? result.addedPaths.join(QStringLiteral(", "))
+                                                       : result.changedPaths.join(QStringLiteral(", "));
+            he.durationMs = result.durationMs;
+            recordVerifyHistory(he);
+        }
         handleManifestMismatch(*deviceInfo, result);
     }
 }
@@ -364,6 +388,22 @@ void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
         const QString name = info ? info->displayName() : deviceNode;
         m_trayIcon->notifyIsoVerifySummary(name, passed, results.size(), needsSidecar);
     }
+
+    {
+        VerifyHistoryEntry he;
+        he.deviceNode = deviceNode;
+        auto info = m_deviceMonitor->getDevice(deviceNode);
+        he.deviceLabel = info ? info->displayName() : deviceNode;
+        he.mountPoint = info ? info->mountPoint : QString();
+        he.kind = VerifyHistoryKind::IsoScan;
+        he.status = (passed == results.size() && !results.isEmpty())
+                        ? QStringLiteral("pass")
+                        : (needsSidecar > 0 ? QStringLiteral("partial") : QStringLiteral("fail"));
+        he.summary = summary;
+        recordVerifyHistory(he);
+    }
+
+    refreshVerifyHistoryPanel(deviceNode);
 
     if (DeviceCard* card = getDeviceCard(deviceNode)) {
         card->setIsoVerifySummary(summary);

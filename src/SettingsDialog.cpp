@@ -271,12 +271,21 @@ QWidget* SettingsDialog::createVerificationTab()
             return;
         }
         AppSettings s = getSettings();
-        SettingsProfiles::applyProfile(
-            SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->itemData(index).toString()), s);
+        const QString pid = SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->itemData(index).toString());
+        SettingsProfiles::applyProfile(pid, s);
+        if (m_profileDescriptionLabel) {
+            m_profileDescriptionLabel->setText(SettingsProfiles::profileDescription(pid));
+        }
         loadSettings(s);
         m_hasChanges = true;
     });
+    m_profileDescriptionLabel = new QLabel(SettingsProfiles::profileDescription(
+        SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->currentData().toString())));
+    m_profileDescriptionLabel->setWordWrap(true);
+    m_profileDescriptionLabel->setStyleSheet(QString("color: %1;").arg(
+        FSStyle.colorCss(StyleManager::ColorRole::TextMuted)));
     presetForm->addRow(QStringLiteral("Preset:"), m_settingsProfileCombo);
+    presetForm->addRow(QString(), m_profileDescriptionLabel);
     layout->addWidget(presetGroup);
 
     QGroupBox* moduleGroup = new QGroupBox(QStringLiteral("Application mode"));

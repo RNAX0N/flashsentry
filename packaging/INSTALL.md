@@ -49,3 +49,10 @@ flashsentry --version
 ```
 
 **Note:** Do not use `rsync --exclude src` in the PKGBUILD — that excludes the project `src/` directory, not only makepkg's `packaging/src` folder.
+
+## Stable package version (no git hash in pkgver)
+
+Local builds intentionally **do not** use a dynamic `pkgver()` suffix (`1.4.2.rNN.gHASH`). That suffix triggers makepkg to rename `src/flashsentry-1.4.2`, which left an empty tree and broke CMake.
+
+The installed package is **`flashsentry-1.4.2-*`**. Git commit is still visible via `flashsentry --version` (CMake) and `pacman -Qi flashsentry`.
+

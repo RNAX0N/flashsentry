@@ -93,6 +93,8 @@ public:
      * @brief Set hash speed in MB/s
      */
     void setHashSpeed(double speedMBps);
+    void setHashEta(double etaSeconds);
+    void setHashBytes(quint64 processed, quint64 total);
 
     /**
      * @brief Set display mode
@@ -159,6 +161,7 @@ signals:
      * @brief Emitted when rehash button is clicked
      */
     void rehashRequested(const QString& deviceNode);
+    void cancelHashRequested(const QString& deviceNode);
 
     /**
      * @brief Emitted when user accepts a new fingerprint after modification
@@ -262,6 +265,8 @@ private:
     QProgressBar* m_progressBar = nullptr;
     QLabel* m_progressLabel = nullptr;
     QLabel* m_speedLabel = nullptr;
+    QLabel* m_etaLabel = nullptr;
+    QPushButton* m_cancelHashBtn = nullptr;
 
     // UI Components - Actions
     QWidget* m_actionsWidget = nullptr;

@@ -90,8 +90,9 @@ private slots:
 
     // Hash events
     void onHashStarted(const QString& jobId, const QString& deviceNode);
-    void onHashProgress(const QString& jobId, double progress, 
-                        quint64 bytesProcessed, double speedMBps);
+    void onHashProgress(const QString& jobId, double progress,
+                        quint64 bytesProcessed, double speedMBps,
+                        double etaSeconds, quint64 totalBytes);
     void onHashCompleted(const QString& jobId, const HashResult& result);
     void onHashFailed(const QString& jobId, const QString& error);
     void onHashCancelled(const QString& jobId);
@@ -235,6 +236,12 @@ private:
      * @brief Start hashing a device
      */
     void startHashing(const QString& deviceNode, bool skipUnmount = false);
+    void promptAndStartHash(const QString& deviceNode, bool allowDialog = true);
+    void startHashJob(const QString& uiDeviceNode, const QString& hashDeviceNode,
+                      HashScope scope, HashScanMode mode, bool resume);
+    QString resolveHashDeviceNode(const DeviceInfo& device, HashScope scope) const;
+    QString hashStorageIdFor(const DeviceInfo& device, HashScope scope) const;
+    int partitionCountFor(const DeviceInfo& device) const;
 
     void hashAllPartitionsOnParent(const DeviceInfo& device);
 
@@ -352,7 +359,15 @@ private:
 
     // Device tracking
     QHash<QString, DeviceCard*> m_deviceCards;  // deviceNode -> card
-    QHash<QString, QString> m_hashJobDevices;   // jobId -> deviceNode
+    struct HashJobContext {
+        QString uiDeviceNode;
+        QString storageId;
+        HashScope scope = HashScope::Partition;
+        HashScanMode scanMode = HashScanMode::Full;
+    };
+    QHash<QString, HashJobContext> m_hashJobContext;
+    QHash<QString, VerificationStatus> m_preHashStatus;
+    QHash<QString, QString> m_hashJobDevices;   // jobId -> ui deviceNode
 
     enum class PendingHashAction {
         None,
@@ -361,6 +376,13 @@ private:
         RunFullHashAfterManifest
     };
 
+    struct PendingHashLaunch {
+        QString hashDeviceNode;
+        HashScope scope = HashScope::Partition;
+        HashScanMode mode = HashScanMode::Full;
+        bool resume = false;
+    };
+    QHash<QString, PendingHashLaunch> m_pendingHashLaunch;
     QHash<QString, PendingHashAction> m_pendingHashActions;
     QHash<QString, QString> m_lastVerificationHashes;
     QSet<QString> m_drivePromptInProgress;

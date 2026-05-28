@@ -4,6 +4,13 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+### Added (smarter hashing)
+
+- **Partition vs whole-disk** target when a USB stick has multiple partitions (hash options dialog + Settings defaults)
+- **Scan modes**: full read, quick sample (spaced 1 MiB chunks), or watch-folders-only (Merkle manifest)
+- **Cancel** on device cards during hashing; **ETA** and GiB progress on card and status bar
+- **Resume checkpoints** for full scans (`~/.config/FlashSentry/hash-checkpoints.json`, 64 MiB blocks)
+
 ### Added
 
 - **Verify history** — persistent sidebar log (`verify-history.json`) for partition hash, watch-folder manifest, and ISO scan results; device-card click filters history and opens the ISO verify tab

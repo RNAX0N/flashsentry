@@ -176,6 +176,10 @@ private:
 
     // Hashing tab
     QComboBox* m_hashAlgorithmCombo = nullptr;
+    QComboBox* m_defaultHashScopeCombo = nullptr;
+    QComboBox* m_defaultHashScanModeCombo = nullptr;
+    QCheckBox* m_hashResumeCheckpointsCheck = nullptr;
+    QCheckBox* m_promptHashOptionsCheck = nullptr;
     QSpinBox* m_bufferSizeSpin = nullptr;
     QCheckBox* m_useMemoryMappingCheck = nullptr;
     QSpinBox* m_maxConcurrentSpin = nullptr;

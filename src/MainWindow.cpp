@@ -5,6 +5,8 @@
 #include "SettingsProfiles.h"
 #include "WelcomeWizard.h"
 #include "VerifyHistory.h"
+#include "HashCheckpoint.h"
+#include "HashOptionsDialog.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -46,6 +48,7 @@ MainWindow::MainWindow(QWidget* parent)
     // Load settings
     loadSettings();
     VerifyHistory::instance().load();
+    HashCheckpointStore::instance().load();
     
     // Apply styling
     applyStyle();
@@ -555,6 +558,12 @@ void MainWindow::loadSettings()
     m_settings.hashBufferSizeKB = m_qsettings->value("hashing/bufferSizeKB", 1024).toInt();
     m_settings.useMemoryMapping = m_qsettings->value("hashing/useMemoryMapping", true).toBool();
     m_settings.maxConcurrentHashes = m_qsettings->value("hashing/maxConcurrent", 1).toInt();
+    m_settings.defaultHashScope = hashScopeFromString(
+        m_qsettings->value("hashing/defaultScope", "partition").toString());
+    m_settings.defaultHashScanMode = hashScanModeFromString(
+        m_qsettings->value("hashing/defaultScanMode", "full").toString());
+    m_settings.hashResumeCheckpoints = m_qsettings->value("hashing/resumeCheckpoints", true).toBool();
+    m_settings.promptHashOptionsOnManual = m_qsettings->value("hashing/promptOnManual", true).toBool();
     m_settings.animationsEnabled = m_qsettings->value("appearance/animations", true).toBool();
     
     QString themeName = m_qsettings->value("appearance/theme", "Cyber Dark").toString();
@@ -593,6 +602,10 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("hashing/bufferSizeKB", m_settings.hashBufferSizeKB);
     m_qsettings->setValue("hashing/useMemoryMapping", m_settings.useMemoryMapping);
     m_qsettings->setValue("hashing/maxConcurrent", m_settings.maxConcurrentHashes);
+    m_qsettings->setValue("hashing/defaultScope", hashScopeToString(m_settings.defaultHashScope));
+    m_qsettings->setValue("hashing/defaultScanMode", hashScanModeToString(m_settings.defaultHashScanMode));
+    m_qsettings->setValue("hashing/resumeCheckpoints", m_settings.hashResumeCheckpoints);
+    m_qsettings->setValue("hashing/promptOnManual", m_settings.promptHashOptionsOnManual);
     m_qsettings->setValue("appearance/animations", m_settings.animationsEnabled);
     m_qsettings->setValue("general/appModule", appModuleToString(m_settings.appModule));
     m_qsettings->setValue("security/defaultVerificationProfile", verificationProfileToString(m_settings.defaultVerificationProfile));
@@ -968,7 +981,9 @@ void MainWindow::handleKnownDevice(const DeviceInfo& device, const DeviceRecord&
 
 void MainWindow::onHashStarted(const QString& jobId, const QString& deviceNode)
 {
-    m_hashJobDevices[jobId] = deviceNode;
+    if (!m_hashJobDevices.contains(jobId)) {
+        m_hashJobDevices[jobId] = deviceNode;
+    }
     m_activeHashCount++;
     
     DeviceCard* card = getDeviceCard(deviceNode);
@@ -982,7 +997,8 @@ void MainWindow::onHashStarted(const QString& jobId, const QString& deviceNode)
 }
 
 void MainWindow::onHashProgress(const QString& jobId, double progress,
-                                 quint64 /*bytesProcessed*/, double speedMBps)
+                                 quint64 bytesProcessed, double speedMBps,
+                                 double etaSeconds, quint64 totalBytes)
 {
     QString deviceNode = m_hashJobDevices.value(jobId);
     if (deviceNode.isEmpty()) return;
@@ -991,12 +1007,21 @@ void MainWindow::onHashProgress(const QString& jobId, double progress,
     if (card) {
         card->setHashProgress(progress);
         card->setHashSpeed(speedMBps);
+        card->setHashEta(etaSeconds);
+        card->setHashBytes(bytesProcessed, totalBytes);
     }
-    
-    // Update status bar
-    m_hashStatusLabel->setText(QString("Hashing: %1% @ %2 MB/s")
+
+    QString etaText;
+    if (etaSeconds > 1.0) {
+        const int mins = static_cast<int>(etaSeconds) / 60;
+        const int secs = static_cast<int>(etaSeconds) % 60;
+        etaText = mins > 0 ? QString(" · ETA %1m %2s").arg(mins).arg(secs, 2, 10, QChar('0'))
+                           : QString(" · ETA %1s").arg(secs);
+    }
+    m_hashStatusLabel->setText(QString("Hashing: %1% @ %2 MB/s%3")
         .arg(static_cast<int>(progress * 100))
-        .arg(speedMBps, 0, 'f', 1));
+        .arg(speedMBps, 0, 'f', 1)
+        .arg(etaText));
 }
 
 void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
@@ -1016,7 +1041,9 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
     }
     
     const PendingHashAction pending = m_pendingHashActions.take(deviceNode);
-    const QString deviceId = canonicalDeviceId(*deviceInfo);
+    const HashJobContext ctx = m_hashJobContext.value(jobId);
+    m_hashJobContext.remove(jobId);
+    const QString deviceId = ctx.storageId.isEmpty() ? canonicalDeviceId(*deviceInfo) : ctx.storageId;
     auto record = m_database->getDevice(deviceId);
     
     auto finishVerified = [&]() {
@@ -1088,7 +1115,8 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             }
         }
     } else {
-        m_database->updateHash(deviceId, result.hash, result.algorithm, result.durationMs);
+        m_database->updateHash(deviceId, result.hash, result.algorithm, result.durationMs,
+                               result.hashScopeLabel, result.scanModeLabel);
         logMessage(QString("Hash stored for %1").arg(deviceInfo->displayName()));
         {
             VerifyHistoryEntry he;
@@ -1166,13 +1194,20 @@ void MainWindow::onHashCancelled(const QString& jobId)
     DeviceCard* card = getDeviceCard(deviceNode);
     if (card) {
         card->setProgressVisible(false);
+        const VerificationStatus prior = m_preHashStatus.take(deviceNode);
+        if (prior != VerificationStatus::Unknown) {
+            card->setVerificationStatus(prior);
+        } else {
+            card->setVerificationStatus(VerificationStatus::Pending);
+        }
     }
-    
+    m_hashJobContext.remove(jobId);
+
     if (m_activeHashCount == 0) {
         m_trayIcon->setHashingActive(false);
         m_hashStatusLabel->clear();
     }
-    
+
     updateSidebarStats();
 }
 
@@ -1220,7 +1255,13 @@ void MainWindow::onUnmountCompleted(const MountManager::UnmountResult& result)
         if (result.success) {
             logMessage(QString("Unmounted %1; starting hash").arg(result.deviceNode));
             m_deviceMonitor->rescan();
-            startHashing(result.deviceNode, true);
+            if (m_pendingHashLaunch.contains(result.deviceNode)) {
+                const PendingHashLaunch pending = m_pendingHashLaunch.take(result.deviceNode);
+                startHashJob(result.deviceNode, pending.hashDeviceNode, pending.scope,
+                             pending.mode, pending.resume);
+            } else {
+                startHashing(result.deviceNode, true);
+            }
         } else {
             logMessage(QString("Pre-hash unmount failed for %1: %2")
                            .arg(result.deviceNode, result.errorMessage),
@@ -1628,6 +1669,14 @@ DeviceCard* MainWindow::addDeviceCard(const DeviceInfo& device)
     connect(card, &DeviceCard::unmountRequested, this, &MainWindow::onUnmountRequested);
     connect(card, &DeviceCard::ejectRequested, this, &MainWindow::onEjectRequested);
     connect(card, &DeviceCard::rehashRequested, this, &MainWindow::onRehashRequested);
+    connect(card, &DeviceCard::cancelHashRequested, this, [this](const QString& node) {
+        for (auto it = m_hashJobDevices.constBegin(); it != m_hashJobDevices.constEnd(); ++it) {
+            if (it.value() == node) {
+                m_hashWorker->cancelHash(it.key());
+                break;
+            }
+        }
+    });
     connect(card, &DeviceCard::watchListRequested, this, &MainWindow::onWatchListRequested);
     connect(card, &DeviceCard::acceptFingerprintRequested,
             this, &MainWindow::onAcceptFingerprintRequested);
@@ -1667,41 +1716,153 @@ void MainWindow::updateDeviceCard(const DeviceInfo& device)
     }
 }
 
-void MainWindow::startHashing(const QString& deviceNode, bool skipUnmount)
-{
-    if (m_hashJobDevices.values().contains(deviceNode)) {
-        return;
-    }
 
+
+int MainWindow::partitionCountFor(const DeviceInfo& device) const
+{
+    const QString drive = driveKey(device);
+    int count = 0;
+    for (const DeviceInfo& part : m_deviceMonitor->connectedDevices()) {
+        if (driveKey(part) == drive) {
+            ++count;
+        }
+    }
+    return qMax(1, count);
+}
+
+QString MainWindow::resolveHashDeviceNode(const DeviceInfo& device, HashScope scope) const
+{
+    if (scope == HashScope::WholeDisk && !device.parentDevice.isEmpty()) {
+        return device.parentDevice;
+    }
+    return device.deviceNode;
+}
+
+QString MainWindow::hashStorageIdFor(const DeviceInfo& device, HashScope scope) const
+{
+    if (scope == HashScope::WholeDisk) {
+        return device.uniqueId() + QStringLiteral("_WHOLEDISK");
+    }
+    return m_database->canonicalUniqueId(device);
+}
+
+void MainWindow::promptAndStartHash(const QString& deviceNode, bool allowDialog)
+{
     auto deviceInfo = m_deviceMonitor->getDevice(deviceNode);
     if (!deviceInfo) {
         return;
     }
 
-    if (!skipUnmount) {
+    HashScope scope = m_settings.defaultHashScope;
+    HashScanMode mode = m_settings.defaultHashScanMode;
+    bool resume = false;
+
+    const int parts = partitionCountFor(*deviceInfo);
+    const QString deviceId = m_database->canonicalUniqueId(*deviceInfo);
+    auto record = m_database->getDevice(deviceId);
+    const bool hasBaseline = record && record->watchManifest.hasBaseline();
+
+    const QString algo = record && !record->hashAlgorithm.isEmpty() ? record->hashAlgorithm
+                                                                      : m_settings.hashAlgorithm;
+    const QString hashNodePreview = resolveHashDeviceNode(*deviceInfo, scope);
+    const bool hasCheckpoint =
+        m_settings.hashResumeCheckpoints
+        && HashCheckpointStore::instance()
+               .checkpointFor(hashNodePreview, algo, hashScanModeToString(mode))
+               .has_value();
+
+    const bool needDialog = allowDialog && m_settings.promptHashOptionsOnManual
+        && (parts > 1 || hasBaseline || hasCheckpoint);
+
+    if (needDialog) {
+        HashOptionsDialog dlg(*deviceInfo, parts, hasBaseline, hasCheckpoint, scope, mode, this);
+        if (dlg.exec() != QDialog::Accepted || !dlg.choice().accepted) {
+            return;
+        }
+        scope = dlg.choice().scope;
+        mode = dlg.choice().scanMode;
+        resume = dlg.choice().resumeFromCheckpoint;
+    } else if (hasCheckpoint && m_settings.hashResumeCheckpoints && mode == HashScanMode::Full) {
+        resume = true;
+    }
+
+    if (mode == HashScanMode::WatchManifestOnly) {
+        startManifestVerification(deviceNode);
+        return;
+    }
+
+    const QString hashNode = resolveHashDeviceNode(*deviceInfo, scope);
+    startHashJob(deviceNode, hashNode, scope, mode, resume);
+}
+
+void MainWindow::startHashJob(const QString& uiDeviceNode, const QString& hashDeviceNode,
+                              HashScope scope, HashScanMode mode, bool resume)
+{
+    auto deviceInfo = m_deviceMonitor->getDevice(uiDeviceNode);
+    if (!deviceInfo) {
+        return;
+    }
+
+    DeviceCard* card = getDeviceCard(uiDeviceNode);
+    if (card) {
+        m_preHashStatus[uiDeviceNode] = card->verificationStatus();
+    }
+
+    const QString storageId = hashStorageIdFor(*deviceInfo, scope);
+
+    if (!m_unmountBeforeHash.contains(uiDeviceNode)) {
         const bool mounted = deviceInfo->isMounted
-            || !m_mountManager->getMountPoint(deviceNode).isEmpty();
-        if (mounted) {
-            logMessage(QString("Unmounting %1 before hash verification").arg(deviceNode));
-            m_unmountBeforeHash.insert(deviceNode);
-            m_mountManager->unmount(deviceNode);
+            || !m_mountManager->getMountPoint(uiDeviceNode).isEmpty();
+        if (mounted && hashDeviceNode == uiDeviceNode) {
+            logMessage(QString("Unmounting %1 before hash verification").arg(uiDeviceNode));
+            m_unmountBeforeHash.insert(uiDeviceNode);
+            m_pendingHashLaunch[uiDeviceNode] = {hashDeviceNode, scope, mode, resume};
+            m_mountManager->unmount(uiDeviceNode);
             return;
         }
     }
 
     HashWorker::HashJob job;
-    job.deviceNode = deviceNode;
+    job.deviceNode = hashDeviceNode;
+    job.scope = scope;
+    job.scanMode = mode;
+    job.resumeFromCheckpoint = resume;
+    job.canonicalStorageId = storageId;
     job.bufferSizeKB = m_settings.hashBufferSizeKB;
-    job.useMemoryMapping = m_settings.useMemoryMapping;
+    job.useMemoryMapping = m_settings.useMemoryMapping && mode == HashScanMode::Full && !resume;
 
-    if (auto record = m_database->getDevice(*deviceInfo)) {
+    if (auto record = m_database->getDevice(storageId)) {
         job.algorithm = HashWorker::algorithmFromName(
             record->hashAlgorithm.isEmpty() ? m_settings.hashAlgorithm : record->hashAlgorithm);
     } else {
         job.algorithm = HashWorker::algorithmFromName(m_settings.hashAlgorithm);
     }
 
-    m_hashWorker->startHash(job);
+    const QString jobId = m_hashWorker->startHash(job);
+    m_hashJobDevices[jobId] = uiDeviceNode;
+    HashJobContext ctx;
+    ctx.uiDeviceNode = uiDeviceNode;
+    ctx.storageId = storageId;
+    ctx.scope = scope;
+    ctx.scanMode = mode;
+    m_hashJobContext[jobId] = ctx;
+}
+
+
+void MainWindow::startHashing(const QString& deviceNode, bool skipUnmount)
+{
+    if (m_hashJobDevices.values().contains(deviceNode)) {
+        return;
+    }
+    if (skipUnmount) {
+        if (m_pendingHashLaunch.contains(deviceNode)) {
+            const PendingHashLaunch pending = m_pendingHashLaunch.take(deviceNode);
+            startHashJob(deviceNode, pending.hashDeviceNode, pending.scope, pending.mode,
+                         pending.resume);
+            return;
+        }
+    }
+    promptAndStartHash(deviceNode, false);
 }
 
 QString MainWindow::canonicalDeviceId(const DeviceInfo& device)

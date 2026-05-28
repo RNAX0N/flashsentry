@@ -47,6 +47,7 @@ Built with Qt6 for Arch Linux: tray integration, polkit for safe mounting, and a
 - **Whitelist & trust levels** — remember devices, prompt on unknown or modified content
 - **Secure mounting** — UDisks2 + polkit (`noexec`, `nosuid`, `nodev` by default)
 - **System tray** — background operation with notifications (optional libnotify)
+- **Smarter hashing** — partition or whole-disk target, quick sample vs full read, cancel + ETA, resume checkpoints
 - **Themes** — Cyber Dark, Neon Purple, Matrix Green, Blade Runner, Ghost White
 
 ### Advanced (optional)

@@ -56,7 +56,7 @@ void MainWindow::startDeviceVerification(const QString& deviceNode)
     }
 
     if (profile == VerificationProfile::FullPartition) {
-        startHashing(deviceNode);
+        promptAndStartHash(deviceNode, false);
         return;
     }
 

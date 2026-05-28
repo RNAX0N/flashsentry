@@ -34,6 +34,9 @@ set(SOURCES
     src/DeviceMonitor.cpp
     src/HashWorker.cpp
     src/RawDeviceHash.cpp
+    src/RawDeviceHashAdvanced.cpp
+    src/HashCheckpoint.cpp
+    src/HashOptionsDialog.cpp
     src/MerkleTree.cpp
     src/ManifestService.cpp
     src/ManifestWorker.cpp
@@ -70,6 +73,9 @@ set(HEADERS
     include/DeviceMonitor.h
     include/HashWorker.h
     include/RawDeviceHash.h
+    include/RawDeviceHashAdvanced.h
+    include/HashCheckpoint.h
+    include/HashOptionsDialog.h
     include/MerkleTree.h
     include/ManifestService.h
     include/ManifestWorker.h
@@ -141,6 +147,7 @@ configure_file(
 add_executable(flashsentry-read-helper
     src/flashsentry-read-helper.cpp
     src/RawDeviceHash.cpp
+    src/RawDeviceHashAdvanced.cpp
 )
 target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
 target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})

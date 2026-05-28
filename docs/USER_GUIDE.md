@@ -136,6 +136,26 @@ Use when you need a fingerprint of **every byte** on the partition.
 ---
 
 
+
+## Smarter hashing (1.5+)
+
+FlashSentry can fingerprint **one partition** or the **entire block device** when several partitions share the same USB drive.
+
+| Scan mode | Speed | Use when |
+|-----------|-------|----------|
+| **Full partition read** | Slowest | You need a byte-for-byte baseline |
+| **Quick sample** | Fast | Spot-check: first/last MiB plus spaced samples (stored as `SHA256-QUICK`) |
+| **Watch folders only** | Fastest | You already built a Merkle watch-list baseline |
+
+During a long full scan:
+
+- Click **Cancel** on the device card to stop; progress is saved in `hash-checkpoints.json` when resume is enabled in Settings.
+- The card shows **percent**, **GiB done/total**, **MB/s**, and **ETA**.
+
+Configure defaults under **Settings → Hashing → Smarter hashing**. Click **Rehash / Verify** to pick scope and mode per run.
+
+---
+
 ## Verify history (sidebar)
 
 The main window sidebar lists recent verification results (full-disk hash, watch-folder manifest, and ISO/image scans). Entries are stored in `~/.config/FlashSentry/verify-history.json` (up to 500 events).

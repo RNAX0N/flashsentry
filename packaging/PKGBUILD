@@ -8,7 +8,7 @@
 #
 pkgname=flashsentry
 pkgver=1.4.2
-pkgrel=5
+pkgrel=6
 pkgdesc="USB and ISO security monitor - verify Linux ISOs, watch folders, optional full-disk hash"
 arch=('x86_64' 'aarch64')
 url="https://github.com/RNAX0N/flashsentry"
@@ -38,6 +38,7 @@ backup=('etc/flashsentry/config.json')
 install=flashsentry.install
 
 _repo_root="$(cd -- "${startdir}/.." && pwd)"
+_staging="${srcdir}/${pkgname}-${pkgver}"
 
 if [ "${FLASHSENTRY_RELEASE:-0}" = 1 ]; then
     source=(
@@ -49,96 +50,64 @@ else
     sha256sums=()
 fi
 
-pkgver() {
-  local dir
-  if [ "${FLASHSENTRY_RELEASE:-0}" = 1 ]; then
-    dir="${srcdir}/${pkgname}-${pkgver}"
-  else
-    dir="${_repo_root}"
-  fi
-  cd "${dir}" || return 1
-  _base="$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "${pkgver}")"
-  if [ "${FLASHSENTRY_RELEASE:-0}" = 1 ]; then
-    printf '%s' "${_base}"
-    return
-  fi
-  _commits="$(git rev-list --count HEAD)"
-  _hash="$(git rev-parse --short=7 HEAD)"
-  printf '%s.r%s.g%s' "${_base}" "${_commits}" "${_hash}"
-}
-
-_srcroot() {
-  echo "${srcdir}/${pkgname}-${pkgver}"
-}
-
 prepare() {
   if [ "${FLASHSENTRY_RELEASE:-0}" != 1 ]; then
-    # Staging name must match PKGBUILD pkgver (1.4.2) before pkgver() bumps it;
-    # makepkg then renames this directory to ${pkgname}-${pkgver} from pkgver().
-    local staging="${srcdir}/${pkgname}-1.4.2"
-    rm -rf "${staging}"
-    mkdir -p "${staging}"
+    rm -rf "${_staging}"
+    mkdir -p "${_staging}"
     rsync -a --delete \
       --exclude 'pkg' \
       --exclude 'packaging/pkg' \
       --exclude 'packaging/src' \
       --exclude 'build' \
       --exclude 'packaging/build' \
-      "${_repo_root}/" "${staging}/"
-  else
-    cd "${srcdir}/${pkgname}-${pkgver}"
-    mkdir -p build
+      "${_repo_root}/" "${_staging}/"
   fi
+  cd "${_staging}"
+  mkdir -p build
 }
 
 build() {
-  local root="$(_srcroot)"
-  mkdir -p "${root}/build"
-  cd "${root}/build"
-
+  cd "${_staging}/build"
   cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr \
     -DCMAKE_INSTALL_LIBDIR=lib \
     -DFLASHSENTRY_BUILD_TESTS=ON \
     -Wno-dev
-
   cmake --build . --parallel
 }
 
 check() {
-  cd "$(_srcroot)/build"
+  cd "${_staging}/build"
   if [ -f CTestTestfile.cmake ]; then
     ctest --output-on-failure
   fi
 }
 
 package() {
-  local root="$(_srcroot)"
-  cd "${root}/build"
-
+  cd "${_staging}/build"
   DESTDIR="${pkgdir}" cmake --install .
 
-  install -Dm644 "${root}/packaging/config.json.default" \
+  install -Dm644 "${_staging}/packaging/config.json.default" \
     "${pkgdir}/etc/flashsentry/config.json" 2>/dev/null || true
 
   for size in 16 32 48 64 128 256; do
-    if [ -f "${root}/resources/icons/flashsentry-${size}.png" ]; then
-      install -Dm644 "${root}/resources/icons/flashsentry-${size}.png" \
+    if [ -f "${_staging}/resources/icons/flashsentry-${size}.png" ]; then
+      install -Dm644 "${_staging}/resources/icons/flashsentry-${size}.png" \
         "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/flashsentry.png"
     fi
   done
 
-  install -Dm644 "${root}/resources/icons/flashsentry.svg" \
+  install -Dm644 "${_staging}/resources/icons/flashsentry.svg" \
     "${pkgdir}/usr/share/icons/hicolor/scalable/apps/flashsentry.svg"
 
-  if [ -f "${root}/packaging/flashsentry.bash" ]; then
-    install -Dm644 "${root}/packaging/flashsentry.bash" \
+  if [ -f "${_staging}/packaging/flashsentry.bash" ]; then
+    install -Dm644 "${_staging}/packaging/flashsentry.bash" \
       "${pkgdir}/usr/share/bash-completion/completions/flashsentry"
   fi
 
-  if [ -f "${root}/packaging/flashsentry.zsh" ]; then
-    install -Dm644 "${root}/packaging/flashsentry.zsh" \
+  if [ -f "${_staging}/packaging/flashsentry.zsh" ]; then
+    install -Dm644 "${_staging}/packaging/flashsentry.zsh" \
       "${pkgdir}/usr/share/zsh/site-functions/_flashsentry"
   fi
 }

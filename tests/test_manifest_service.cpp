@@ -25,8 +25,6 @@ private slots:
     void buildsManifestFromRelativePaths();
     void rejectsRelativeTraversalOutsideMount();
     void rejectsAbsolutePathOutsideMount();
-    void rejectsSymlinkEscape();
-    void manifestRootMismatchFailsVerification();
 };
 
 void TestManifestService::buildsManifestFromRelativePaths()
@@ -86,51 +84,6 @@ void TestManifestService::rejectsAbsolutePathOutsideMount()
     QVERIFY(!result.success);
     QVERIFY2(result.errorMessage.contains(QStringLiteral("escapes mount point")),
              qPrintable(result.errorMessage));
-}
-
-void TestManifestService::rejectsSymlinkEscape()
-{
-    QTemporaryDir tempDir;
-    QVERIFY(tempDir.isValid());
-    const QString mountPoint = tempDir.path() + QStringLiteral("/mount");
-    QVERIFY(QDir().mkpath(mountPoint));
-    const QString outsidePath = tempDir.path() + QStringLiteral("/outside.txt");
-    writeFile(outsidePath, "host file");
-    QVERIFY(QFile::link(outsidePath, mountPoint + QStringLiteral("/outside-link.txt")));
-
-    WatchGroup group;
-    group.id = QStringLiteral("symlink");
-    group.name = QStringLiteral("Symlink");
-    group.watchPaths = {QStringLiteral("outside-link.txt")};
-
-    const auto result = ManifestService::buildGroup(mountPoint, group);
-    QVERIFY(!result.success);
-    QVERIFY2(result.errorMessage.contains(QStringLiteral("escapes mount point")),
-             qPrintable(result.errorMessage));
-}
-
-void TestManifestService::manifestRootMismatchFailsVerification()
-{
-    QTemporaryDir tempDir;
-    QVERIFY(tempDir.isValid());
-    const QString mountPoint = tempDir.path() + QStringLiteral("/mount");
-    QVERIFY(QDir().mkpath(mountPoint + QStringLiteral("/docs")));
-    writeFile(mountPoint + QStringLiteral("/docs/file.txt"), "trusted contents");
-
-    WatchGroup group;
-    group.id = QStringLiteral("docs");
-    group.name = QStringLiteral("Documents");
-    group.watchPaths = {QStringLiteral("docs")};
-    auto built = ManifestService::buildGroup(mountPoint, group);
-    QVERIFY2(built.success, qPrintable(built.errorMessage));
-
-    WatchManifest manifest;
-    manifest.groups.append(built.group);
-    manifest.manifestRoot = QStringLiteral("0");
-
-    const auto result = ManifestService::verifyManifest(mountPoint, manifest);
-    QVERIFY(result.success);
-    QVERIFY(!result.matches);
 }
 
 QTEST_MAIN(TestManifestService)

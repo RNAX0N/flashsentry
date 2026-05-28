@@ -1,4 +1,5 @@
 #include "RawDeviceHash.h"
+#include "RawDeviceHashAdvanced.h"
 
 #include <QProcess>
 #include <QProcessEnvironment>
@@ -445,12 +446,29 @@ uint64_t deviceSize(int fd, const QString& deviceNode)
     return size;
 }
 
+void closeDevice(int fd)
+{
+    if (fd >= 0) {
+        ::close(fd);
+    }
+}
+
+
 HashResult hashOpenFd(int fd, const Options& options)
 {
     HashResult result;
     result.deviceNode = options.deviceNode;
 
     const uint64_t size = deviceSize(fd, options.deviceNode);
+    if (size == 0) {
+        result.errorMessage = QStringLiteral("Device size is 0");
+        return result;
+    }
+
+    if (options.scanMode == ScanMode::QuickSample || options.checkpointOut
+        || options.resumeFromBytes > 0) {
+        return hashAdvanced(fd, options, size);
+    }
 
     if (options.useMemoryMapping && size > 0) {
         result = hashMmapLoop(fd, options, size);

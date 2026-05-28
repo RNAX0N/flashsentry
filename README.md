@@ -42,10 +42,12 @@ Built with Qt6 for Arch Linux: tray integration, polkit for safe mounting, and a
 
 ### USB monitoring (all modes)
 
+| **Verify history** | Sidebar log of hash, manifest, and ISO results; click a device card to filter and open ISO verify |
 - **Real-time device monitoring** — libudev, no polling
 - **Whitelist & trust levels** — remember devices, prompt on unknown or modified content
 - **Secure mounting** — UDisks2 + polkit (`noexec`, `nosuid`, `nodev` by default)
 - **System tray** — background operation with notifications (optional libnotify)
+- **Smarter hashing** — partition or whole-disk target, quick sample vs full read, cancel + ETA, resume checkpoints
 - **Themes** — Cyber Dark, Neon Purple, Matrix Green, Blade Runner, Ghost White
 
 ### Advanced (optional)
@@ -67,7 +69,7 @@ If you only need “is this entire stick bit-for-bit the same as last time?”, 
 
 ![FlashSentry main window](docs/images/main-window.png)
 
-After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/) (ISO verify report, watch lists).
+After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/). See [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) for capture guidance.
 
 | View | Status |
 |------|--------|
@@ -82,7 +84,7 @@ After `sudo cmake --install build --prefix /usr`, open the installed guides unde
 ```bash
 git clone https://github.com/RNAX0N/flashsentry.git
 cd flashsentry/packaging
-makepkg -si
+./build-package.sh -si
 ```
 
 ### Runtime dependencies

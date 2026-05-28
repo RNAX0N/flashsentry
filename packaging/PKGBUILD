@@ -7,9 +7,8 @@
 #   cd packaging && FLASHSENTRY_RELEASE=1 makepkg -si
 #
 pkgname=flashsentry
-# Sync with ../VERSION — pkgver() appends git metadata for local builds
 pkgver=1.4.2
-pkgrel=4
+pkgrel=5
 pkgdesc="USB and ISO security monitor - verify Linux ISOs, watch folders, optional full-disk hash"
 arch=('x86_64' 'aarch64')
 url="https://github.com/RNAX0N/flashsentry"
@@ -68,29 +67,34 @@ pkgver() {
   printf '%s.r%s.g%s' "${_base}" "${_commits}" "${_hash}"
 }
 
-# After pkgver(), makepkg uses ${pkgname}-${pkgver} (see makepkg rename step)
 _srcroot() {
   echo "${srcdir}/${pkgname}-${pkgver}"
 }
 
 prepare() {
   if [ "${FLASHSENTRY_RELEASE:-0}" != 1 ]; then
-    rm -rf "${srcdir}/${pkgname}"
-    mkdir -p "${srcdir}/${pkgname}"
+    # Staging name must match PKGBUILD pkgver (1.4.2) before pkgver() bumps it;
+    # makepkg then renames this directory to ${pkgname}-${pkgver} from pkgver().
+    local staging="${srcdir}/${pkgname}-1.4.2"
+    rm -rf "${staging}"
+    mkdir -p "${staging}"
     rsync -a --delete \
       --exclude 'pkg' \
       --exclude 'packaging/pkg' \
       --exclude 'packaging/src' \
       --exclude 'build' \
       --exclude 'packaging/build' \
-      "${_repo_root}/" "${srcdir}/${pkgname}/"
+      "${_repo_root}/" "${staging}/"
+  else
+    cd "${srcdir}/${pkgname}-${pkgver}"
+    mkdir -p build
   fi
-  cd "${srcdir}/${pkgname}"
-  mkdir -p build
 }
 
 build() {
-  cd "$(_srcroot)/build"
+  local root="$(_srcroot)"
+  mkdir -p "${root}/build"
+  cd "${root}/build"
 
   cmake .. \
     -DCMAKE_BUILD_TYPE=Release \

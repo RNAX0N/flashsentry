@@ -17,7 +17,9 @@ cd packaging
 ./build-package.sh -si
 ```
 
-This builds the **parent directory’s git tree** (no GitHub archive). The package version is `1.4.2.r<commits>.g<hash>` from `VERSION` plus git metadata.
+This **rsyncs the parent directory** into the build (no `git+file://` download).
+
+If an older PKGBUILD failed with *“is not a clone of file://…packaging/..”*, run `./build-package.sh -C` once to clear `pkg/` and `src/`, then `./build-package.sh -si` again. The package version is `1.4.2.r<commits>.g<hash>` from `VERSION` plus git metadata.
 
 ## Release tarball install (maintainers)
 

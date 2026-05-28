@@ -37,7 +37,9 @@ set(SOURCES
     src/main.cpp
     src/MainWindow.cpp
     src/MainWindow_verify_ext.cpp
+    src/MainWindow_badusb_ext.cpp
     src/DeviceMonitor.cpp
+    src/HidDeviceMonitor.cpp
     src/HashWorker.cpp
     src/RawDeviceHash.cpp
     src/RawDeviceHashAdvanced.cpp
@@ -55,6 +57,10 @@ set(SOURCES
     src/IsoVerifyCache.cpp
     src/IsoVerifyReport.cpp
     src/AuditLog.cpp
+    src/BadUsbBaselineStore.cpp
+    src/BadUsbAnalyzer.cpp
+    src/BadUsbWidget.cpp
+    src/UsbmonCapture.cpp
     src/VerifyCli.cpp
     src/IsoVerifySettingsLoader.cpp
     src/SettingsProfiles.cpp
@@ -77,6 +83,7 @@ set(SOURCES
 set(HEADERS
     include/MainWindow.h
     include/DeviceMonitor.h
+    include/HidDeviceMonitor.h
     include/HashWorker.h
     include/RawDeviceHash.h
     include/RawDeviceHashAdvanced.h
@@ -94,6 +101,10 @@ set(HEADERS
     include/IsoVerifyCache.h
     include/IsoVerifyReport.h
     include/AuditLog.h
+    include/BadUsbBaselineStore.h
+    include/BadUsbAnalyzer.h
+    include/BadUsbWidget.h
+    include/UsbmonCapture.h
     include/VerifyCli.h
     include/IsoVerifySettingsLoader.h
     include/SettingsProfiles.h

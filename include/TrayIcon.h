@@ -118,6 +118,7 @@ public:
                               double speedMBps);
 
     void notifyIsoVerifySummary(const QString& deviceName, int passed, int total, int needsSidecar);
+    void notifyBadUsbAnomaly(const BadUsbAnomalyResult& anomaly);
 
     /**
      * @brief Enable or disable notifications

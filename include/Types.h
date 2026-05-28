@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QJsonValue>
 #include <QMetaType>
+#include <QCryptographicHash>
 #include <cstdint>
 
 namespace FlashSentry {
@@ -226,17 +227,221 @@ struct ManifestVerifyResult {
     uint64_t durationMs = 0;
 };
 
-enum class AppModule { UsbMonitor, IsoVerifier };
+struct HidInterfaceInfo {
+    QString number;
+    QString interfaceClass;
+    QString interfaceSubClass;
+    QString interfaceProtocol;
+    QString driver;
+
+    QString signature() const {
+        return QStringLiteral("%1:%2:%3:%4:%5")
+            .arg(number, interfaceClass, interfaceSubClass, interfaceProtocol, driver);
+    }
+
+    QJsonObject toJson() const {
+        QJsonObject obj;
+        obj["number"] = number;
+        obj["class"] = interfaceClass;
+        obj["subclass"] = interfaceSubClass;
+        obj["protocol"] = interfaceProtocol;
+        obj["driver"] = driver;
+        return obj;
+    }
+
+    static HidInterfaceInfo fromJson(const QJsonObject& obj) {
+        HidInterfaceInfo info;
+        info.number = obj["number"].toString();
+        info.interfaceClass = obj["class"].toString();
+        info.interfaceSubClass = obj["subclass"].toString();
+        info.interfaceProtocol = obj["protocol"].toString();
+        info.driver = obj["driver"].toString();
+        return info;
+    }
+};
+
+struct HidDeviceInfo {
+    QString sysPath;
+    QString devNode;
+    QString usbPath;
+    QString usbBus;
+    QString usbPort;
+    QString vendorId;
+    QString productId;
+    QString serial;
+    QString manufacturer;
+    QString product;
+    QString driver;
+    QStringList capabilities;
+    QList<HidInterfaceInfo> interfaces;
+    QDateTime seenAtUtc;
+
+    QString displayName() const {
+        if (!product.isEmpty()) return product;
+        if (!manufacturer.isEmpty()) return manufacturer;
+        if (!devNode.isEmpty()) return devNode;
+        return QStringLiteral("USB HID device");
+    }
+
+    bool isKeyboard() const {
+        return capabilities.contains(QStringLiteral("keyboard"));
+    }
+
+    bool isMouse() const {
+        return capabilities.contains(QStringLiteral("mouse"));
+    }
+
+    QString stableId() const {
+        const QString identity = QStringList{vendorId, productId, serial, usbPath}.join(QLatin1Char(':'));
+        if (!vendorId.isEmpty() && !productId.isEmpty()
+            && (!serial.isEmpty() || !usbPath.isEmpty())) {
+            return identity;
+        }
+        const QByteArray digest =
+            QCryptographicHash::hash((identity + sysPath + devNode).toUtf8(),
+                                     QCryptographicHash::Sha256).toHex();
+        return QStringLiteral("hid:%1").arg(QString::fromLatin1(digest.left(16)));
+    }
+
+    QStringList interfaceSignatures() const {
+        QStringList out;
+        for (const HidInterfaceInfo& iface : interfaces) {
+            out.append(iface.signature());
+        }
+        out.sort();
+        out.removeDuplicates();
+        return out;
+    }
+
+    QJsonObject toJson() const {
+        QJsonObject obj;
+        obj["stable_id"] = stableId();
+        obj["sys_path"] = sysPath;
+        obj["dev_node"] = devNode;
+        obj["usb_path"] = usbPath;
+        obj["usb_bus"] = usbBus;
+        obj["usb_port"] = usbPort;
+        obj["vendor_id"] = vendorId;
+        obj["product_id"] = productId;
+        obj["serial"] = serial;
+        obj["manufacturer"] = manufacturer;
+        obj["product"] = product;
+        obj["driver"] = driver;
+        QJsonArray caps;
+        for (const QString& cap : capabilities) caps.append(cap);
+        obj["capabilities"] = caps;
+        QJsonArray ifaces;
+        for (const HidInterfaceInfo& iface : interfaces) ifaces.append(iface.toJson());
+        obj["interfaces"] = ifaces;
+        obj["seen_at"] = seenAtUtc.toString(Qt::ISODate);
+        return obj;
+    }
+
+    static HidDeviceInfo fromJson(const QJsonObject& obj) {
+        HidDeviceInfo info;
+        info.sysPath = obj["sys_path"].toString();
+        info.devNode = obj["dev_node"].toString();
+        info.usbPath = obj["usb_path"].toString();
+        info.usbBus = obj["usb_bus"].toString();
+        info.usbPort = obj["usb_port"].toString();
+        info.vendorId = obj["vendor_id"].toString();
+        info.productId = obj["product_id"].toString();
+        info.serial = obj["serial"].toString();
+        info.manufacturer = obj["manufacturer"].toString();
+        info.product = obj["product"].toString();
+        info.driver = obj["driver"].toString();
+        for (const QJsonValue& val : obj["capabilities"].toArray()) {
+            const QString cap = val.toString();
+            if (!cap.isEmpty()) info.capabilities.append(cap);
+        }
+        info.capabilities.removeDuplicates();
+        for (const QJsonValue& val : obj["interfaces"].toArray()) {
+            info.interfaces.append(HidInterfaceInfo::fromJson(val.toObject()));
+        }
+        info.seenAtUtc = QDateTime::fromString(obj["seen_at"].toString(), Qt::ISODate);
+        return info;
+    }
+};
+
+struct BadUsbBaselineEntry {
+    QString stableId;
+    HidDeviceInfo device;
+    bool trusted = false;
+    QDateTime firstSeenUtc;
+    QDateTime lastSeenUtc;
+    QString notes;
+
+    QJsonObject toJson() const {
+        QJsonObject obj = device.toJson();
+        obj["stable_id"] = stableId.isEmpty() ? device.stableId() : stableId;
+        obj["trusted"] = trusted;
+        obj["first_seen"] = firstSeenUtc.toString(Qt::ISODate);
+        obj["last_seen"] = lastSeenUtc.toString(Qt::ISODate);
+        obj["notes"] = notes;
+        return obj;
+    }
+
+    static BadUsbBaselineEntry fromJson(const QJsonObject& obj) {
+        BadUsbBaselineEntry entry;
+        entry.device = HidDeviceInfo::fromJson(obj);
+        entry.stableId = obj["stable_id"].toString(entry.device.stableId());
+        entry.trusted = obj["trusted"].toBool(false);
+        entry.firstSeenUtc = QDateTime::fromString(obj["first_seen"].toString(), Qt::ISODate);
+        entry.lastSeenUtc = QDateTime::fromString(obj["last_seen"].toString(), Qt::ISODate);
+        entry.notes = obj["notes"].toString();
+        return entry;
+    }
+};
+
+enum class BadUsbSeverity {
+    Info,
+    Warning,
+    Critical
+};
+
+struct BadUsbAnomalyResult {
+    bool anomalous = false;
+    BadUsbSeverity severity = BadUsbSeverity::Info;
+    QString ruleId;
+    QString summary;
+    QString detail;
+    HidDeviceInfo device;
+    QStringList relatedStorageNodes;
+    QDateTime detectedAtUtc;
+
+    QJsonObject toJson() const {
+        QJsonObject obj;
+        obj["anomalous"] = anomalous;
+        obj["severity"] = static_cast<int>(severity);
+        obj["rule_id"] = ruleId;
+        obj["summary"] = summary;
+        obj["detail"] = detail;
+        obj["device"] = device.toJson();
+        QJsonArray storage;
+        for (const QString& node : relatedStorageNodes) storage.append(node);
+        obj["related_storage_nodes"] = storage;
+        obj["detected_at"] = detectedAtUtc.toString(Qt::ISODate);
+        return obj;
+    }
+};
+
+enum class AppModule { UsbMonitor, IsoVerifier, BadUsbMonitor };
 
 inline AppModule appModuleFromString(const QString& s) {
     if (s == QLatin1String("iso_verifier") || s == QLatin1String("iso"))
         return AppModule::IsoVerifier;
+    if (s == QLatin1String("badusb_monitor") || s == QLatin1String("badusb"))
+        return AppModule::BadUsbMonitor;
     return AppModule::UsbMonitor;
 }
 
 inline QString appModuleToString(AppModule m) {
-    return m == AppModule::IsoVerifier ? QStringLiteral("iso_verifier")
-                                       : QStringLiteral("usb_monitor");
+    switch (m) {
+        case AppModule::IsoVerifier: return QStringLiteral("iso_verifier");
+        case AppModule::BadUsbMonitor: return QStringLiteral("badusb_monitor");
+        case AppModule::UsbMonitor: return QStringLiteral("usb_monitor");
+    }
+    return QStringLiteral("usb_monitor");
 }
 
 enum class IsoVerifySource {
@@ -428,6 +633,17 @@ struct AppSettings {
     int isoVerifyParallel = 2;
     bool showFirstRunWizard = true;
     QString settingsProfile = QStringLiteral("default");
+    bool badUsbEnabled = true;
+    bool badUsbAlertNewKeyboard = true;
+    bool badUsbAlertCompositeStorage = true;
+    bool badUsbAlertInterfaceDrift = true;
+    bool badUsbAlertRapidReconnect = true;
+    bool badUsbAutoBaselineTrusted = false;
+    bool badUsbConfirmAnomalies = true;
+    bool badUsbUsbmonEnabled = false;
+    bool badUsbUsbmonOnAnomalyOnly = true;
+    QString badUsbUsbmonCommand =
+        QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1");
 
     QJsonObject toJson() const {
         QJsonObject obj;
@@ -461,6 +677,16 @@ struct AppSettings {
         obj["iso_verify_parallel"] = isoVerifyParallel;
         obj["show_first_run_wizard"] = showFirstRunWizard;
         obj["settings_profile"] = settingsProfile;
+        obj["badusb_enabled"] = badUsbEnabled;
+        obj["badusb_alert_new_keyboard"] = badUsbAlertNewKeyboard;
+        obj["badusb_alert_composite_storage"] = badUsbAlertCompositeStorage;
+        obj["badusb_alert_interface_drift"] = badUsbAlertInterfaceDrift;
+        obj["badusb_alert_rapid_reconnect"] = badUsbAlertRapidReconnect;
+        obj["badusb_auto_baseline_trusted"] = badUsbAutoBaselineTrusted;
+        obj["badusb_confirm_anomalies"] = badUsbConfirmAnomalies;
+        obj["badusb_usbmon_enabled"] = badUsbUsbmonEnabled;
+        obj["badusb_usbmon_on_anomaly_only"] = badUsbUsbmonOnAnomalyOnly;
+        obj["badusb_usbmon_command"] = badUsbUsbmonCommand;
         return obj;
     }
 
@@ -503,6 +729,17 @@ struct AppSettings {
             }
             settings.settingsProfile = profile;
         }
+        settings.badUsbEnabled = obj["badusb_enabled"].toBool(true);
+        settings.badUsbAlertNewKeyboard = obj["badusb_alert_new_keyboard"].toBool(true);
+        settings.badUsbAlertCompositeStorage = obj["badusb_alert_composite_storage"].toBool(true);
+        settings.badUsbAlertInterfaceDrift = obj["badusb_alert_interface_drift"].toBool(true);
+        settings.badUsbAlertRapidReconnect = obj["badusb_alert_rapid_reconnect"].toBool(true);
+        settings.badUsbAutoBaselineTrusted = obj["badusb_auto_baseline_trusted"].toBool(false);
+        settings.badUsbConfirmAnomalies = obj["badusb_confirm_anomalies"].toBool(true);
+        settings.badUsbUsbmonEnabled = obj["badusb_usbmon_enabled"].toBool(false);
+        settings.badUsbUsbmonOnAnomalyOnly = obj["badusb_usbmon_on_anomaly_only"].toBool(true);
+        settings.badUsbUsbmonCommand = obj["badusb_usbmon_command"].toString(
+            QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1"));
         return settings;
     }
 };
@@ -545,3 +782,5 @@ Q_DECLARE_METATYPE(FlashSentry::VerificationStatus)
 Q_DECLARE_METATYPE(FlashSentry::ManifestVerifyResult)
 Q_DECLARE_METATYPE(FlashSentry::WatchManifest)
 Q_DECLARE_METATYPE(FlashSentry::IsoVerifyResult)
+Q_DECLARE_METATYPE(FlashSentry::HidDeviceInfo)
+Q_DECLARE_METATYPE(FlashSentry::BadUsbAnomalyResult)

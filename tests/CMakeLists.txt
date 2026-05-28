@@ -25,22 +25,22 @@ target_include_directories(test_merkle PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPE
 target_link_libraries(test_merkle PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
 add_test(NAME test_merkle COMMAND test_merkle)
 
-add_executable(test_manifest_service
-    test_manifest_service.cpp
-    ${CMAKE_SOURCE_DIR}/src/ManifestService.cpp
-    ${CMAKE_SOURCE_DIR}/src/MerkleTree.cpp
+add_executable(test_badusb_analyzer
+    test_badusb_analyzer.cpp
+    ${CMAKE_SOURCE_DIR}/src/BadUsbAnalyzer.cpp
 )
-target_include_directories(test_manifest_service PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
-target_link_libraries(test_manifest_service PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
-add_test(NAME test_manifest_service COMMAND test_manifest_service)
+target_include_directories(test_badusb_analyzer PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_badusb_analyzer PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_badusb_analyzer COMMAND test_badusb_analyzer)
 
-add_executable(test_raw_device_hash
-    test_raw_device_hash.cpp
-    ${CMAKE_SOURCE_DIR}/src/RawDeviceHash.cpp
+add_executable(test_badusb_baseline
+    test_badusb_baseline.cpp
+    ${CMAKE_SOURCE_DIR}/src/BadUsbBaselineStore.cpp
+    ${CMAKE_SOURCE_DIR}/include/BadUsbBaselineStore.h
 )
-target_include_directories(test_raw_device_hash PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
-target_link_libraries(test_raw_device_hash PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
-add_test(NAME test_raw_device_hash COMMAND test_raw_device_hash)
+target_include_directories(test_badusb_baseline PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_badusb_baseline PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_badusb_baseline COMMAND test_badusb_baseline)
 
 set(ISO_CATALOG_SOURCES
     ${CMAKE_SOURCE_DIR}/src/iso_catalog/IsoCatalogBuilders.cpp

@@ -62,6 +62,7 @@ MainWindow::MainWindow(QWidget* parent)
     
     // Start device monitoring
     m_deviceMonitor->startMonitoring();
+    configureBadUsbMonitoring();
     
     // Show tray icon
     if (TrayIcon::isSystemTrayAvailable()) {
@@ -81,6 +82,9 @@ MainWindow::~MainWindow()
     // Stop monitoring
     if (m_deviceMonitor) {
         m_deviceMonitor->stopMonitoring();
+    }
+    if (m_hidMonitor) {
+        m_hidMonitor->stopMonitoring();
     }
     
     // Cancel any pending hashes
@@ -140,6 +144,24 @@ void MainWindow::setupUi()
             });
 
     m_appModeStack->addWidget(m_isoWidget);
+    m_badUsbWidget = new BadUsbWidget;
+    connect(m_badUsbWidget, &BadUsbWidget::logMessageRequested,
+            this, &MainWindow::onIsoLogMessage);
+    connect(m_badUsbWidget, &BadUsbWidget::trustRequested,
+            this, &MainWindow::onBadUsbTrustRequested);
+    connect(m_badUsbWidget, &BadUsbWidget::captureRequested,
+            this, &MainWindow::onBadUsbCaptureRequested);
+    connect(m_badUsbWidget, &BadUsbWidget::refreshRequested, this, [this]() {
+        if (m_hidMonitor) {
+            m_hidMonitor->rescan();
+        }
+    });
+    connect(m_badUsbWidget, &BadUsbWidget::openCaptureFolderRequested, this, [this]() {
+        if (m_usbmonCapture) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(m_usbmonCapture->outputDirectory()));
+        }
+    });
+    m_appModeStack->addWidget(m_badUsbWidget);
     m_mainLayout->addWidget(m_appModeStack, 1);
     
     // Create status bar
@@ -180,6 +202,7 @@ QWidget* MainWindow::createHeader()
     m_modeTabBar = new QTabBar;
     m_modeTabBar->addTab(QStringLiteral("USB devices"));
     m_modeTabBar->addTab(QStringLiteral("ISO verify"));
+    m_modeTabBar->addTab(QStringLiteral("BadUSB"));
     m_modeTabBar->setDocumentMode(true);
     m_modeTabBar->setExpanding(false);
     m_modeTabBar->setStyleSheet(FSStyle.tabWidgetStyleSheet());
@@ -449,6 +472,14 @@ void MainWindow::initializeBackend()
     
     // Create tray icon
     m_trayIcon = std::make_unique<TrayIcon>(this);
+
+    m_hidMonitor = std::make_unique<HidDeviceMonitor>(this);
+    m_badUsbBaselineStore = std::make_unique<BadUsbBaselineStore>(this);
+    m_badUsbBaselineStore->initialize();
+    m_usbmonCapture = std::make_unique<UsbmonCapture>(this);
+    if (m_badUsbWidget) {
+        m_badUsbWidget->setBaselineCount(m_badUsbBaselineStore->allDevices().size());
+    }
 }
 
 void MainWindow::connectSignals()
@@ -466,6 +497,45 @@ void MainWindow::connectSignals()
             this, [this](const QString& error) {
                 logMessage(QString("Device monitor error: %1").arg(error), LogLevel::Error);
             });
+
+    connect(m_hidMonitor.get(), &HidDeviceMonitor::hidConnected,
+            this, &MainWindow::onHidConnected);
+    connect(m_hidMonitor.get(), &HidDeviceMonitor::hidDisconnected,
+            this, &MainWindow::onHidDisconnected);
+    connect(m_hidMonitor.get(), &HidDeviceMonitor::hidChanged,
+            this, &MainWindow::onHidChanged);
+    connect(m_hidMonitor.get(), &HidDeviceMonitor::monitorError, this, [this](const QString& error) {
+        logMessage(QStringLiteral("BadUSB monitor error: %1").arg(error), LogLevel::Error);
+    });
+    connect(m_hidMonitor.get(), &HidDeviceMonitor::initialScanComplete, this, [this](int count) {
+        logMessage(QStringLiteral("BadUSB HID scan complete: %1 device(s)").arg(count), LogLevel::Info);
+        if (m_badUsbWidget) {
+            m_badUsbWidget->setDevices({});
+            for (const HidDeviceInfo& info : m_hidMonitor->connectedDevices()) {
+                const auto baseline = m_badUsbBaselineStore->getDevice(info.stableId());
+                m_badUsbWidget->updateDevice(info, baseline.has_value() && baseline->trusted);
+            }
+        }
+    });
+    connect(m_badUsbBaselineStore.get(), &BadUsbBaselineStore::baselineChanged, this, [this]() {
+        if (m_badUsbWidget) {
+            m_badUsbWidget->setBaselineCount(m_badUsbBaselineStore->allDevices().size());
+        }
+    });
+    connect(m_usbmonCapture.get(), &UsbmonCapture::captureStarted, this, [this](const QString& path) {
+        logMessage(QStringLiteral("BadUSB usbmon capture started: %1").arg(path), LogLevel::Security);
+        if (m_badUsbWidget) m_badUsbWidget->setCaptureStatus(path);
+    });
+    connect(m_usbmonCapture.get(), &UsbmonCapture::captureFinished, this,
+            [this](const QString& path, int exitCode) {
+                logMessage(QStringLiteral("BadUSB usbmon capture finished (%1): %2").arg(exitCode).arg(path),
+                           LogLevel::Info);
+                if (m_badUsbWidget) m_badUsbWidget->setCaptureStatus(QStringLiteral("finished"));
+            });
+    connect(m_usbmonCapture.get(), &UsbmonCapture::captureFailed, this, [this](const QString& error) {
+        logMessage(QStringLiteral("BadUSB usbmon capture failed: %1").arg(error), LogLevel::Warning);
+        if (m_badUsbWidget) m_badUsbWidget->setCaptureStatus(error);
+    });
     
     // Hash worker signals
     connect(m_hashWorker.get(), &HashWorker::hashStarted,
@@ -543,6 +613,26 @@ void MainWindow::loadSettings()
     m_settings.isoPreferOfflineSidecars = m_qsettings->value("iso/preferOfflineSidecars", false).toBool();
     m_settings.isoVerifyParallel = m_qsettings->value("iso/verifyParallel", 2).toInt();
     m_settings.showFirstRunWizard = m_qsettings->value("general/showFirstRunWizard", true).toBool();
+    m_settings.badUsbEnabled = m_qsettings->value("badusb/enabled", true).toBool();
+    m_settings.badUsbAlertNewKeyboard =
+        m_qsettings->value("badusb/alertNewKeyboard", true).toBool();
+    m_settings.badUsbAlertCompositeStorage =
+        m_qsettings->value("badusb/alertCompositeStorage", true).toBool();
+    m_settings.badUsbAlertInterfaceDrift =
+        m_qsettings->value("badusb/alertInterfaceDrift", true).toBool();
+    m_settings.badUsbAlertRapidReconnect =
+        m_qsettings->value("badusb/alertRapidReconnect", true).toBool();
+    m_settings.badUsbAutoBaselineTrusted =
+        m_qsettings->value("badusb/autoBaselineTrusted", false).toBool();
+    m_settings.badUsbConfirmAnomalies =
+        m_qsettings->value("badusb/confirmAnomalies", true).toBool();
+    m_settings.badUsbUsbmonEnabled =
+        m_qsettings->value("badusb/usbmonEnabled", false).toBool();
+    m_settings.badUsbUsbmonOnAnomalyOnly =
+        m_qsettings->value("badusb/usbmonOnAnomalyOnly", true).toBool();
+    m_settings.badUsbUsbmonCommand =
+        m_qsettings->value("badusb/usbmonCommand",
+                           QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1")).toString();
     {
         const QString storedProfile =
             m_qsettings->value("general/settingsProfile", QStringLiteral("default")).toString();
@@ -580,6 +670,7 @@ void MainWindow::loadSettings()
     FSStyle.setAnimationsEnabled(m_settings.animationsEnabled);
     applyAppModule();
     applyIsoVerifyOptions();
+    configureBadUsbMonitoring();
 
     // Restore window geometry
     if (m_qsettings->contains("window/geometry")) {
@@ -618,6 +709,16 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("iso/verifyParallel", m_settings.isoVerifyParallel);
     m_qsettings->setValue("general/showFirstRunWizard", m_settings.showFirstRunWizard);
     m_qsettings->setValue("general/settingsProfile", m_settings.settingsProfile);
+    m_qsettings->setValue("badusb/enabled", m_settings.badUsbEnabled);
+    m_qsettings->setValue("badusb/alertNewKeyboard", m_settings.badUsbAlertNewKeyboard);
+    m_qsettings->setValue("badusb/alertCompositeStorage", m_settings.badUsbAlertCompositeStorage);
+    m_qsettings->setValue("badusb/alertInterfaceDrift", m_settings.badUsbAlertInterfaceDrift);
+    m_qsettings->setValue("badusb/alertRapidReconnect", m_settings.badUsbAlertRapidReconnect);
+    m_qsettings->setValue("badusb/autoBaselineTrusted", m_settings.badUsbAutoBaselineTrusted);
+    m_qsettings->setValue("badusb/confirmAnomalies", m_settings.badUsbConfirmAnomalies);
+    m_qsettings->setValue("badusb/usbmonEnabled", m_settings.badUsbUsbmonEnabled);
+    m_qsettings->setValue("badusb/usbmonOnAnomalyOnly", m_settings.badUsbUsbmonOnAnomalyOnly);
+    m_qsettings->setValue("badusb/usbmonCommand", m_settings.badUsbUsbmonCommand);
     m_qsettings->setValue("appearance/theme", FSStyle.themeName(FSStyle.currentTheme()));
     m_qsettings->setValue("window/geometry", saveGeometry());
     
@@ -1577,6 +1678,7 @@ void MainWindow::applySettings(const AppSettings& settings)
     if (m_isoWidget) {
         m_isoWidget->setActiveProfile(settings.settingsProfile);
     }
+    configureBadUsbMonitoring();
 
     if (AutostartManager::isAvailable()) {
         const auto current = AutostartManager::isLoginAutostartEnabled();
@@ -1631,7 +1733,12 @@ void MainWindow::syncModeTabFromSettings()
     if (!m_modeTabBar) {
         return;
     }
-    const int index = m_settings.appModule == AppModule::IsoVerifier ? 1 : 0;
+    int index = 0;
+    if (m_settings.appModule == AppModule::IsoVerifier) {
+        index = 1;
+    } else if (m_settings.appModule == AppModule::BadUsbMonitor) {
+        index = 2;
+    }
     if (m_modeTabBar->currentIndex() != index) {
         m_modeTabBar->blockSignals(true);
         m_modeTabBar->setCurrentIndex(index);
@@ -1644,7 +1751,13 @@ void MainWindow::syncModeTabFromSettings()
 
 void MainWindow::onModeTabChanged(int index)
 {
-    m_settings.appModule = index == 1 ? AppModule::IsoVerifier : AppModule::UsbMonitor;
+    if (index == 1) {
+        m_settings.appModule = AppModule::IsoVerifier;
+    } else if (index == 2) {
+        m_settings.appModule = AppModule::BadUsbMonitor;
+    } else {
+        m_settings.appModule = AppModule::UsbMonitor;
+    }
     if (m_searchEdit) {
         m_searchEdit->setVisible(index == 0);
     }

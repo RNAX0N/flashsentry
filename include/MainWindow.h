@@ -31,6 +31,10 @@
 #include "VerifyHistory.h"
 #include "ManifestWorker.h"
 #include "IsoVerifierWidget.h"
+#include "BadUsbWidget.h"
+#include "BadUsbBaselineStore.h"
+#include "HidDeviceMonitor.h"
+#include "UsbmonCapture.h"
 
 namespace FlashSentry {
 
@@ -130,6 +134,11 @@ private slots:
     void onManifestFailed(const QString& jobId, const QString& error);
     void onWatchListRequested(const QString& deviceNode);
     void onIsoLogMessage(const QString& message);
+    void onHidConnected(const HidDeviceInfo& device);
+    void onHidDisconnected(const QString& stableId);
+    void onHidChanged(const HidDeviceInfo& device);
+    void onBadUsbTrustRequested(const QString& stableId);
+    void onBadUsbCaptureRequested(const QString& stableId);
 
     // Settings
     void onThemeChanged(StyleManager::Theme theme);
@@ -296,6 +305,9 @@ private:
     void maybeTriggerIsoVerifyForMountedDevice(const DeviceInfo& device);
     void clearIsoVerifyDedupForDevice(const DeviceInfo& device);
     void handleIsoVerificationReport(const QString& deviceNode, const QList<IsoVerifyResult>& results);
+    QStringList relatedStorageNodesForHid(const HidDeviceInfo& device) const;
+    void processBadUsbDevice(const HidDeviceInfo& device);
+    void configureBadUsbMonitoring();
 
     bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
                                  const QString& actual, bool offerMount = true);
@@ -309,6 +321,7 @@ private:
     std::unique_ptr<HashWorker> m_hashWorker;
     std::unique_ptr<ManifestWorker> m_manifestWorker;
     IsoVerifierWidget* m_isoWidget = nullptr;
+    BadUsbWidget* m_badUsbWidget = nullptr;
     QStackedWidget* m_appModeStack = nullptr;
     QHash<QString, QString> m_manifestJobDevices;
     QHash<QString, ManifestVerifyResult> m_lastManifestResults;
@@ -317,6 +330,9 @@ private:
     std::unique_ptr<DatabaseManager> m_database;
     std::unique_ptr<MountManager> m_mountManager;
     std::unique_ptr<TrayIcon> m_trayIcon;
+    std::unique_ptr<HidDeviceMonitor> m_hidMonitor;
+    std::unique_ptr<BadUsbBaselineStore> m_badUsbBaselineStore;
+    std::unique_ptr<UsbmonCapture> m_usbmonCapture;
 
     // Settings
     AppSettings m_settings;
@@ -389,6 +405,7 @@ private:
     QSet<QString> m_rejectedDrives;
     QSet<QString> m_unmountBeforeHash;
     QSet<QString> m_isoVerifyTriggeredMounts;
+    QHash<QString, QList<QDateTime>> m_hidConnectHistory;
 
     // State
     bool m_isClosing = false;

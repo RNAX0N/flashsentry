@@ -80,6 +80,16 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
             m_settingsProfileCombo->setCurrentIndex(idx);
         }
     }
+    if (m_badUsbEnabledCheck) m_badUsbEnabledCheck->setChecked(settings.badUsbEnabled);
+    if (m_badUsbAlertNewKeyboardCheck) m_badUsbAlertNewKeyboardCheck->setChecked(settings.badUsbAlertNewKeyboard);
+    if (m_badUsbAlertCompositeCheck) m_badUsbAlertCompositeCheck->setChecked(settings.badUsbAlertCompositeStorage);
+    if (m_badUsbAlertInterfaceDriftCheck) m_badUsbAlertInterfaceDriftCheck->setChecked(settings.badUsbAlertInterfaceDrift);
+    if (m_badUsbAlertRapidReconnectCheck) m_badUsbAlertRapidReconnectCheck->setChecked(settings.badUsbAlertRapidReconnect);
+    if (m_badUsbAutoBaselineCheck) m_badUsbAutoBaselineCheck->setChecked(settings.badUsbAutoBaselineTrusted);
+    if (m_badUsbConfirmCheck) m_badUsbConfirmCheck->setChecked(settings.badUsbConfirmAnomalies);
+    if (m_badUsbUsbmonCheck) m_badUsbUsbmonCheck->setChecked(settings.badUsbUsbmonEnabled);
+    if (m_badUsbUsbmonOnAnomalyCheck) m_badUsbUsbmonOnAnomalyCheck->setChecked(settings.badUsbUsbmonOnAnomalyOnly);
+    if (m_badUsbUsbmonCommandEdit) m_badUsbUsbmonCommandEdit->setText(settings.badUsbUsbmonCommand);
     m_defaultTrustCombo->setCurrentIndex(settings.defaultTrustLevel);
     
     // Hashing
@@ -155,6 +165,16 @@ AppSettings SettingsDialog::getSettings() const
         settings.settingsProfile =
             SettingsProfiles::normalizeProfileId(m_settingsProfileCombo->currentData().toString());
     }
+    if (m_badUsbEnabledCheck) settings.badUsbEnabled = m_badUsbEnabledCheck->isChecked();
+    if (m_badUsbAlertNewKeyboardCheck) settings.badUsbAlertNewKeyboard = m_badUsbAlertNewKeyboardCheck->isChecked();
+    if (m_badUsbAlertCompositeCheck) settings.badUsbAlertCompositeStorage = m_badUsbAlertCompositeCheck->isChecked();
+    if (m_badUsbAlertInterfaceDriftCheck) settings.badUsbAlertInterfaceDrift = m_badUsbAlertInterfaceDriftCheck->isChecked();
+    if (m_badUsbAlertRapidReconnectCheck) settings.badUsbAlertRapidReconnect = m_badUsbAlertRapidReconnectCheck->isChecked();
+    if (m_badUsbAutoBaselineCheck) settings.badUsbAutoBaselineTrusted = m_badUsbAutoBaselineCheck->isChecked();
+    if (m_badUsbConfirmCheck) settings.badUsbConfirmAnomalies = m_badUsbConfirmCheck->isChecked();
+    if (m_badUsbUsbmonCheck) settings.badUsbUsbmonEnabled = m_badUsbUsbmonCheck->isChecked();
+    if (m_badUsbUsbmonOnAnomalyCheck) settings.badUsbUsbmonOnAnomalyOnly = m_badUsbUsbmonOnAnomalyCheck->isChecked();
+    if (m_badUsbUsbmonCommandEdit) settings.badUsbUsbmonCommand = m_badUsbUsbmonCommandEdit->text().trimmed();
     settings.defaultTrustLevel = m_defaultTrustCombo->currentIndex();
     
     // Hashing
@@ -319,6 +339,7 @@ QWidget* SettingsDialog::createVerificationTab()
     m_appModuleCombo = new QComboBox;
     m_appModuleCombo->addItem(QStringLiteral("USB drive monitor"), static_cast<int>(AppModule::UsbMonitor));
     m_appModuleCombo->addItem(QStringLiteral("Automatic ISO verification"), static_cast<int>(AppModule::IsoVerifier));
+    m_appModuleCombo->addItem(QStringLiteral("BadUSB behavior monitor"), static_cast<int>(AppModule::BadUsbMonitor));
     connect(m_appModuleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &SettingsDialog::onSettingChanged);
     moduleForm->addRow(QStringLiteral("Mode:"), m_appModuleCombo);
@@ -370,6 +391,36 @@ QWidget* SettingsDialog::createVerificationTab()
     connect(m_isoPreferOfflineCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     isoForm->addRow(QStringLiteral(""), m_isoPreferOfflineCheck);
     layout->addWidget(isoGroup);
+
+    QGroupBox* badUsbGroup = new QGroupBox(QStringLiteral("BadUSB behavior monitoring"));
+    QFormLayout* badUsbForm = new QFormLayout(badUsbGroup);
+    m_badUsbEnabledCheck = new QCheckBox(QStringLiteral("Monitor USB HID keyboards, mice, and controllers"));
+    connect(m_badUsbEnabledCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    badUsbForm->addRow(QStringLiteral(""), m_badUsbEnabledCheck);
+    m_badUsbAlertNewKeyboardCheck = new QCheckBox(QStringLiteral("Alert on new untrusted keyboards"));
+    m_badUsbAlertCompositeCheck = new QCheckBox(QStringLiteral("Alert on keyboard + storage composites"));
+    m_badUsbAlertInterfaceDriftCheck = new QCheckBox(QStringLiteral("Alert when a HID interface changes from baseline"));
+    m_badUsbAlertRapidReconnectCheck = new QCheckBox(QStringLiteral("Alert on rapid HID reconnect behavior"));
+    m_badUsbAutoBaselineCheck = new QCheckBox(QStringLiteral("Automatically trust non-anomalous HID devices"));
+    m_badUsbConfirmCheck = new QCheckBox(QStringLiteral("Show an alert dialog for anomalies"));
+    for (QCheckBox* box : {m_badUsbAlertNewKeyboardCheck, m_badUsbAlertCompositeCheck,
+                           m_badUsbAlertInterfaceDriftCheck, m_badUsbAlertRapidReconnectCheck,
+                           m_badUsbAutoBaselineCheck, m_badUsbConfirmCheck}) {
+        connect(box, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+        badUsbForm->addRow(QStringLiteral(""), box);
+    }
+    m_badUsbUsbmonCheck = new QCheckBox(QStringLiteral("Start usbmon/tcpdump capture on anomalies"));
+    m_badUsbUsbmonOnAnomalyCheck = new QCheckBox(QStringLiteral("Capture only when an anomaly is detected"));
+    connect(m_badUsbUsbmonCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    connect(m_badUsbUsbmonOnAnomalyCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    badUsbForm->addRow(QStringLiteral(""), m_badUsbUsbmonCheck);
+    badUsbForm->addRow(QStringLiteral(""), m_badUsbUsbmonOnAnomalyCheck);
+    m_badUsbUsbmonCommandEdit = new QLineEdit;
+    m_badUsbUsbmonCommandEdit->setPlaceholderText(QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1"));
+    m_badUsbUsbmonCommandEdit->setToolTip(QStringLiteral("Template variables: {bus}, {out}, {stable_id}, {rule_id}"));
+    connect(m_badUsbUsbmonCommandEdit, &QLineEdit::textChanged, this, &SettingsDialog::onSettingChanged);
+    badUsbForm->addRow(QStringLiteral("Capture command:"), m_badUsbUsbmonCommandEdit);
+    layout->addWidget(badUsbGroup);
 
     layout->addStretch();
     return tab;

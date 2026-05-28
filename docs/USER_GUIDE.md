@@ -135,6 +135,62 @@ Use when you need a fingerprint of **every byte** on the partition.
 
 ---
 
+
+
+## Smarter hashing (1.5+)
+
+FlashSentry can fingerprint **one partition** or the **entire block device** when several partitions share the same USB drive.
+
+| Scan mode | Speed | Use when |
+|-----------|-------|----------|
+| **Full partition read** | Slowest | You need a byte-for-byte baseline |
+| **Quick sample** | Fast | Spot-check: first/last MiB plus spaced samples (stored as `SHA256-QUICK`) |
+| **Watch folders only** | Fastest | You already built a Merkle watch-list baseline |
+
+During a long full scan:
+
+- Click **Cancel** on the device card to stop; progress is saved in `hash-checkpoints.json` when resume is enabled in Settings.
+- The card shows **percent**, **GiB done/total**, **MB/s**, and **ETA**.
+
+Configure defaults under **Settings → Hashing → Smarter hashing**. Click **Rehash / Verify** to pick scope and mode per run.
+
+---
+
+## Verify history (sidebar)
+
+The main window sidebar lists recent verification results (full-disk hash, watch-folder manifest, and ISO/image scans). Entries are stored in `~/.config/FlashSentry/verify-history.json` (up to 500 events).
+
+- **Filter by device** — click a device card to show only that drive’s history.
+- **Open ISO report** — click a history line (or a mounted device card) to jump to the **ISO verify** tab with that volume selected.
+- **Clear filter** — click the device card again or connect another device.
+
+---
+
+## First-run wizard
+
+On first launch (or when **Show this wizard again on next start** is enabled), FlashSentry walks through:
+
+1. **Intro** — ISO verify, watch folders, and optional full-partition hash.
+2. **Security preset** — choose **Default**, **Multi-image USB**, **Work USB**, or **Paranoid** (see below).
+3. **System setup** — checks membership in the `storage` group and shows commands to disable desktop auto-mount (GNOME `gsettings` example).
+
+To run the wizard again, enable **Show this wizard again on next start** on the last wizard page (or set `general/showFirstRunWizard` to `true` in `~/.config/FlashSentry/FlashSentry.conf`), then restart FlashSentry.
+
+---
+
+## Security presets
+
+| Preset | Best for |
+|--------|----------|
+| **Default** | ISO verify on USB mount, watch-folder verification, balanced prompts |
+| **Multi-image USB** | Sticks with copied ISOs, `dd`, Rufus, or multiboot layouts — auto image verify, no full-disk hash on connect |
+| **Work USB** | Project drives with watch-folder baselines; ISO auto-verify on mount off |
+| **Paranoid** | Maximum caution: hash on connect and eject, ISO verify on mount and scan, block mount on failure, confirm tampering, single parallel verify job |
+
+Preset descriptions also appear under **Settings → General → Security preset**.
+
+---
+
 ## Device card actions
 
 | Button | Action |

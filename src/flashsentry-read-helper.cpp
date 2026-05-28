@@ -12,6 +12,9 @@
 #include <QTextStream>
 #include <QElapsedTimer>
 
+#include <cerrno>
+#include <cstring>
+
 using namespace FlashSentry;
 
 static void printResult(const HashResult& result, qint64 durationMs)
@@ -39,20 +42,37 @@ int main(int argc, char* argv[])
     app.setApplicationName(QStringLiteral("flashsentry-read-helper"));
 
     const QStringList args = app.arguments();
-    if (args.size() < 7 || args[1] != QStringLiteral("hash")) {
+    if (args.size() != 6 || args[1] != QStringLiteral("hash")) {
         QTextStream err(stderr);
         err << "Usage: flashsentry-read-helper hash <device> <algorithm> <buffer_kb> <use_mmap 0|1>\n";
+        return 2;
+    }
+
+    QElapsedTimer timer;
+    timer.start();
+
+    bool bufferSizeOk = false;
+    const int requestedBufferSizeKB = args[4].toInt(&bufferSizeOk);
+    if (!bufferSizeOk) {
+        HashResult fail;
+        fail.deviceNode = args[2];
+        fail.errorMessage = QStringLiteral("Invalid buffer size");
+        printResult(fail, timer.elapsed());
+        return 2;
+    }
+    if (args[5] != QStringLiteral("0") && args[5] != QStringLiteral("1")) {
+        HashResult fail;
+        fail.deviceNode = args[2];
+        fail.errorMessage = QStringLiteral("Invalid memory-mapping option");
+        printResult(fail, timer.elapsed());
         return 2;
     }
 
     RawDeviceHash::Options options;
     options.deviceNode = args[2];
     options.algorithm = RawDeviceHash::algorithmFromName(args[3]);
-    options.bufferSizeKB = args[4].toInt();
+    options.bufferSizeKB = RawDeviceHash::normalizedBufferSizeKB(requestedBufferSizeKB);
     options.useMemoryMapping = args[5] != QStringLiteral("0");
-
-    QElapsedTimer timer;
-    timer.start();
 
     const int fd = RawDeviceHash::openDevice(options.deviceNode);
     if (fd < 0) {
@@ -64,7 +84,7 @@ int main(int argc, char* argv[])
     }
 
     HashResult result = RawDeviceHash::hashOpenFd(fd, options);
-    close(fd);
+    RawDeviceHash::closeDevice(fd);
     result.durationMs = static_cast<uint64_t>(timer.elapsed());
 
     printResult(result, timer.elapsed());

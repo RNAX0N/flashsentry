@@ -42,10 +42,12 @@ Built with Qt6 for Arch Linux: tray integration, polkit for safe mounting, and a
 
 ### USB monitoring (all modes)
 
+| **Verify history** | Sidebar log of hash, manifest, and ISO results; click a device card to filter and open ISO verify |
 - **Real-time device monitoring** — libudev, no polling
 - **Whitelist & trust levels** — remember devices, prompt on unknown or modified content
 - **Secure mounting** — UDisks2 + polkit (`noexec`, `nosuid`, `nodev` by default)
 - **System tray** — background operation with notifications (optional libnotify)
+- **Smarter hashing** — partition or whole-disk target, quick sample vs full read, cancel + ETA, resume checkpoints
 - **Themes** — Cyber Dark, Neon Purple, Matrix Green, Blade Runner, Ghost White
 
 ### Advanced (optional)
@@ -70,8 +72,13 @@ The installed application currently uses FlashSentry's Qt widget interface. Some
 current released application. They are useful for future UI direction, but they should not be treated
 as a promise that the installed app already matches that design.
 
-After `sudo cmake --install build --prefix /usr`, open the installed guides under
-`/usr/share/doc/flashsentry/` for walkthroughs.
+After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/). See [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) for capture guidance.
+
+| View | Status |
+|------|--------|
+| USB monitor with device cards | Coming soon |
+| ISO verification report | Coming soon |
+| Watch lists dialog | Coming soon |
 
 ## Installation
 
@@ -82,25 +89,8 @@ FlashSentry ships Arch packaging metadata under [`packaging/`](packaging/). Buil
 
 ```bash
 git clone https://github.com/RNAX0N/flashsentry.git
-cd flashsentry
-
-# Install build/runtime dependencies declared by the PKGBUILD and build the package.
-cd packaging
-makepkg -s --cleanbuild
-
-# Install the generated package with pacman.
-sudo pacman -U ./flashsentry-*.pkg.tar.zst
-```
-
-Shortcut: `makepkg -si` builds the package and immediately installs it through pacman.
-
-Upgrade after pulling newer source:
-
-```bash
-git pull
-cd packaging
-makepkg -s --cleanbuild
-sudo pacman -U ./flashsentry-*.pkg.tar.zst
+cd flashsentry/packaging
+./build-package.sh -si
 ```
 
 Remove:

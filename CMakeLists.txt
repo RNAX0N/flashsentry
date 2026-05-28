@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" _flashsentry_version_raw)
+    string(STRIP "${_flashsentry_version_raw}" FLASHSENTRY_PROJECT_VERSION)
+else()
+    set(FLASHSENTRY_PROJECT_VERSION "1.4.2")
+endif()
 project(flashsentry
-    VERSION 1.4.2
+    VERSION ${FLASHSENTRY_PROJECT_VERSION}
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )
@@ -52,6 +58,9 @@ set(SOURCES
     src/HidDeviceMonitor.cpp
     src/HashWorker.cpp
     src/RawDeviceHash.cpp
+    src/RawDeviceHashAdvanced.cpp
+    src/HashCheckpoint.cpp
+    src/HashOptionsDialog.cpp
     src/MerkleTree.cpp
     src/ManifestService.cpp
     src/ManifestWorker.cpp
@@ -71,6 +80,7 @@ set(SOURCES
     src/VerifyCli.cpp
     src/IsoVerifySettingsLoader.cpp
     src/SettingsProfiles.cpp
+    src/VerifyHistory.cpp
     src/WelcomeWizard.cpp
     src/IsoScanRules.cpp
     src/IsoVerifier.cpp
@@ -93,6 +103,9 @@ set(HEADERS
     include/HidDeviceMonitor.h
     include/HashWorker.h
     include/RawDeviceHash.h
+    include/RawDeviceHashAdvanced.h
+    include/HashCheckpoint.h
+    include/HashOptionsDialog.h
     include/MerkleTree.h
     include/ManifestService.h
     include/ManifestWorker.h
@@ -112,6 +125,7 @@ set(HEADERS
     include/VerifyCli.h
     include/IsoVerifySettingsLoader.h
     include/SettingsProfiles.h
+    include/VerifyHistory.h
     include/WelcomeWizard.h
     include/IsoScanRules.h
     include/IsoVerifier.h
@@ -184,16 +198,16 @@ if(NOT WIN32)
         @ONLY
     )
 
-    add_executable(flashsentry-read-helper
-        src/flashsentry-read-helper.cpp
-        src/RawDeviceHash.cpp
-    )
-    target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
-    target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
-    target_compile_definitions(flashsentry-read-helper PRIVATE
-        FLASHSENTRY_VERSION="${PROJECT_VERSION}"
-    )
-endif()
+add_executable(flashsentry-read-helper
+    src/flashsentry-read-helper.cpp
+    src/RawDeviceHash.cpp
+    src/RawDeviceHashAdvanced.cpp
+)
+target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
+target_compile_definitions(flashsentry-read-helper PRIVATE
+    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 

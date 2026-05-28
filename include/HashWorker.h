@@ -13,6 +13,7 @@
 #include <memory>
 
 #include "Types.h"
+#include "HashCheckpoint.h"
 
 namespace FlashSentry {
 
@@ -47,7 +48,11 @@ public:
         int bufferSizeKB = 1024;      // Read buffer size in KB
         bool useMemoryMapping = true;  // Use mmap when possible
         bool rawDevice = true;         // Hash raw device vs mounted files
-        void* userData = nullptr;      // Optional user data
+        HashScope scope = HashScope::Partition;
+        HashScanMode scanMode = HashScanMode::Full;
+        bool resumeFromCheckpoint = false;
+        QString canonicalStorageId;
+        void* userData = nullptr;
     };
 
     explicit HashWorker(QObject* parent = nullptr);
@@ -124,8 +129,9 @@ signals:
      * @param bytesProcessed Bytes hashed so far
      * @param speedMBps Current speed in MB/s
      */
-    void hashProgress(const QString& jobId, double progress, 
-                      quint64 bytesProcessed, double speedMBps);
+    void hashProgress(const QString& jobId, double progress,
+                      quint64 bytesProcessed, double speedMBps, double etaSeconds,
+                      quint64 totalBytes);
 
     /**
      * @brief Emitted when hashing completes successfully
@@ -200,7 +206,8 @@ private:
     /**
      * @brief Run a hash job (must hold no locks that block on pool)
      */
-    QString launchJob(const QString& jobId, const HashJob& job);
+    QString launchJob(const QString& jobId, const HashJob& job,
+                      std::shared_ptr<JobState> state = nullptr);
 
     // Active jobs
     mutable QMutex m_jobsMutex;

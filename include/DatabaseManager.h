@@ -149,7 +149,9 @@ public:
      */
     bool updateHash(const QString& uniqueId, const QString& hash,
                     const QString& algorithm = "SHA256",
-                    uint64_t durationMs = 0);
+                    uint64_t durationMs = 0,
+                    const QString& hashScope = QString(),
+                    const QString& hashScanMode = QString());
 
     /**
      * @brief Get the stored hash for a device

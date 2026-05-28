@@ -229,7 +229,9 @@ void DatabaseManager::clearAllDevices()
 }
 
 bool DatabaseManager::updateHash(const QString& uniqueId, const QString& hash,
-                                  const QString& algorithm, uint64_t durationMs)
+                                  const QString& algorithm, uint64_t durationMs,
+                                  const QString& hashScope,
+                                  const QString& hashScanMode)
 {
     {
         QWriteLocker locker(&m_lock);
@@ -242,6 +244,12 @@ bool DatabaseManager::updateHash(const QString& uniqueId, const QString& hash,
         it->hash = hash;
         it->hashAlgorithm = algorithm;
         it->hashDurationMs = durationMs;
+        if (!hashScope.isEmpty()) {
+            it->hashScope = hashScope;
+        }
+        if (!hashScanMode.isEmpty()) {
+            it->hashScanMode = hashScanMode;
+        }
         it->lastHashed = QDateTime::currentDateTime();
         
         markModified();

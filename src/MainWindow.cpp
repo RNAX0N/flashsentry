@@ -1,5 +1,12 @@
 #include "MainWindow.h"
 #include "AutostartManager.h"
+#include "AuditLog.h"
+#include "IsoCatalogManifest.h"
+#include "SettingsProfiles.h"
+#include "WelcomeWizard.h"
+#include "VerifyHistory.h"
+#include "HashCheckpoint.h"
+#include "HashOptionsDialog.h"
 
 #include <QApplication>
 #include <QMessageBox>
@@ -40,9 +47,12 @@ MainWindow::MainWindow(QWidget* parent)
     
     // Load settings
     loadSettings();
+    VerifyHistory::instance().load();
+    HashCheckpointStore::instance().load();
     
     // Apply styling
     applyStyle();
+    refreshVerifyHistoryPanel();
     
     // Setup status update timer
     m_statusUpdateTimer = new QTimer(this);
@@ -59,6 +69,9 @@ MainWindow::MainWindow(QWidget* parent)
     }
     
     logMessage("FlashSentry started", LogLevel::Info);
+
+    IsoCatalogManifest::ensureLoaded();
+    QTimer::singleShot(0, this, [this]() { warnIfCatalogIntegrityFailed(); });
 }
 
 MainWindow::~MainWindow()
@@ -114,13 +127,16 @@ void MainWindow::setupUi()
     m_isoWidget = new IsoVerifierWidget;
     connect(m_isoWidget, &IsoVerifierWidget::logMessageRequested,
             this, &MainWindow::onIsoLogMessage);
-    connect(m_isoWidget, &IsoVerifierWidget::verificationReportReady,
-            this, [this](const QString& deviceNode, const QList<IsoVerifyResult>& results) {
-                int passed = 0;
-                for (const auto& r : results) if (r.passed()) ++passed;
-                const QString summary = QStringLiteral("ISO verify: %1/%2 passed").arg(passed).arg(results.size());
-                logMessage(summary, passed == results.size() ? LogLevel::Info : LogLevel::Security);
-Q_UNUSED(deviceNode);
+    connect(m_isoWidget, &IsoVerifierWidget::verificationReportReady, this,
+            &MainWindow::handleIsoVerificationReport);
+    connect(m_isoWidget, &IsoVerifierWidget::settingsProfileSelected, this,
+            [this](const QString& profileId) {
+                SettingsProfiles::applyProfile(profileId, m_settings);
+                applySettings(m_settings);
+                saveSettings();
+                logMessage(QStringLiteral("Profile: %1")
+                               .arg(SettingsProfiles::profileDisplayName(profileId)),
+                           LogLevel::Info);
             });
 
     m_appModeStack->addWidget(m_isoWidget);
@@ -158,9 +174,20 @@ QWidget* MainWindow::createHeader()
     titleLayout->addWidget(m_titleLabel);
     
     layout->addLayout(titleLayout);
-    
+
+    layout->addSpacing(12);
+
+    m_modeTabBar = new QTabBar;
+    m_modeTabBar->addTab(QStringLiteral("USB devices"));
+    m_modeTabBar->addTab(QStringLiteral("ISO verify"));
+    m_modeTabBar->setDocumentMode(true);
+    m_modeTabBar->setExpanding(false);
+    m_modeTabBar->setStyleSheet(FSStyle.tabWidgetStyleSheet());
+    connect(m_modeTabBar, &QTabBar::currentChanged, this, &MainWindow::onModeTabChanged);
+    layout->addWidget(m_modeTabBar);
+
     layout->addStretch();
-    
+
     // Search box
     m_searchEdit = new QLineEdit;
     m_searchEdit->setPlaceholderText("🔍 Search devices...");
@@ -312,6 +339,34 @@ QWidget* MainWindow::createSidebar()
     addStatRow(2, "Hashing", m_hashingCountLabel, "⏳");
     
     layout->addWidget(statsWidget);
+
+    m_historyFilterLabel = new QLabel(QStringLiteral("Verify history"));
+    m_historyFilterLabel->setFont(FSFont(Heading3));
+    m_historyFilterLabel->setStyleSheet(QString("color: %1;").arg(
+        FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+    layout->addWidget(m_historyFilterLabel);
+
+    m_historyList = new QListWidget;
+    m_historyList->setFrameShape(QFrame::NoFrame);
+    m_historyList->setMaximumHeight(140);
+    m_historyList->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    m_historyList->setStyleSheet(FSStyle.listWidgetStyleSheet());
+    m_historyList->setToolTip(QStringLiteral("Recent verification results. Click a device card to filter."));
+    connect(m_historyList, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
+        if (!item) return;
+        const QString node = item->data(Qt::UserRole).toString();
+        if (!node.isEmpty() && m_modeTabBar) {
+            auto info = m_deviceMonitor->getDevice(node);
+            if (info && !info->mountPoint.isEmpty()) {
+                m_modeTabBar->setCurrentIndex(1);
+                onModeTabChanged(1);
+                if (m_isoWidget) {
+                    m_isoWidget->focusDevice(node, info->mountPoint, info->displayName());
+                }
+            }
+        }
+    });
+    layout->addWidget(m_historyList);
     
     // Log section
     QLabel* logLabel = new QLabel("Activity Log");
@@ -348,7 +403,25 @@ void MainWindow::createStatusBar()
     m_statusLabel->setStyleSheet(QString("color: %1;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     status->addWidget(m_statusLabel, 1);
-    
+
+    m_catalogStatusBtn = new QPushButton;
+    m_catalogStatusBtn->setFlat(true);
+    m_catalogStatusBtn->setCursor(Qt::PointingHandCursor);
+    m_catalogStatusBtn->setStyleSheet(QString("color: %1; text-align: left;").arg(
+        FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+    connect(m_catalogStatusBtn, &QPushButton::clicked, this, [this]() {
+        if (m_modeTabBar) {
+            m_modeTabBar->setCurrentIndex(1);
+        }
+        m_settings.appModule = AppModule::IsoVerifier;
+        applyAppModule();
+        saveSettings();
+        if (m_isoWidget) {
+            m_isoWidget->refreshCatalogStatus();
+        }
+    });
+    status->addPermanentWidget(m_catalogStatusBtn);
+
     m_hashStatusLabel = new QLabel;
     m_hashStatusLabel->setStyleSheet(QString("color: %1;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary)));
@@ -439,6 +512,13 @@ void MainWindow::connectSignals()
             this, &MainWindow::onQuitRequested);
     connect(m_trayIcon.get(), &TrayIcon::settingsRequested,
             this, &MainWindow::onSettingsRequested);
+    connect(m_trayIcon.get(), &TrayIcon::auditLogOpenRequested, this, [this]() {
+        const QString path = AuditLog::logPath();
+        if (!QFileInfo::exists(path)) {
+            logMessage(QStringLiteral("Audit log not created yet: %1").arg(path), LogLevel::Info);
+        }
+        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    });
     connect(m_trayIcon.get(), &TrayIcon::deviceEjectRequested,
             this, &MainWindow::onEjectRequested);
 }
@@ -457,6 +537,20 @@ void MainWindow::loadSettings()
     m_settings.isoScanDirectory = m_qsettings->value("iso/scanDirectory").toString();
     m_settings.isoAutoVerifyOnScan = m_qsettings->value("iso/autoVerify", true).toBool();
     m_settings.isoAutoVerifyOnUsbMount = m_qsettings->value("iso/autoVerifyOnUsbMount", true).toBool();
+    m_settings.blockMountOnIsoVerifyFailure =
+        m_qsettings->value("iso/blockMountOnFailure", false).toBool();
+    m_settings.isoVerifyDecompressed = m_qsettings->value("iso/verifyDecompressed", false).toBool();
+    m_settings.isoPreferOfflineSidecars = m_qsettings->value("iso/preferOfflineSidecars", false).toBool();
+    m_settings.isoVerifyParallel = m_qsettings->value("iso/verifyParallel", 2).toInt();
+    m_settings.showFirstRunWizard = m_qsettings->value("general/showFirstRunWizard", true).toBool();
+    {
+        const QString storedProfile =
+            m_qsettings->value("general/settingsProfile", QStringLiteral("default")).toString();
+        m_settings.settingsProfile = SettingsProfiles::normalizeProfileId(storedProfile);
+        if (storedProfile == QStringLiteral("ventoy")) {
+            m_qsettings->setValue("general/settingsProfile", QStringLiteral("multi_image"));
+        }
+    }
     m_settings.requireConfirmationForNew = m_qsettings->value("security/confirmNewDevice", true).toBool();
     m_settings.requireConfirmationForModified = m_qsettings->value("security/confirmModified", true).toBool();
     m_settings.blockModifiedDevices = m_qsettings->value("security/blockModified", false).toBool();
@@ -464,6 +558,12 @@ void MainWindow::loadSettings()
     m_settings.hashBufferSizeKB = m_qsettings->value("hashing/bufferSizeKB", 1024).toInt();
     m_settings.useMemoryMapping = m_qsettings->value("hashing/useMemoryMapping", true).toBool();
     m_settings.maxConcurrentHashes = m_qsettings->value("hashing/maxConcurrent", 1).toInt();
+    m_settings.defaultHashScope = hashScopeFromString(
+        m_qsettings->value("hashing/defaultScope", "partition").toString());
+    m_settings.defaultHashScanMode = hashScanModeFromString(
+        m_qsettings->value("hashing/defaultScanMode", "full").toString());
+    m_settings.hashResumeCheckpoints = m_qsettings->value("hashing/resumeCheckpoints", true).toBool();
+    m_settings.promptHashOptionsOnManual = m_qsettings->value("hashing/promptOnManual", true).toBool();
     m_settings.animationsEnabled = m_qsettings->value("appearance/animations", true).toBool();
     
     QString themeName = m_qsettings->value("appearance/theme", "Cyber Dark").toString();
@@ -479,7 +579,8 @@ void MainWindow::loadSettings()
     m_hashWorker->setMaxConcurrent(m_settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(m_settings.animationsEnabled);
     applyAppModule();
-    
+    applyIsoVerifyOptions();
+
     // Restore window geometry
     if (m_qsettings->contains("window/geometry")) {
         restoreGeometry(m_qsettings->value("window/geometry").toByteArray());
@@ -501,12 +602,22 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("hashing/bufferSizeKB", m_settings.hashBufferSizeKB);
     m_qsettings->setValue("hashing/useMemoryMapping", m_settings.useMemoryMapping);
     m_qsettings->setValue("hashing/maxConcurrent", m_settings.maxConcurrentHashes);
+    m_qsettings->setValue("hashing/defaultScope", hashScopeToString(m_settings.defaultHashScope));
+    m_qsettings->setValue("hashing/defaultScanMode", hashScanModeToString(m_settings.defaultHashScanMode));
+    m_qsettings->setValue("hashing/resumeCheckpoints", m_settings.hashResumeCheckpoints);
+    m_qsettings->setValue("hashing/promptOnManual", m_settings.promptHashOptionsOnManual);
     m_qsettings->setValue("appearance/animations", m_settings.animationsEnabled);
     m_qsettings->setValue("general/appModule", appModuleToString(m_settings.appModule));
     m_qsettings->setValue("security/defaultVerificationProfile", verificationProfileToString(m_settings.defaultVerificationProfile));
     m_qsettings->setValue("iso/scanDirectory", m_settings.isoScanDirectory);
     m_qsettings->setValue("iso/autoVerify", m_settings.isoAutoVerifyOnScan);
     m_qsettings->setValue("iso/autoVerifyOnUsbMount", m_settings.isoAutoVerifyOnUsbMount);
+    m_qsettings->setValue("iso/blockMountOnFailure", m_settings.blockMountOnIsoVerifyFailure);
+    m_qsettings->setValue("iso/verifyDecompressed", m_settings.isoVerifyDecompressed);
+    m_qsettings->setValue("iso/preferOfflineSidecars", m_settings.isoPreferOfflineSidecars);
+    m_qsettings->setValue("iso/verifyParallel", m_settings.isoVerifyParallel);
+    m_qsettings->setValue("general/showFirstRunWizard", m_settings.showFirstRunWizard);
+    m_qsettings->setValue("general/settingsProfile", m_settings.settingsProfile);
     m_qsettings->setValue("appearance/theme", FSStyle.themeName(FSStyle.currentTheme()));
     m_qsettings->setValue("window/geometry", saveGeometry());
     
@@ -590,6 +701,20 @@ void MainWindow::showEvent(QShowEvent* event)
 {
     QMainWindow::showEvent(event);
     m_trayIcon->updateWindowVisibility(true);
+
+    static bool wizardShown = false;
+    if (!wizardShown && m_settings.showFirstRunWizard) {
+        wizardShown = true;
+        WelcomeWizard wizard(this);
+        if (wizard.exec() == QDialog::Accepted) {
+            wizard.applyToSettings(m_settings);
+            applySettings(m_settings);
+            saveSettings();
+            if (m_isoWidget) {
+                m_isoWidget->setActiveProfile(m_settings.settingsProfile);
+            }
+        }
+    }
 }
 
 void MainWindow::hideEvent(QHideEvent* event)
@@ -624,11 +749,15 @@ void MainWindow::onDeviceConnected(const DeviceInfo& device)
     updateSidebarStats();
     updateEmptyState();
     m_trayIcon->updateDeviceList(m_deviceMonitor->connectedDevices());
+    maybeTriggerIsoVerifyForMountedDevice(device);
 }
 
 void MainWindow::onDeviceDisconnected(const QString& deviceNode)
 {
     DeviceCard* card = getDeviceCard(deviceNode);
+    if (card) {
+        clearIsoVerifyDedupForDevice(card->device());
+    }
     QString deviceName = card ? card->device().displayName() : deviceNode;
     QString drive;
     if (card) {
@@ -673,6 +802,7 @@ void MainWindow::onDeviceDisconnected(const QString& deviceNode)
 void MainWindow::onDeviceChanged(const DeviceInfo& device)
 {
     updateDeviceCard(device);
+    maybeTriggerIsoVerifyForMountedDevice(device);
 }
 
 void MainWindow::onInitialScanComplete(int deviceCount)
@@ -680,6 +810,9 @@ void MainWindow::onInitialScanComplete(int deviceCount)
     logMessage(QString("Initial scan complete: %1 device(s) found").arg(deviceCount), LogLevel::Info);
     updateSidebarStats();
     updateEmptyState();
+    for (const DeviceInfo& device : m_deviceMonitor->connectedDevices()) {
+        maybeTriggerIsoVerifyForMountedDevice(device);
+    }
 }
 
 void MainWindow::handleNewDevice(const DeviceInfo& device)
@@ -848,7 +981,9 @@ void MainWindow::handleKnownDevice(const DeviceInfo& device, const DeviceRecord&
 
 void MainWindow::onHashStarted(const QString& jobId, const QString& deviceNode)
 {
-    m_hashJobDevices[jobId] = deviceNode;
+    if (!m_hashJobDevices.contains(jobId)) {
+        m_hashJobDevices[jobId] = deviceNode;
+    }
     m_activeHashCount++;
     
     DeviceCard* card = getDeviceCard(deviceNode);
@@ -862,7 +997,8 @@ void MainWindow::onHashStarted(const QString& jobId, const QString& deviceNode)
 }
 
 void MainWindow::onHashProgress(const QString& jobId, double progress,
-                                 quint64 /*bytesProcessed*/, double speedMBps)
+                                 quint64 bytesProcessed, double speedMBps,
+                                 double etaSeconds, quint64 totalBytes)
 {
     QString deviceNode = m_hashJobDevices.value(jobId);
     if (deviceNode.isEmpty()) return;
@@ -871,12 +1007,21 @@ void MainWindow::onHashProgress(const QString& jobId, double progress,
     if (card) {
         card->setHashProgress(progress);
         card->setHashSpeed(speedMBps);
+        card->setHashEta(etaSeconds);
+        card->setHashBytes(bytesProcessed, totalBytes);
     }
-    
-    // Update status bar
-    m_hashStatusLabel->setText(QString("Hashing: %1% @ %2 MB/s")
+
+    QString etaText;
+    if (etaSeconds > 1.0) {
+        const int mins = static_cast<int>(etaSeconds) / 60;
+        const int secs = static_cast<int>(etaSeconds) % 60;
+        etaText = mins > 0 ? QString(" · ETA %1m %2s").arg(mins).arg(secs, 2, 10, QChar('0'))
+                           : QString(" · ETA %1s").arg(secs);
+    }
+    m_hashStatusLabel->setText(QString("Hashing: %1% @ %2 MB/s%3")
         .arg(static_cast<int>(progress * 100))
-        .arg(speedMBps, 0, 'f', 1));
+        .arg(speedMBps, 0, 'f', 1)
+        .arg(etaText));
 }
 
 void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
@@ -896,7 +1041,9 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
     }
     
     const PendingHashAction pending = m_pendingHashActions.take(deviceNode);
-    const QString deviceId = canonicalDeviceId(*deviceInfo);
+    const HashJobContext ctx = m_hashJobContext.value(jobId);
+    m_hashJobContext.remove(jobId);
+    const QString deviceId = ctx.storageId.isEmpty() ? canonicalDeviceId(*deviceInfo) : ctx.storageId;
     auto record = m_database->getDevice(deviceId);
     
     auto finishVerified = [&]() {
@@ -925,6 +1072,17 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             }
             
             m_trayIcon->notifyVerificationResult(deviceInfo->displayName(), VerificationStatus::Verified);
+            {
+                VerifyHistoryEntry he;
+                he.deviceNode = deviceNode;
+                he.deviceLabel = deviceInfo->displayName();
+                he.mountPoint = deviceInfo->mountPoint;
+                he.kind = VerifyHistoryKind::Hash;
+                he.status = QStringLiteral("pass");
+                he.summary = QStringLiteral("Hash matches (%1)").arg(result.algorithm);
+                he.durationMs = result.durationMs;
+                recordVerifyHistory(he);
+            }
             finishVerified();
         } else {
             logMessage(QString("ALERT: %1 - hash MISMATCH!").arg(deviceInfo->displayName()), LogLevel::Security);
@@ -936,6 +1094,17 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             }
 
             m_trayIcon->notifyVerificationResult(deviceInfo->displayName(), VerificationStatus::Modified);
+            {
+                VerifyHistoryEntry he;
+                he.deviceNode = deviceNode;
+                he.deviceLabel = deviceInfo->displayName();
+                he.mountPoint = deviceInfo->mountPoint;
+                he.kind = VerifyHistoryKind::Hash;
+                he.status = QStringLiteral("mismatch");
+                he.summary = QStringLiteral("Hash mismatch");
+                he.durationMs = result.durationMs;
+                recordVerifyHistory(he);
+            }
 
             const bool offerMount = !deviceInfo->isMounted;
             if (m_settings.requireConfirmationForModified) {
@@ -946,8 +1115,20 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             }
         }
     } else {
-        m_database->updateHash(deviceId, result.hash, result.algorithm, result.durationMs);
+        m_database->updateHash(deviceId, result.hash, result.algorithm, result.durationMs,
+                               result.hashScopeLabel, result.scanModeLabel);
         logMessage(QString("Hash stored for %1").arg(deviceInfo->displayName()));
+        {
+            VerifyHistoryEntry he;
+            he.deviceNode = deviceNode;
+            he.deviceLabel = deviceInfo->displayName();
+            he.mountPoint = deviceInfo->mountPoint;
+            he.kind = VerifyHistoryKind::Hash;
+            he.status = QStringLiteral("pass");
+            he.summary = QStringLiteral("Baseline stored (%1)").arg(result.algorithm);
+            he.durationMs = result.durationMs;
+            recordVerifyHistory(he);
+        }
         
         if (card) {
             card->setVerificationStatus(VerificationStatus::Verified);
@@ -973,6 +1154,16 @@ void MainWindow::onHashFailed(const QString& jobId, const QString& error)
     const PendingHashAction pending = m_pendingHashActions.take(deviceNode);
 
     logMessage(QString("Hash failed for %1: %2").arg(deviceNode, error), LogLevel::Error);
+    {
+        VerifyHistoryEntry he;
+        he.deviceNode = deviceNode;
+        auto info = m_deviceMonitor->getDevice(deviceNode);
+        he.deviceLabel = info ? info->displayName() : deviceNode;
+        he.kind = VerifyHistoryKind::Hash;
+        he.status = QStringLiteral("error");
+        he.summary = error;
+        recordVerifyHistory(he);
+    }
 
     if (pending == PendingHashAction::UnmountAfterVerify) {
         offerUnmountWithoutHash(deviceNode, error);
@@ -1003,13 +1194,20 @@ void MainWindow::onHashCancelled(const QString& jobId)
     DeviceCard* card = getDeviceCard(deviceNode);
     if (card) {
         card->setProgressVisible(false);
+        const VerificationStatus prior = m_preHashStatus.take(deviceNode);
+        if (prior != VerificationStatus::Unknown) {
+            card->setVerificationStatus(prior);
+        } else {
+            card->setVerificationStatus(VerificationStatus::Pending);
+        }
     }
-    
+    m_hashJobContext.remove(jobId);
+
     if (m_activeHashCount == 0) {
         m_trayIcon->setHashingActive(false);
         m_hashStatusLabel->clear();
     }
-    
+
     updateSidebarStats();
 }
 
@@ -1021,6 +1219,10 @@ void MainWindow::triggerIsoVerificationOnMount(const MountManager::MountResult& 
 {
     if (!m_isoWidget || result.mountPoint.isEmpty()) return;
     if (!m_settings.isoAutoVerifyOnUsbMount && m_settings.appModule != AppModule::IsoVerifier) return;
+    if (m_isoVerifyTriggeredMounts.contains(result.mountPoint)) {
+        return;
+    }
+    m_isoVerifyTriggeredMounts.insert(result.mountPoint);
     QString label = result.deviceNode;
     if (auto info = m_deviceMonitor->getDevice(result.deviceNode)) {
         label = info->displayName();
@@ -1053,7 +1255,13 @@ void MainWindow::onUnmountCompleted(const MountManager::UnmountResult& result)
         if (result.success) {
             logMessage(QString("Unmounted %1; starting hash").arg(result.deviceNode));
             m_deviceMonitor->rescan();
-            startHashing(result.deviceNode, true);
+            if (m_pendingHashLaunch.contains(result.deviceNode)) {
+                const PendingHashLaunch pending = m_pendingHashLaunch.take(result.deviceNode);
+                startHashJob(result.deviceNode, pending.hashDeviceNode, pending.scope,
+                             pending.mode, pending.resume);
+            } else {
+                startHashing(result.deviceNode, true);
+            }
         } else {
             logMessage(QString("Pre-hash unmount failed for %1: %2")
                            .arg(result.deviceNode, result.errorMessage),
@@ -1173,8 +1381,71 @@ void MainWindow::onOpenMountPointRequested(const QString& mountPoint)
 
 void MainWindow::onDeviceCardClicked(const QString& deviceNode)
 {
-    // Could expand card or show details
-    Q_UNUSED(deviceNode)
+    m_historyFilterDevice = deviceNode;
+    refreshVerifyHistoryPanel(deviceNode);
+
+    auto info = m_deviceMonitor->getDevice(deviceNode);
+    if (!info) {
+        return;
+    }
+
+    if (!info->mountPoint.isEmpty() && info->isMounted) {
+        if (m_modeTabBar) {
+            m_modeTabBar->setCurrentIndex(1);
+            onModeTabChanged(1);
+        }
+        if (m_isoWidget) {
+            m_isoWidget->focusDevice(deviceNode, info->mountPoint, info->displayName());
+        }
+        logMessage(QStringLiteral("ISO verify: %1 (%2)").arg(info->displayName(), info->mountPoint),
+                   LogLevel::Info);
+        showAndRaise();
+        return;
+    }
+
+    logMessage(QStringLiteral("Verify history filtered to %1").arg(info->displayName()),
+               LogLevel::Info);
+}
+
+
+void MainWindow::recordVerifyHistory(const VerifyHistoryEntry& entry)
+{
+    VerifyHistory::instance().append(entry);
+    refreshVerifyHistoryPanel(m_historyFilterDevice);
+}
+
+void MainWindow::refreshVerifyHistoryPanel(const QString& deviceNodeFilter)
+{
+    if (!m_historyList) {
+        return;
+    }
+    m_historyList->clear();
+
+    const QList<VerifyHistoryEntry> entries =
+        deviceNodeFilter.isEmpty()
+            ? VerifyHistory::instance().recentEntries(30)
+            : VerifyHistory::instance().entriesForDevice(deviceNodeFilter, 20);
+
+    if (m_historyFilterLabel) {
+        if (deviceNodeFilter.isEmpty()) {
+            m_historyFilterLabel->setText(QStringLiteral("Verify history"));
+        } else {
+            auto info = m_deviceMonitor->getDevice(deviceNodeFilter);
+            const QString name = info ? info->displayName() : deviceNodeFilter;
+            m_historyFilterLabel->setText(QStringLiteral("Verify history — %1").arg(name));
+        }
+    }
+
+    for (const VerifyHistoryEntry& e : entries) {
+        auto* item = new QListWidgetItem(VerifyHistory::instance().formatEntryLine(e));
+        item->setData(Qt::UserRole, e.deviceNode);
+        if (e.status == QStringLiteral("pass")) {
+            item->setForeground(FSColor(Verified));
+        } else if (e.status == QStringLiteral("mismatch") || e.status == QStringLiteral("fail")) {
+            item->setForeground(FSColor(Error));
+        }
+        m_historyList->addItem(item);
+    }
 }
 
 // ============================================================================
@@ -1303,6 +1574,9 @@ void MainWindow::applySettings(const AppSettings& settings)
     m_hashWorker->setMaxConcurrent(settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(settings.animationsEnabled);
     applyAppModule();
+    if (m_isoWidget) {
+        m_isoWidget->setActiveProfile(settings.settingsProfile);
+    }
 
     if (AutostartManager::isAvailable()) {
         const auto current = AutostartManager::isLoginAutostartEnabled();
@@ -1328,9 +1602,54 @@ void MainWindow::updateStatusBar()
 {
     int connected = m_deviceCards.size();
     int whitelisted = m_database->deviceCount();
-    
+
     m_statusLabel->setText(QString("Connected: %1 | Whitelisted: %2")
-        .arg(connected).arg(whitelisted));
+                             .arg(connected)
+                             .arg(whitelisted));
+
+    if (!m_catalogStatusBtn) {
+        return;
+    }
+    IsoCatalogManifest::ensureLoaded();
+    const QString catalogDetail = IsoCatalogManifest::integrityStatusText();
+    m_catalogStatusBtn->setToolTip(
+        catalogDetail + QStringLiteral("\n\nClick to open ISO verify."));
+    if (!IsoCatalogManifest::lastEmbeddedIntegrityOk()) {
+        m_catalogStatusBtn->setText(QStringLiteral("⚠ ISO catalog"));
+        m_catalogStatusBtn->setStyleSheet(QString("color: %1; font-weight: 600; text-align: left;")
+                                              .arg(FSStyle.colorCss(StyleManager::ColorRole::Warning)));
+    } else {
+        m_catalogStatusBtn->setText(
+            QStringLiteral("Catalog: %1").arg(IsoCatalogManifest::entryCount()));
+        m_catalogStatusBtn->setStyleSheet(QString("color: %1; text-align: left;")
+                                              .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+    }
+}
+
+void MainWindow::syncModeTabFromSettings()
+{
+    if (!m_modeTabBar) {
+        return;
+    }
+    const int index = m_settings.appModule == AppModule::IsoVerifier ? 1 : 0;
+    if (m_modeTabBar->currentIndex() != index) {
+        m_modeTabBar->blockSignals(true);
+        m_modeTabBar->setCurrentIndex(index);
+        m_modeTabBar->blockSignals(false);
+    }
+    if (m_searchEdit) {
+        m_searchEdit->setVisible(index == 0);
+    }
+}
+
+void MainWindow::onModeTabChanged(int index)
+{
+    m_settings.appModule = index == 1 ? AppModule::IsoVerifier : AppModule::UsbMonitor;
+    if (m_searchEdit) {
+        m_searchEdit->setVisible(index == 0);
+    }
+    applyAppModule();
+    saveSettings();
 }
 
 // ============================================================================
@@ -1350,6 +1669,14 @@ DeviceCard* MainWindow::addDeviceCard(const DeviceInfo& device)
     connect(card, &DeviceCard::unmountRequested, this, &MainWindow::onUnmountRequested);
     connect(card, &DeviceCard::ejectRequested, this, &MainWindow::onEjectRequested);
     connect(card, &DeviceCard::rehashRequested, this, &MainWindow::onRehashRequested);
+    connect(card, &DeviceCard::cancelHashRequested, this, [this](const QString& node) {
+        for (auto it = m_hashJobDevices.constBegin(); it != m_hashJobDevices.constEnd(); ++it) {
+            if (it.value() == node) {
+                m_hashWorker->cancelHash(it.key());
+                break;
+            }
+        }
+    });
     connect(card, &DeviceCard::watchListRequested, this, &MainWindow::onWatchListRequested);
     connect(card, &DeviceCard::acceptFingerprintRequested,
             this, &MainWindow::onAcceptFingerprintRequested);
@@ -1389,41 +1716,153 @@ void MainWindow::updateDeviceCard(const DeviceInfo& device)
     }
 }
 
-void MainWindow::startHashing(const QString& deviceNode, bool skipUnmount)
-{
-    if (m_hashJobDevices.values().contains(deviceNode)) {
-        return;
-    }
 
+
+int MainWindow::partitionCountFor(const DeviceInfo& device) const
+{
+    const QString drive = driveKey(device);
+    int count = 0;
+    for (const DeviceInfo& part : m_deviceMonitor->connectedDevices()) {
+        if (driveKey(part) == drive) {
+            ++count;
+        }
+    }
+    return qMax(1, count);
+}
+
+QString MainWindow::resolveHashDeviceNode(const DeviceInfo& device, HashScope scope) const
+{
+    if (scope == HashScope::WholeDisk && !device.parentDevice.isEmpty()) {
+        return device.parentDevice;
+    }
+    return device.deviceNode;
+}
+
+QString MainWindow::hashStorageIdFor(const DeviceInfo& device, HashScope scope) const
+{
+    if (scope == HashScope::WholeDisk) {
+        return device.uniqueId() + QStringLiteral("_WHOLEDISK");
+    }
+    return m_database->canonicalUniqueId(device);
+}
+
+void MainWindow::promptAndStartHash(const QString& deviceNode, bool allowDialog)
+{
     auto deviceInfo = m_deviceMonitor->getDevice(deviceNode);
     if (!deviceInfo) {
         return;
     }
 
-    if (!skipUnmount) {
+    HashScope scope = m_settings.defaultHashScope;
+    HashScanMode mode = m_settings.defaultHashScanMode;
+    bool resume = false;
+
+    const int parts = partitionCountFor(*deviceInfo);
+    const QString deviceId = m_database->canonicalUniqueId(*deviceInfo);
+    auto record = m_database->getDevice(deviceId);
+    const bool hasBaseline = record && record->watchManifest.hasBaseline();
+
+    const QString algo = record && !record->hashAlgorithm.isEmpty() ? record->hashAlgorithm
+                                                                      : m_settings.hashAlgorithm;
+    const QString hashNodePreview = resolveHashDeviceNode(*deviceInfo, scope);
+    const bool hasCheckpoint =
+        m_settings.hashResumeCheckpoints
+        && HashCheckpointStore::instance()
+               .checkpointFor(hashNodePreview, algo, hashScanModeToString(mode))
+               .has_value();
+
+    const bool needDialog = allowDialog && m_settings.promptHashOptionsOnManual
+        && (parts > 1 || hasBaseline || hasCheckpoint);
+
+    if (needDialog) {
+        HashOptionsDialog dlg(*deviceInfo, parts, hasBaseline, hasCheckpoint, scope, mode, this);
+        if (dlg.exec() != QDialog::Accepted || !dlg.choice().accepted) {
+            return;
+        }
+        scope = dlg.choice().scope;
+        mode = dlg.choice().scanMode;
+        resume = dlg.choice().resumeFromCheckpoint;
+    } else if (hasCheckpoint && m_settings.hashResumeCheckpoints && mode == HashScanMode::Full) {
+        resume = true;
+    }
+
+    if (mode == HashScanMode::WatchManifestOnly) {
+        startManifestVerification(deviceNode);
+        return;
+    }
+
+    const QString hashNode = resolveHashDeviceNode(*deviceInfo, scope);
+    startHashJob(deviceNode, hashNode, scope, mode, resume);
+}
+
+void MainWindow::startHashJob(const QString& uiDeviceNode, const QString& hashDeviceNode,
+                              HashScope scope, HashScanMode mode, bool resume)
+{
+    auto deviceInfo = m_deviceMonitor->getDevice(uiDeviceNode);
+    if (!deviceInfo) {
+        return;
+    }
+
+    DeviceCard* card = getDeviceCard(uiDeviceNode);
+    if (card) {
+        m_preHashStatus[uiDeviceNode] = card->verificationStatus();
+    }
+
+    const QString storageId = hashStorageIdFor(*deviceInfo, scope);
+
+    if (!m_unmountBeforeHash.contains(uiDeviceNode)) {
         const bool mounted = deviceInfo->isMounted
-            || !m_mountManager->getMountPoint(deviceNode).isEmpty();
-        if (mounted) {
-            logMessage(QString("Unmounting %1 before hash verification").arg(deviceNode));
-            m_unmountBeforeHash.insert(deviceNode);
-            m_mountManager->unmount(deviceNode);
+            || !m_mountManager->getMountPoint(uiDeviceNode).isEmpty();
+        if (mounted && hashDeviceNode == uiDeviceNode) {
+            logMessage(QString("Unmounting %1 before hash verification").arg(uiDeviceNode));
+            m_unmountBeforeHash.insert(uiDeviceNode);
+            m_pendingHashLaunch[uiDeviceNode] = {hashDeviceNode, scope, mode, resume};
+            m_mountManager->unmount(uiDeviceNode);
             return;
         }
     }
 
     HashWorker::HashJob job;
-    job.deviceNode = deviceNode;
+    job.deviceNode = hashDeviceNode;
+    job.scope = scope;
+    job.scanMode = mode;
+    job.resumeFromCheckpoint = resume;
+    job.canonicalStorageId = storageId;
     job.bufferSizeKB = m_settings.hashBufferSizeKB;
-    job.useMemoryMapping = m_settings.useMemoryMapping;
+    job.useMemoryMapping = m_settings.useMemoryMapping && mode == HashScanMode::Full && !resume;
 
-    if (auto record = m_database->getDevice(*deviceInfo)) {
+    if (auto record = m_database->getDevice(storageId)) {
         job.algorithm = HashWorker::algorithmFromName(
             record->hashAlgorithm.isEmpty() ? m_settings.hashAlgorithm : record->hashAlgorithm);
     } else {
         job.algorithm = HashWorker::algorithmFromName(m_settings.hashAlgorithm);
     }
 
-    m_hashWorker->startHash(job);
+    const QString jobId = m_hashWorker->startHash(job);
+    m_hashJobDevices[jobId] = uiDeviceNode;
+    HashJobContext ctx;
+    ctx.uiDeviceNode = uiDeviceNode;
+    ctx.storageId = storageId;
+    ctx.scope = scope;
+    ctx.scanMode = mode;
+    m_hashJobContext[jobId] = ctx;
+}
+
+
+void MainWindow::startHashing(const QString& deviceNode, bool skipUnmount)
+{
+    if (m_hashJobDevices.values().contains(deviceNode)) {
+        return;
+    }
+    if (skipUnmount) {
+        if (m_pendingHashLaunch.contains(deviceNode)) {
+            const PendingHashLaunch pending = m_pendingHashLaunch.take(deviceNode);
+            startHashJob(deviceNode, pending.hashDeviceNode, pending.scope, pending.mode,
+                         pending.resume);
+            return;
+        }
+    }
+    promptAndStartHash(deviceNode, false);
 }
 
 QString MainWindow::canonicalDeviceId(const DeviceInfo& device)

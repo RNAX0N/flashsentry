@@ -4,12 +4,17 @@
 
 #include <QWidget>
 
+class QComboBox;
+class QFrame;
 class QLineEdit;
 class QPushButton;
+class QToolButton;
 class QTableWidget;
 class QLabel;
 class QProgressBar;
 class QTextEdit;
+class QSplitter;
+class QStackedWidget;
 
 namespace FlashSentry {
 
@@ -29,9 +34,17 @@ public:
     void verifyMountPoint(const QString& mountPoint, const QString& deviceNode,
                           const QString& deviceLabel = {});
 
+    void refreshCatalogStatus();
+    void setActiveProfile(const QString& profileId);
+
+    /** Switch to results view; re-run or show last report for this mount. */
+    void focusDevice(const QString& deviceNode, const QString& mountPoint,
+                     const QString& deviceLabel = {});
+
 signals:
     void logMessageRequested(const QString& message);
     void verificationReportReady(const QString& deviceNode, const QList<IsoVerifyResult>& results);
+    void settingsProfileSelected(const QString& profileId);
 
 public slots:
     void onUsbMountForIsoVerify(const QString& mountPoint, const QString& deviceNode,
@@ -41,18 +54,46 @@ private slots:
     void onBrowse();
     void onVerifyMount();
     void onShowReport();
+    void onExportReport();
+    void onCopyReport();
+    void onUpdateCatalog();
+    void onPasteTrustedHash();
+    void onScanPathEdited();
+    void onProfileChanged(int index);
+    void onTableCellClicked(int row, int column);
     void onVerificationFinished(const QString& location, const QString& deviceNode,
                                 const QList<IsoVerifyResult>& results);
 
 private:
+    QWidget* buildEmptyStatePage();
+    QWidget* buildMainPage();
     void setResults(const QList<IsoVerifyResult>& results);
     void appendReport(const QString& text);
+    void updateCatalogIntegrityBanner();
+    void updateMultibootBadge();
+    void updateSummaryStrip(int passed, int total, int needsSidecar);
+    void updatePageVisibility();
+    void scrollReportToRow(int row);
+    void applyChromeStyles();
+    void styleResultRow(int row, bool passed);
 
     IsoVerifierWorker* m_worker = nullptr;
+    QStackedWidget* m_pageStack = nullptr;
+    QLabel* m_catalogBanner = nullptr;
+    QComboBox* m_profileCombo = nullptr;
+    QLabel* m_introLabel = nullptr;
+    QLabel* m_multibootBadge = nullptr;
+    QFrame* m_summaryStrip = nullptr;
+    QLabel* m_passChip = nullptr;
+    QLabel* m_failChip = nullptr;
+    QLabel* m_sidecarChip = nullptr;
     QLineEdit* m_dirEdit = nullptr;
+    QPushButton* m_verifyBtn = nullptr;
+    QToolButton* m_toolsBtn = nullptr;
     QTableWidget* m_table = nullptr;
     QLabel* m_summaryLabel = nullptr;
     QProgressBar* m_progress = nullptr;
+    QSplitter* m_splitter = nullptr;
     QTextEdit* m_reportView = nullptr;
     QList<IsoVerifyResult> m_lastResults;
     QString m_lastDeviceNode;

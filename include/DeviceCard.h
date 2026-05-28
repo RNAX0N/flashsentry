@@ -93,6 +93,8 @@ public:
      * @brief Set hash speed in MB/s
      */
     void setHashSpeed(double speedMBps);
+    void setHashEta(double etaSeconds);
+    void setHashBytes(quint64 processed, quint64 total);
 
     /**
      * @brief Set display mode
@@ -113,6 +115,9 @@ public:
      * @brief Show/hide the progress section
      */
     void setProgressVisible(bool visible);
+
+    /** Last ISO/image verification summary for this partition (empty hides). */
+    void setIsoVerifySummary(const QString& summary);
 
     /**
      * @brief Start the status indicator pulse animation
@@ -156,6 +161,7 @@ signals:
      * @brief Emitted when rehash button is clicked
      */
     void rehashRequested(const QString& deviceNode);
+    void cancelHashRequested(const QString& deviceNode);
 
     /**
      * @brief Emitted when user accepts a new fingerprint after modification
@@ -252,12 +258,15 @@ private:
     QLabel* m_serialLabel = nullptr;
     QLabel* m_lastSeenLabel = nullptr;
     QLabel* m_hashLabel = nullptr;
+    QLabel* m_isoSummaryLabel = nullptr;
 
     // UI Components - Progress
     QWidget* m_progressWidget = nullptr;
     QProgressBar* m_progressBar = nullptr;
     QLabel* m_progressLabel = nullptr;
     QLabel* m_speedLabel = nullptr;
+    QLabel* m_etaLabel = nullptr;
+    QPushButton* m_cancelHashBtn = nullptr;
 
     // UI Components - Actions
     QWidget* m_actionsWidget = nullptr;

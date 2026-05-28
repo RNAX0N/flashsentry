@@ -117,6 +117,8 @@ public:
                               uint64_t durationMs,
                               double speedMBps);
 
+    void notifyIsoVerifySummary(const QString& deviceName, int passed, int total, int needsSidecar);
+
     /**
      * @brief Enable or disable notifications
      */
@@ -143,6 +145,9 @@ signals:
      * @brief Emitted when user clicks settings in context menu
      */
     void settingsRequested();
+
+    /** Open the ISO verification audit log in the default viewer. */
+    void auditLogOpenRequested();
 
     /**
      * @brief Emitted when user clicks on a notification

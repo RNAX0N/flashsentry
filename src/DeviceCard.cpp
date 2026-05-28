@@ -140,7 +140,13 @@ void DeviceCard::setupUi()
     addInfoRow(0, 1, "Type:", m_fsTypeLabel);
     addInfoRow(1, 0, "Mount:", m_mountPointLabel);
     addInfoRow(1, 1, "Serial:", m_serialLabel);
-    
+
+    m_isoSummaryLabel = new QLabel;
+    m_isoSummaryLabel->setWordWrap(true);
+    m_isoSummaryLabel->setFont(FSFont(Small));
+    m_isoSummaryLabel->setVisible(false);
+    m_infoLayout->addWidget(m_isoSummaryLabel, 2, 0, 1, 4);
+
     m_mainLayout->addWidget(infoWidget);
     
     // === Progress Section ===
@@ -302,9 +308,56 @@ void DeviceCard::setActionsEnabled(bool enabled)
     m_openBtn->setEnabled(enabled);
 }
 
+void DeviceCard::setIsoVerifySummary(const QString& summary)
+{
+    if (!m_isoSummaryLabel) {
+        return;
+    }
+    if (summary.isEmpty()) {
+        m_isoSummaryLabel->clear();
+        m_isoSummaryLabel->setVisible(false);
+        return;
+    }
+    m_isoSummaryLabel->setText(QStringLiteral("Images: %1").arg(summary));
+    m_isoSummaryLabel->setStyleSheet(QString("color: %1;")
+                                         .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
+    m_isoSummaryLabel->setVisible(true);
+}
+
+void DeviceCard::setHashEta(double etaSeconds)
+{
+    if (!m_etaLabel) return;
+    if (etaSeconds <= 1.0) {
+        m_etaLabel->clear();
+        return;
+    }
+    const int mins = static_cast<int>(etaSeconds) / 60;
+    const int secs = static_cast<int>(etaSeconds) % 60;
+    if (mins > 0) {
+        m_etaLabel->setText(QString("ETA %1m %2s").arg(mins).arg(secs, 2, 10, QChar('0')));
+    } else {
+        m_etaLabel->setText(QString("ETA %1s").arg(secs));
+    }
+}
+
+void DeviceCard::setHashBytes(quint64 processed, quint64 total)
+{
+    if (!m_progressLabel || total == 0) return;
+    const double pct = 100.0 * static_cast<double>(processed) / static_cast<double>(total);
+    const double doneGb = static_cast<double>(processed) / (1024.0 * 1024.0 * 1024.0);
+    const double totalGb = static_cast<double>(total) / (1024.0 * 1024.0 * 1024.0);
+    m_progressLabel->setText(QString("Hashing %1% · %2 / %3 GB")
+                                 .arg(static_cast<int>(pct))
+                                 .arg(doneGb, 0, 'f', 2)
+                                 .arg(totalGb, 0, 'f', 2));
+}
+
 void DeviceCard::setProgressVisible(bool visible)
 {
     m_progressWidget->setVisible(visible);
+    if (m_cancelHashBtn) {
+        m_cancelHashBtn->setVisible(visible);
+    }
     
     if (visible) {
         setVerificationStatus(VerificationStatus::Hashing);

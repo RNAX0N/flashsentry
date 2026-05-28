@@ -1,6 +1,9 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
 
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
+set(FLASHSENTRY_TEST_FIXTURES_DIR "${CMAKE_SOURCE_DIR}/tests/fixtures")
 
 add_executable(test_types test_types.cpp)
 target_include_directories(test_types PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -22,26 +25,21 @@ target_include_directories(test_merkle PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPE
 target_link_libraries(test_merkle PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
 add_test(NAME test_merkle COMMAND test_merkle)
 
-add_executable(test_manifest_service
-    test_manifest_service.cpp
-    ${CMAKE_SOURCE_DIR}/src/ManifestService.cpp
-    ${CMAKE_SOURCE_DIR}/src/MerkleTree.cpp
+set(ISO_CATALOG_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/iso_catalog/IsoCatalogBuilders.cpp
+    ${CMAKE_SOURCE_DIR}/src/iso_catalog/IsoCatalogMatch.cpp
+    ${CMAKE_SOURCE_DIR}/src/iso_catalog/IsoCatalogUtil.cpp
 )
-target_include_directories(test_manifest_service PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
-target_link_libraries(test_manifest_service PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
-add_test(NAME test_manifest_service COMMAND test_manifest_service)
 
-add_executable(test_raw_device_hash
-    test_raw_device_hash.cpp
-    ${CMAKE_SOURCE_DIR}/src/RawDeviceHash.cpp
+add_executable(test_iso_catalog
+    test_iso_catalog.cpp
+    ${ISO_CATALOG_SOURCES}
+    ${CMAKE_SOURCE_DIR}/src/IsoCatalogManifest.cpp
 )
-target_include_directories(test_raw_device_hash PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
-target_link_libraries(test_raw_device_hash PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
-add_test(NAME test_raw_device_hash COMMAND test_raw_device_hash)
-
-add_executable(test_iso_catalog test_iso_catalog.cpp ${CMAKE_SOURCE_DIR}/src/IsoCatalog.cpp)
 target_include_directories(test_iso_catalog PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(test_iso_catalog PRIVATE Qt6::Test Qt6::Core)
+target_link_libraries(test_iso_catalog PRIVATE Qt6::Test Qt6::Core Qt6::Network)
+target_compile_definitions(test_iso_catalog PRIVATE FLASHSENTRY_VERSION="${PROJECT_VERSION}")
+target_sources(test_iso_catalog PRIVATE ${CMAKE_SOURCE_DIR}/resources/resources.qrc)
 add_test(NAME test_iso_catalog COMMAND test_iso_catalog)
 
 add_executable(test_autostart
@@ -56,3 +54,76 @@ add_executable(test_iso_checksum test_iso_checksum.cpp ${CMAKE_SOURCE_DIR}/src/I
 target_include_directories(test_iso_checksum PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_iso_checksum PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME test_iso_checksum COMMAND test_iso_checksum)
+
+add_executable(test_iso_scan_rules
+    test_iso_scan_rules.cpp
+    ${CMAKE_SOURCE_DIR}/src/SettingsProfiles.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoScanRules.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifier.cpp
+    ${ISO_CATALOG_SOURCES}
+    ${CMAKE_SOURCE_DIR}/src/IsoCatalogManifest.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoHttpClient.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoChecksum.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifyCache.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifyReport.cpp
+    ${CMAKE_SOURCE_DIR}/src/AuditLog.cpp
+)
+target_include_directories(test_iso_scan_rules PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_iso_scan_rules PRIVATE
+    Qt6::Test Qt6::Core Qt6::Concurrent Qt6::Network ${OPENSSL_LIBRARIES})
+target_compile_definitions(test_iso_scan_rules PRIVATE
+    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+    FLASHSENTRY_TEST_FIXTURES_DIR="${FLASHSENTRY_TEST_FIXTURES_DIR}"
+)
+target_sources(test_iso_scan_rules PRIVATE ${CMAKE_SOURCE_DIR}/resources/resources.qrc)
+add_test(NAME test_iso_scan_rules COMMAND test_iso_scan_rules)
+
+add_executable(test_verify_report test_verify_report.cpp ${CMAKE_SOURCE_DIR}/src/IsoVerifyReport.cpp)
+target_include_directories(test_verify_report PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_verify_report PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_verify_report COMMAND test_verify_report)
+
+set(ISO_VERIFY_TEST_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/IsoScanRules.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifier.cpp
+    ${ISO_CATALOG_SOURCES}
+    ${CMAKE_SOURCE_DIR}/src/IsoCatalogManifest.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoHttpClient.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoChecksum.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifyCache.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifyReport.cpp
+    ${CMAKE_SOURCE_DIR}/src/AuditLog.cpp
+)
+add_executable(test_iso_verify_integration
+    test_iso_verify_integration.cpp
+    ${ISO_VERIFY_TEST_SOURCES}
+)
+target_include_directories(test_iso_verify_integration PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_iso_verify_integration PRIVATE
+    Qt6::Test Qt6::Core Qt6::Concurrent Qt6::Network ${OPENSSL_LIBRARIES})
+target_compile_definitions(test_iso_verify_integration PRIVATE
+    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+    FLASHSENTRY_TEST_FIXTURES_DIR="${FLASHSENTRY_TEST_FIXTURES_DIR}"
+)
+target_sources(test_iso_verify_integration PRIVATE ${CMAKE_SOURCE_DIR}/resources/resources.qrc)
+add_test(NAME test_iso_verify_integration COMMAND test_iso_verify_integration)
+
+add_executable(test_iso_verify_publisher_mock
+    test_iso_verify_publisher_mock.cpp
+    ${ISO_VERIFY_TEST_SOURCES}
+)
+target_include_directories(test_iso_verify_publisher_mock PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_iso_verify_publisher_mock PRIVATE
+    Qt6::Test Qt6::Core Qt6::Concurrent Qt6::Network ${OPENSSL_LIBRARIES})
+target_compile_definitions(test_iso_verify_publisher_mock PRIVATE
+    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+    FLASHSENTRY_TEST_FIXTURES_DIR="${FLASHSENTRY_TEST_FIXTURES_DIR}"
+)
+target_sources(test_iso_verify_publisher_mock PRIVATE ${CMAKE_SOURCE_DIR}/resources/resources.qrc)
+add_test(NAME test_iso_verify_publisher_mock COMMAND test_iso_verify_publisher_mock)
+
+add_executable(test_iso_http_mock test_iso_http_mock.cpp ${CMAKE_SOURCE_DIR}/src/IsoHttpClient.cpp)
+target_include_directories(test_iso_http_mock PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_iso_http_mock PRIVATE Qt6::Test Qt6::Core Qt6::Network)
+target_compile_definitions(test_iso_http_mock PRIVATE FLASHSENTRY_VERSION="${PROJECT_VERSION}")
+add_test(NAME test_iso_http_mock COMMAND test_iso_http_mock)

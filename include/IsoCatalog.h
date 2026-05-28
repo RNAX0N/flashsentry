@@ -18,6 +18,11 @@ struct IsoPublisherMatch {
     QStringList trustedFingerprints;
     /** When true, checksumUrl/signatureUrl name the ISO's .sha256 and .sig (not a SUMS file). */
     bool perFileArtifacts = false;
+    /** When set, expected hash comes from the embedded/remote manifest (no checksum download). */
+    QString embeddedSha256;
+    /** Filename matched but hash must come from a sidecar or catalog update (e.g. Windows). */
+    bool hintOnly = false;
+    QString referenceUrl;
 };
 
 /**
@@ -28,6 +33,9 @@ public:
     static std::optional<IsoPublisherMatch> matchIso(const QString& isoPath);
 
     static QStringList knownPublisherIds();
+
+    /** True for .iso, .img.xz, .img, .zip (case-insensitive). */
+    static bool isVerifiableImageFileName(const QString& fileName);
 };
 
 } // namespace FlashSentry

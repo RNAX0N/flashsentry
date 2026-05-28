@@ -10,6 +10,8 @@ private slots:
     void sumsFileWithAsteriskPrefix();
     void singleLineHex();
     void missingIsoNameFails();
+    void rockyChecksumFormat();
+    void nobaraSha256sumRelativePath();
 };
 
 void TestIsoChecksum::sumsFileWithAsteriskPrefix()
@@ -35,6 +37,26 @@ void TestIsoChecksum::missingIsoNameFails()
         QStringLiteral("deadbeef  other.iso\n"), QStringLiteral("missing.iso"), &err);
     QVERIFY(hash.isEmpty());
     QVERIFY(!err.isEmpty());
+}
+
+void TestIsoChecksum::rockyChecksumFormat()
+{
+    const QString content = QStringLiteral(
+        "SHA256 (Rocky-9.4-x86_64-minimal.iso) = "
+        "1e5d7da3d84d5d9a5a1177858a5df21b868390bfccf7f0f419b1e59acc293160\n");
+    const QString hash = IsoChecksum::parseSha256Content(content,
+                                                         QStringLiteral("Rocky-9.4-x86_64-minimal.iso"));
+    QCOMPARE(hash, QStringLiteral("1e5d7da3d84d5d9a5a1177858a5df21b868390bfccf7f0f419b1e59acc293160"));
+}
+
+void TestIsoChecksum::nobaraSha256sumRelativePath()
+{
+    const QString content = QStringLiteral(
+        "806fc42e5247f828ad07571507564f476f375e4dcc75c7d69c7cead816b24f25  "
+        "./Nobara-43-Official-2026-04-19.iso\n");
+    const QString hash = IsoChecksum::parseSha256Content(content,
+                                                         QStringLiteral("Nobara-43-Official-2026-04-19.iso"));
+    QCOMPARE(hash, QStringLiteral("806fc42e5247f828ad07571507564f476f375e4dcc75c7d69c7cead816b24f25"));
 }
 
 QTEST_MAIN(TestIsoChecksum)

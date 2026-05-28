@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" _flashsentry_version_raw)
+    string(STRIP "${_flashsentry_version_raw}" FLASHSENTRY_PROJECT_VERSION)
+else()
+    set(FLASHSENTRY_PROJECT_VERSION "1.4.2")
+endif()
 project(flashsentry
-    VERSION 1.1.4
+    VERSION ${FLASHSENTRY_PROJECT_VERSION}
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )
@@ -34,11 +40,27 @@ set(SOURCES
     src/DeviceMonitor.cpp
     src/HashWorker.cpp
     src/RawDeviceHash.cpp
+    src/RawDeviceHashAdvanced.cpp
+    src/HashCheckpoint.cpp
+    src/HashOptionsDialog.cpp
     src/MerkleTree.cpp
     src/ManifestService.cpp
     src/ManifestWorker.cpp
-    src/IsoCatalog.cpp
+    src/iso_catalog/IsoCatalogBuilders.cpp
+    src/iso_catalog/IsoCatalogMatch.cpp
+    src/iso_catalog/IsoCatalogUtil.cpp
+    src/IsoCatalogManifest.cpp
+    src/IsoHttpClient.cpp
     src/IsoChecksum.cpp
+    src/IsoVerifyCache.cpp
+    src/IsoVerifyReport.cpp
+    src/AuditLog.cpp
+    src/VerifyCli.cpp
+    src/IsoVerifySettingsLoader.cpp
+    src/SettingsProfiles.cpp
+    src/VerifyHistory.cpp
+    src/WelcomeWizard.cpp
+    src/IsoScanRules.cpp
     src/IsoVerifier.cpp
     src/IsoVerifierWorker.cpp
     src/WatchListDialog.cpp
@@ -57,11 +79,27 @@ set(HEADERS
     include/DeviceMonitor.h
     include/HashWorker.h
     include/RawDeviceHash.h
+    include/RawDeviceHashAdvanced.h
+    include/HashCheckpoint.h
+    include/HashOptionsDialog.h
     include/MerkleTree.h
     include/ManifestService.h
     include/ManifestWorker.h
     include/IsoCatalog.h
+    include/IsoCatalogInternal.h
+    include/IsoCatalogManifest.h
+    include/IsoHttpClient.h
     include/IsoChecksum.h
+    include/IsoVerifyOptions.h
+    include/IsoVerifyCache.h
+    include/IsoVerifyReport.h
+    include/AuditLog.h
+    include/VerifyCli.h
+    include/IsoVerifySettingsLoader.h
+    include/SettingsProfiles.h
+    include/VerifyHistory.h
+    include/WelcomeWizard.h
+    include/IsoScanRules.h
     include/IsoVerifier.h
     include/IsoVerifierWorker.h
     include/WatchListDialog.h
@@ -115,6 +153,7 @@ configure_file(
 add_executable(flashsentry-read-helper
     src/flashsentry-read-helper.cpp
     src/RawDeviceHash.cpp
+    src/RawDeviceHashAdvanced.cpp
 )
 target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
 target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
@@ -157,6 +196,11 @@ install(
     DESTINATION ${CMAKE_INSTALL_DOCDIR}
 )
 install(FILES docs/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME docs-README.md)
+install(FILES resources/iso-catalog/embedded-manifest.json
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/flashsentry/iso-catalog)
+install(DIRECTORY packaging/iso-catalog.d/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/flashsentry/iso-catalog.d
+    FILES_MATCHING PATTERN "*.md" PATTERN "*.json")
 
 if(NOT TARGET uninstall)
     configure_file(

@@ -4,10 +4,187 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+### Added (smarter hashing)
+
+- **Partition vs whole-disk** target when a USB stick has multiple partitions (hash options dialog + Settings defaults)
+- **Scan modes**: full read, quick sample (spaced 1 MiB chunks), or watch-folders-only (Merkle manifest)
+- **Cancel** on device cards during hashing; **ETA** and GiB progress on card and status bar
+- **Resume checkpoints** for full scans (`~/.config/FlashSentry/hash-checkpoints.json`, 64 MiB blocks)
+
+### Added
+
+- **Verify history** — persistent sidebar log (`verify-history.json`) for partition hash, watch-folder manifest, and ISO scan results; device-card click filters history and opens the ISO verify tab
+- **First-run wizard** — multi-page setup: security preset, `storage` group check, desktop automount guidance
+- **Security preset descriptions** in Settings and wizard
+- [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) — how to capture real UI screenshots for documentation
+
 ### Changed
 
-- HTTP User-Agent for ISO downloads includes app version from CMake
-- GitHub bug report issue template
+- **Paranoid** preset strengthened: auto hash on connect/eject, ISO verify on mount and scan, block on failures, single parallel verify job
+
+## [1.4.2] - 2026-05-21
+
+### Added
+
+- **ISO verify tab**: empty state (plug in USB flash drive), verification **profile** picker, table row → report scroll
+- **Device cards**: show last image verification summary (`Images: N/M passed`)
+
+### Changed
+
+- Settings profile id **`multi_image`** replaces legacy **`ventoy`** (auto-migrated in config)
+- Profile display name: **Multi-image USB**
+
+## [1.4.1] - 2026-05-21
+
+### Changed
+
+- User-facing copy reframed for **any** image-on-USB workflow (`dd`, Rufus, copy, multiboot) — not Ventoy-specific
+- Settings profile label: **Multi-image USB** (later renamed to id `multi_image` in 1.4.2)
+- Docs/README describe multiboot coexistence as one compatibility case among others
+
+## [1.4.0] - 2026-05-21
+
+### Added
+
+- **Header mode tabs**: switch between **USB devices** and **ISO verify** without opening Settings
+- ISO tab UI refresh: summary pass/fail/sidecar chips, color-coded results table, vertical splitter (results + report)
+- **Multiboot layout badge** when a known stick layout is detected on the scan path
+- **More** menu groups export, catalog, and trust-hash actions; primary **Verify images** action
+- Status bar catalog control opens the ISO verify tab (clickable)
+
+### Changed
+
+- ISO verify intro text shortened; path field grouped in a card
+- Progress bar shows file name and index during multi-image runs
+
+## [1.3.3] - 2026-05-21
+
+### Added
+
+- **Multiboot compatibility** (`IsoScanRules`): skip `ventoy/`, `EFI/`, Easy2Boot `_ISO/`, and other reserved trees when scanning
+- Ventoy data-partition detection and coexistence notes in scan reports
+- Auto ISO verify when the **desktop already mounted** the stick (Ventoy-friendly; no remount fight)
+- Skip auto-verify on small EFI-only Ventoy boot partitions
+- Tests: `test_iso_scan_rules`, ventoy fixture with reserved `ventoy/` tree
+
+### Changed
+
+- **Ventoy** settings profile: prefer offline sidecars, no block-on-failure, no full-disk hash on connect
+- [VERIFICATION.md](docs/VERIFICATION.md) and [USER_GUIDE.md](docs/USER_GUIDE.md): Ventoy / Easy2Boot coexistence tables
+
+## [1.3.2] - 2026-05-21
+
+### Added
+
+- Status bar **ISO catalog** indicator with integrity tooltip
+- Persistent warning banner on the ISO verification tab when embedded catalog checks fail
+- GUI report export includes **JSON** format
+
+### Fixed
+
+- Embedded catalog OpenPGP verify ignores a stale or missing `GNUPGHOME` (uses `--keyring` only)
+- `test_iso_catalog` clears invalid `GNUPGHOME` before integrity checks
+
+### Changed
+
+- `IsoCatalogManifest::integrityStatusText()` and granular SHA-256 / GPG status accessors
+- [VERIFICATION.md](docs/VERIFICATION.md): documents `--json`, `--quiet`, and audit log tray action
+
+## [1.3.1] - 2026-05-21
+
+### Added
+
+- CLI: `--json` and `--quiet` for verify, export, catalog update, list-publishers, and trust-hash
+- `IsoVerifyReport::buildJson()` for machine-readable verification output
+- Tray menu: **Open audit log** (opens `~/.config/FlashSentry/audit.log`)
+- GUI warning when embedded ISO catalog integrity (SHA-256 / OpenPGP) fails at startup
+- Determinate progress bar during multi-file ISO verification
+
+## [1.3.0] - 2026-05-21
+
+### Added
+
+- **OpenPGP-signed embedded catalog**: `embedded-manifest.json.asc` + `catalog-signing.pub`; SHA-256 and GPG checked at load
+- **`IsoHttpClient`**: injectable HTTP layer for tests (`IsoHttpClient::setHandler`)
+- **Modular ISO catalog**: `src/iso_catalog/` (`IsoCatalogBuilders`, `IsoCatalogMatch`, `IsoCatalogUtil`)
+- **Tests**: `test_iso_verify_publisher_mock` (local SHA256SUMS + `.gpg` + trusted key), `test_iso_http_mock`
+- **Docs screenshots**: `docs/images/main-window.png`, `iso-verify-report.png`, `watch-lists.png`
+- **Tools**: `tools/sign-embedded-manifest.sh`, `tools/gen-catalog-signing-key.sh`
+
+### Changed
+
+- Manifest drop-ins support `signature_url_template`, `signing_key_ids`, `trusted_fingerprints`
+- `importPublisherKeys` uses local keyring before contacting a keyserver
+- `tools/validate-iso-manifest.py` verifies OpenPGP signature when `gpg` is available
+
+## [1.2.2] - 2026-05-21
+
+### Added
+
+- Integration test `test_iso_verify_integration` with offline fixture tree (Ventoy layout, sidecars, user TOFU)
+- Data-driven `publisherFilenameTable` test for 12 core distros
+- `IsoVerifier::findChecksumSidecar()` / `findSignatureSidecar()` as public helpers
+
+### Changed
+
+- `FLASHSENTRY_SKIP_REMOTE_CATALOG` env skips network manifest refresh (used in tests)
+
+## [1.2.1] - 2026-05-21
+
+### Added
+
+- CLI: `--list-publishers`, `--trust-hash file:hex`, `--report-format` for `--export-report`
+- `IsoVerifySettingsLoader` — CLI reads `iso/*` settings from FlashSentry.conf (respects `-c`)
+- `IsoCatalog::isVerifiableImageFileName()` for shared extension checks
+- Packaged `iso-catalog.d` README and example fragment under `/usr/share/flashsentry/`
+
+### Changed
+
+- `IsoVerifyReport::countSummary()` shared by GUI tray summaries and report text
+- VERIFICATION.md documents parallel verify, manifest drop-ins, audit log, and CLI
+
+## [1.2.0] - 2026-05-21
+
+### Added
+
+- CLI: `--verify-iso`, `--verify-mount`, `--verify-dir`, `--update-catalog`, `--export-report`
+- Embedded ISO catalog: remote refresh, `iso-catalog.d` drop-ins, user TOFU hashes, manifest SHA-256 integrity check
+- Parallel image verification, session hash cache, optional `.img.xz` decompress verify (`xz`)
+- Audit log (`audit.log`), CSV/HTML report export, welcome wizard, settings profiles (Default, Ventoy, Work USB, Paranoid)
+- Tray notifications and device card status for ISO verify results; optional block mount on verify failure
+
+### Changed
+
+- ISO verify worker supports cancel and per-file progress
+
+## [1.1.6] - 2026-05-26
+
+### Added
+
+- **Microsoft Windows** verification via embedded manifest (`resources/iso-catalog/embedded-manifest.json`) with optional remote catalog refresh
+- SBC / ARM images: **Raspberry Pi OS** (`.img.xz`/`.zip`), **Ubuntu for Raspberry Pi**, **Armbian** (local `.img.xz.sha` sidecar)
+- **Alpine Linux**, **Void Linux**, **NixOS** catalog entries
+- USB scan discovers `.iso`, `.img.xz`, `.img`, and `.zip` images (Ventoy / Pi Imager layouts)
+
+### Changed
+
+- Windows: known `Win11_24H2_English_x64.iso` hash in manifest; other `Win11_*` / `Win10_*` names use hint + `.sha256` sidecar
+- Docs: Windows manifest workflow and SBC publisher table (30 catalog IDs)
+
+## [1.1.5] - 2026-05-21
+
+### Added
+
+- ISO publisher catalog: **Kali**, **Rocky Linux**, **AlmaLinux**, **Pop!_OS**, **EndeavourOS**, **CentOS Stream**, **elementary OS**, **Garuda Linux**, **CachyOS**, **Nobara Linux**
+- Ubuntu flavors: **Kubuntu**, **Xubuntu**, **Lubuntu**, **Ubuntu MATE**, **Ubuntu Studio**
+- Parse Rocky/Alma `CHECKSUM` parenthesis format (`SHA256 (file.iso) = …`)
+- Local sidecar lookup for `CHECKSUM` and `{iso}.CHECKSUM`
+- Unit tests for new catalog entries and Rocky checksum parsing
+
+### Changed
+
+- Parse Nobara `.sha256sum` lines with `./` relative paths; local `.sha256sum` sidecars
+- [README.md](README.md), [docs/USER_GUIDE.md](docs/USER_GUIDE.md), [docs/VERIFICATION.md](docs/VERIFICATION.md): 23 automatic publishers
 
 ## [1.1.4] - 2026-05-25
 

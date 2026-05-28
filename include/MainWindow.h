@@ -11,6 +11,8 @@
 #include <QSplitter>
 #include <QListWidget>
 #include <QTimer>
+#include <QTabBar>
+#include <QPushButton>
 #include <QCloseEvent>
 #include <QSettings>
 #include <memory>
@@ -26,6 +28,7 @@
 #include "TrayIcon.h"
 #include "SettingsDialog.h"
 #include "StyleManager.h"
+#include "VerifyHistory.h"
 #include "ManifestWorker.h"
 #include "IsoVerifierWidget.h"
 
@@ -87,8 +90,9 @@ private slots:
 
     // Hash events
     void onHashStarted(const QString& jobId, const QString& deviceNode);
-    void onHashProgress(const QString& jobId, double progress, 
-                        quint64 bytesProcessed, double speedMBps);
+    void onHashProgress(const QString& jobId, double progress,
+                        quint64 bytesProcessed, double speedMBps,
+                        double etaSeconds, quint64 totalBytes);
     void onHashCompleted(const QString& jobId, const HashResult& result);
     void onHashFailed(const QString& jobId, const QString& error);
     void onHashCancelled(const QString& jobId);
@@ -232,6 +236,12 @@ private:
      * @brief Start hashing a device
      */
     void startHashing(const QString& deviceNode, bool skipUnmount = false);
+    void promptAndStartHash(const QString& deviceNode, bool allowDialog = true);
+    void startHashJob(const QString& uiDeviceNode, const QString& hashDeviceNode,
+                      HashScope scope, HashScanMode mode, bool resume);
+    QString resolveHashDeviceNode(const DeviceInfo& device, HashScope scope) const;
+    QString hashStorageIdFor(const DeviceInfo& device, HashScope scope) const;
+    int partitionCountFor(const DeviceInfo& device) const;
 
     void hashAllPartitionsOnParent(const DeviceInfo& device);
 
@@ -253,6 +263,8 @@ private:
      * @brief Update sidebar statistics
      */
     void updateSidebarStats();
+    void refreshVerifyHistoryPanel(const QString& deviceNodeFilter = {});
+    void recordVerifyHistory(const VerifyHistoryEntry& entry);
 
     /**
      * @brief Show the new device dialog
@@ -271,11 +283,19 @@ private:
     void startManifestVerification(const QString& deviceNode);
     void openWatchListDialog(const QString& deviceNode);
     void applyAppModule();
+    void syncModeTabFromSettings();
+    void onModeTabChanged(int index);
     void triggerIsoVerificationOnMount(const MountManager::MountResult& result);
     void handleManifestMismatch(const DeviceInfo& device, const ManifestVerifyResult& result);
     void acceptManifestBaseline(const DeviceInfo& device, const WatchManifest& manifest);
 
     void mountDespiteModification(const DeviceInfo& device);
+
+    void applyIsoVerifyOptions();
+    void warnIfCatalogIntegrityFailed();
+    void maybeTriggerIsoVerifyForMountedDevice(const DeviceInfo& device);
+    void clearIsoVerifyDedupForDevice(const DeviceInfo& device);
+    void handleIsoVerificationReport(const QString& deviceNode, const QList<IsoVerifyResult>& results);
 
     bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
                                  const QString& actual, bool offerMount = true);
@@ -310,6 +330,7 @@ private:
     // UI - Header
     QWidget* m_headerWidget = nullptr;
     QLabel* m_titleLabel = nullptr;
+    QTabBar* m_modeTabBar = nullptr;
     QLineEdit* m_searchEdit = nullptr;
     QPushButton* m_refreshBtn = nullptr;
     QPushButton* m_settingsBtn = nullptr;
@@ -319,6 +340,9 @@ private:
     QLabel* m_connectedCountLabel = nullptr;
     QLabel* m_whitelistedCountLabel = nullptr;
     QLabel* m_hashingCountLabel = nullptr;
+    QListWidget* m_historyList = nullptr;
+    QString m_historyFilterDevice;
+    QLabel* m_historyFilterLabel = nullptr;
     QListWidget* m_logList = nullptr;
 
     // UI - Device list
@@ -330,11 +354,20 @@ private:
 
     // UI - Status bar
     QLabel* m_statusLabel = nullptr;
+    QPushButton* m_catalogStatusBtn = nullptr;
     QLabel* m_hashStatusLabel = nullptr;
 
     // Device tracking
     QHash<QString, DeviceCard*> m_deviceCards;  // deviceNode -> card
-    QHash<QString, QString> m_hashJobDevices;   // jobId -> deviceNode
+    struct HashJobContext {
+        QString uiDeviceNode;
+        QString storageId;
+        HashScope scope = HashScope::Partition;
+        HashScanMode scanMode = HashScanMode::Full;
+    };
+    QHash<QString, HashJobContext> m_hashJobContext;
+    QHash<QString, VerificationStatus> m_preHashStatus;
+    QHash<QString, QString> m_hashJobDevices;   // jobId -> ui deviceNode
 
     enum class PendingHashAction {
         None,
@@ -343,11 +376,19 @@ private:
         RunFullHashAfterManifest
     };
 
+    struct PendingHashLaunch {
+        QString hashDeviceNode;
+        HashScope scope = HashScope::Partition;
+        HashScanMode mode = HashScanMode::Full;
+        bool resume = false;
+    };
+    QHash<QString, PendingHashLaunch> m_pendingHashLaunch;
     QHash<QString, PendingHashAction> m_pendingHashActions;
     QHash<QString, QString> m_lastVerificationHashes;
     QSet<QString> m_drivePromptInProgress;
     QSet<QString> m_rejectedDrives;
     QSet<QString> m_unmountBeforeHash;
+    QSet<QString> m_isoVerifyTriggeredMounts;
 
     // State
     bool m_isClosing = false;

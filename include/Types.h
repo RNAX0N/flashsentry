@@ -69,6 +69,42 @@ struct DeviceInfo {
     }
 };
 
+
+enum class HashScope {
+    Partition,
+    WholeDisk,
+};
+
+enum class HashScanMode {
+    Full,
+    QuickSample,
+    WatchManifestOnly,
+};
+
+inline QString hashScopeToString(HashScope s) {
+    return s == HashScope::WholeDisk ? QStringLiteral("whole_disk") : QStringLiteral("partition");
+}
+
+inline HashScope hashScopeFromString(const QString& s) {
+    if (s == QLatin1String("whole_disk")) return HashScope::WholeDisk;
+    return HashScope::Partition;
+}
+
+inline QString hashScanModeToString(HashScanMode m) {
+    switch (m) {
+        case HashScanMode::QuickSample: return QStringLiteral("quick");
+        case HashScanMode::WatchManifestOnly: return QStringLiteral("watch");
+        case HashScanMode::Full:
+        default: return QStringLiteral("full");
+    }
+}
+
+inline HashScanMode hashScanModeFromString(const QString& s) {
+    if (s == QLatin1String("quick")) return HashScanMode::QuickSample;
+    if (s == QLatin1String("watch")) return HashScanMode::WatchManifestOnly;
+    return HashScanMode::Full;
+}
+
 enum class VerificationProfile {
     WatchManifest,
     FullPartition,
@@ -203,7 +239,13 @@ inline QString appModuleToString(AppModule m) {
                                        : QStringLiteral("usb_monitor");
 }
 
-enum class IsoVerifySource { Unknown, LocalSidecar, RemotePublisher, ComputedOnly };
+enum class IsoVerifySource {
+    Unknown,
+    LocalSidecar,
+    RemotePublisher,
+    EmbeddedCatalog,
+    ComputedOnly
+};
 
 struct IsoVerifyResult {
     QString isoPath;
@@ -248,6 +290,8 @@ struct DeviceRecord {
     QString uniqueId;
     QString hash;
     QString hashAlgorithm = "SHA256";
+    QString hashScope;
+    QString hashScanMode;
     QDateTime firstSeen;
     QDateTime lastSeen;
     QDateTime lastHashed;
@@ -264,6 +308,8 @@ struct DeviceRecord {
         QJsonObject obj;
         obj["unique_id"] = uniqueId;
         obj["hash"] = hash;
+        obj["hash_scope"] = hashScope;
+        obj["hash_scan_mode"] = hashScanMode;
         obj["hash_algorithm"] = hashAlgorithm;
         obj["first_seen"] = firstSeen.toString(Qt::ISODate);
         obj["last_seen"] = lastSeen.toString(Qt::ISODate);
@@ -283,6 +329,8 @@ struct DeviceRecord {
         DeviceRecord record;
         record.uniqueId = obj["unique_id"].toString();
         record.hash = obj["hash"].toString();
+        record.hashScope = obj["hash_scope"].toString();
+        record.hashScanMode = obj["hash_scan_mode"].toString();
         record.hashAlgorithm = obj["hash_algorithm"].toString("SHA256");
         record.firstSeen = QDateTime::fromString(obj["first_seen"].toString(), Qt::ISODate);
         record.lastSeen = QDateTime::fromString(obj["last_seen"].toString(), Qt::ISODate);
@@ -308,6 +356,9 @@ struct HashResult {
     uint64_t durationMs = 0;
     bool success = false;
     QString errorMessage;
+    QString hashScopeLabel;
+    QString scanModeLabel;
+    bool resumedFromCheckpoint = false;
 
     double speedMBps() const {
         if (durationMs == 0) return 0.0;
@@ -351,6 +402,8 @@ struct AppSettings {
     bool blockModifiedDevices = false;
     int defaultTrustLevel = 0;
     QString hashAlgorithm = "SHA256";
+    QString hashScope;
+    QString hashScanMode;
     int hashBufferSizeKB = 1024;
     bool useMemoryMapping = true;
     int maxConcurrentHashes = 1;
@@ -365,6 +418,16 @@ struct AppSettings {
     bool isoAutoVerifyOnScan = true;
     bool isoAutoVerifyOnUsbMount = true;
     bool promptPerPartition = false;
+    HashScope defaultHashScope = HashScope::Partition;
+    HashScanMode defaultHashScanMode = HashScanMode::Full;
+    bool hashResumeCheckpoints = true;
+    bool promptHashOptionsOnManual = true;
+    bool blockMountOnIsoVerifyFailure = false;
+    bool isoVerifyDecompressed = false;
+    bool isoPreferOfflineSidecars = false;
+    int isoVerifyParallel = 2;
+    bool showFirstRunWizard = true;
+    QString settingsProfile = QStringLiteral("default");
 
     QJsonObject toJson() const {
         QJsonObject obj;
@@ -392,6 +455,12 @@ struct AppSettings {
         obj["iso_scan_directory"] = isoScanDirectory;
         obj["iso_auto_verify_on_scan"] = isoAutoVerifyOnScan;
         obj["iso_auto_verify_on_usb_mount"] = isoAutoVerifyOnUsbMount;
+        obj["block_mount_on_iso_failure"] = blockMountOnIsoVerifyFailure;
+        obj["iso_verify_decompressed"] = isoVerifyDecompressed;
+        obj["iso_prefer_offline_sidecars"] = isoPreferOfflineSidecars;
+        obj["iso_verify_parallel"] = isoVerifyParallel;
+        obj["show_first_run_wizard"] = showFirstRunWizard;
+        obj["settings_profile"] = settingsProfile;
         return obj;
     }
 
@@ -422,6 +491,18 @@ struct AppSettings {
         settings.isoScanDirectory = obj["iso_scan_directory"].toString();
         settings.isoAutoVerifyOnScan = obj["iso_auto_verify_on_scan"].toBool(true);
         settings.isoAutoVerifyOnUsbMount = obj["iso_auto_verify_on_usb_mount"].toBool(true);
+        settings.blockMountOnIsoVerifyFailure = obj["block_mount_on_iso_failure"].toBool(false);
+        settings.isoVerifyDecompressed = obj["iso_verify_decompressed"].toBool(false);
+        settings.isoPreferOfflineSidecars = obj["iso_prefer_offline_sidecars"].toBool(false);
+        settings.isoVerifyParallel = obj["iso_verify_parallel"].toInt(2);
+        settings.showFirstRunWizard = obj["show_first_run_wizard"].toBool(true);
+        {
+            QString profile = obj["settings_profile"].toString(QStringLiteral("default"));
+            if (profile == QStringLiteral("ventoy")) {
+                profile = QStringLiteral("multi_image");
+            }
+            settings.settingsProfile = profile;
+        }
         return settings;
     }
 };

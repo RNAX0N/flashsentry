@@ -1,7 +1,14 @@
 # Maintainer: FlashSentry Team <team@flashsentry.io>
+#
+# Install from a git checkout (recommended):
+#   cd packaging && ./build-package.sh -si
+#
+# Install from a release tag (requires v${pkgver} on GitHub):
+#   cd packaging && FLASHSENTRY_RELEASE=1 makepkg -si
+#
 pkgname=flashsentry
-pkgver=1.1.4
-pkgrel=1
+pkgver=1.4.2
+pkgrel=7
 pkgdesc="USB and ISO security monitor - verify Linux ISOs, watch folders, optional full-disk hash"
 arch=('x86_64' 'aarch64')
 url="https://github.com/RNAX0N/flashsentry"
@@ -9,15 +16,16 @@ license=('MIT')
 depends=(
     'qt6-base'
     'openssl'
-    'systemd-libs'  # For libudev
-    'udisks2'       # For mounting operations via D-Bus
-    'polkit'        # For privilege escalation
+    'systemd-libs'
+    'udisks2'
+    'polkit'
 )
 makedepends=(
     'cmake'
     'git'
-    'qt6-tools'     # For Qt6 build tools
+    'qt6-tools'
     'pkgconf'
+    'rsync'
 )
 optdepends=(
     'libnotify: Desktop notifications support'
@@ -28,97 +36,88 @@ provides=('flashsentry')
 conflicts=('flashsentry-git')
 backup=('etc/flashsentry/config.json')
 install=flashsentry.install
-source=(
-    "${pkgname}-${pkgver}.tar.gz::https://github.com/RNAX0N/flashsentry/archive/v${pkgver}.tar.gz"
-)
-# For local builds, use:
-# source=("git+file://${PWD}/../")
-sha256sums=('SKIP')
 
-# Uncomment for local development builds
-#pkgver() {
-#    cd "${srcdir}/${pkgname}"
-#    git describe --long --tags 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' || echo "1.0.0"
-#}
+_repo_root="$(cd -- "${startdir}/.." && pwd)"
+
+_staging_dir() {
+  printf '%s/%s-%s' "${srcdir}" "${pkgname}" "${pkgver}"
+}
+
+if [ "${FLASHSENTRY_RELEASE:-0}" = 1 ]; then
+    source=(
+        "${pkgname}-${pkgver}.tar.gz::https://github.com/RNAX0N/flashsentry/archive/refs/tags/v${pkgver}.tar.gz"
+    )
+    sha256sums=('SKIP')
+else
+    source=()
+    sha256sums=()
+fi
 
 prepare() {
-    cd "${srcdir}/${pkgname}-${pkgver}"
-
-    # Create build directory
-    mkdir -p build
+  if [ "${FLASHSENTRY_RELEASE:-0}" != 1 ]; then
+    local staging="$(_staging_dir)"
+    rm -rf "${staging}"
+    mkdir -p "${staging}"
+    rsync -a --delete \
+      --exclude 'pkg' \
+      --exclude 'packaging/pkg' \
+      --exclude 'packaging/src' \
+      --exclude 'build' \
+      --exclude 'packaging/build' \
+      "${_repo_root}/" "${staging}/"
+  fi
+  cd "$(_staging_dir)"
+  mkdir -p build
 }
 
 build() {
-    cd "${srcdir}/${pkgname}-${pkgver}/build"
-
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=/usr \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DFLASHSENTRY_BUILD_TESTS=ON \
-        -Wno-dev
-
-    cmake --build . --parallel
+  cd "$(_staging_dir)/build"
+  cmake .. \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DFLASHSENTRY_BUILD_TESTS=ON \
+    -Wno-dev
+  cmake --build . --parallel
 }
 
 check() {
-    cd "${srcdir}/${pkgname}-${pkgver}/build"
-
-    # Run tests if available
-    if [ -f "CTestTestfile.cmake" ]; then
-        ctest --output-on-failure
-    fi
+  cd "$(_staging_dir)/build"
+  if [ -f CTestTestfile.cmake ]; then
+    ctest --output-on-failure
+  fi
 }
 
 package() {
-    cd "${srcdir}/${pkgname}-${pkgver}/build"
+  local root="$(_staging_dir)"
+  cd "${root}/build"
+  DESTDIR="${pkgdir}" cmake --install .
 
-    # Install using CMake
-    DESTDIR="${pkgdir}" cmake --install .
+  install -Dm644 "${root}/packaging/config.json.default" \
+    "${pkgdir}/etc/flashsentry/config.json" 2>/dev/null || true
 
-    # License and documentation are installed by cmake --install (see root CMakeLists.txt)
-
-    # Install default config
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/config.json.default" \
-        "${pkgdir}/etc/flashsentry/config.json" 2>/dev/null || true
-
-    # Install systemd user service
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.service" \
-        "${pkgdir}/usr/lib/systemd/user/flashsentry.service"
-
-    # Install desktop file
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.desktop" \
-        "${pkgdir}/usr/share/applications/flashsentry.desktop"
-
-    # Polkit policy is installed by cmake (org.flashsentry.policy from build)
-
-    # Install udev rules
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/99-flashsentry.rules" \
-        "${pkgdir}/usr/lib/udev/rules.d/99-flashsentry.rules"
-
-    # Install icons
-    for size in 16 32 48 64 128 256; do
-        if [ -f "${srcdir}/${pkgname}-${pkgver}/resources/icons/flashsentry-${size}.png" ]; then
-            install -Dm644 "${srcdir}/${pkgname}-${pkgver}/resources/icons/flashsentry-${size}.png" \
-                "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/flashsentry.png"
-        fi
-    done
-
-    # Install scalable icon
-    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/resources/icons/flashsentry.svg" \
-        "${pkgdir}/usr/share/icons/hicolor/scalable/apps/flashsentry.svg"
-
-    # Install bash completion if available
-    if [ -f "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.bash" ]; then
-        install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.bash" \
-            "${pkgdir}/usr/share/bash-completion/completions/flashsentry"
+  for size in 16 32 48 64 128 256; do
+    if [ -f "${root}/resources/icons/flashsentry-${size}.png" ]; then
+      install -Dm644 "${root}/resources/icons/flashsentry-${size}.png" \
+        "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/flashsentry.png"
     fi
+  done
 
-    # Install zsh completion if available
-    if [ -f "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.zsh" ]; then
-        install -Dm644 "${srcdir}/${pkgname}-${pkgver}/packaging/flashsentry.zsh" \
-            "${pkgdir}/usr/share/zsh/site-functions/_flashsentry"
-    fi
+  install -Dm644 "${root}/resources/icons/flashsentry.svg" \
+    "${pkgdir}/usr/share/icons/hicolor/scalable/apps/flashsentry.svg"
+
+  install -Dm644 "${root}/packaging/flashsentry.service" \
+    "${pkgdir}/usr/lib/systemd/user/flashsentry.service"
+
+  if [ -f "${root}/packaging/flashsentry.bash" ]; then
+    install -Dm644 "${root}/packaging/flashsentry.bash" \
+      "${pkgdir}/usr/share/bash-completion/completions/flashsentry"
+  fi
+
+  if [ -f "${root}/packaging/flashsentry.zsh" ]; then
+    install -Dm644 "${root}/packaging/flashsentry.zsh" \
+      "${pkgdir}/usr/share/zsh/site-functions/_flashsentry"
+  fi
 }
 
 # vim:set ts=4 sw=4 et:

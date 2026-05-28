@@ -6,6 +6,8 @@
 #include <atomic>
 #include <cstdint>
 
+namespace FlashSentry { struct HashCheckpoint; }
+
 namespace FlashSentry::RawDeviceHash {
 
 enum class Algorithm {
@@ -22,6 +24,11 @@ QString algorithmName(Algorithm algo);
 Algorithm algorithmFromName(const QString& name);
 int normalizedBufferSizeKB(int requestedKB);
 
+enum class ScanMode {
+    Full,
+    QuickSample,
+};
+
 struct Options {
     QString deviceNode;
     Algorithm algorithm = Algorithm::SHA256;
@@ -29,12 +36,22 @@ struct Options {
     bool useMemoryMapping = true;
     std::atomic<bool>* cancelled = nullptr;
     std::atomic<uint64_t>* bytesProcessed = nullptr;
+    ScanMode scanMode = ScanMode::Full;
+    uint64_t resumeFromBytes = 0;
+    FlashSentry::HashCheckpoint* checkpointOut = nullptr;
+    int checkpointEveryBlocks = 4;
 };
 
-/** Validate and open a /dev block device read-only. Returns fd or -1 and sets errno. */
+static constexpr uint64_t kDefaultChunkBytes = 64ULL * 1024 * 1024;
+
+
+/** Open block device read-only (direct open only). Returns fd or -1. */
 int openDevice(const QString& deviceNode);
 
 uint64_t deviceSize(int fd, const QString& deviceNode);
+
+/** Close a device fd from openDevice(); ignores fd < 0. */
+void closeDevice(int fd);
 
 /** Hash using an already-open fd. Caller closes fd. */
 HashResult hashOpenFd(int fd, const Options& options);

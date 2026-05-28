@@ -61,7 +61,7 @@ If you only need “is this entire stick bit-for-bit the same as last time?”, 
 
 | CyberDark Theme | Device Detection |
 |:---:|:---:|
-| ![Main Window](docs/images/main-window.png) | ![ISO verify](docs/images/iso-verify-report.png) |
+| ![Main Window](docs/images/main-window.png) |
 
 After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/). See [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) for capture guidance.
 

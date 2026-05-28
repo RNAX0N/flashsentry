@@ -141,6 +141,7 @@ private:
      * @brief Initialize all UI components
      */
     void setupUi();
+    void setupShortcuts();
 
     /**
      * @brief Create the header/toolbar area

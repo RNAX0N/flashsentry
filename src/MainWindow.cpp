@@ -1,4 +1,6 @@
 #include "MainWindow.h"
+#include "UiIcons.h"
+#include "StyledMessageBox.h"
 #include "AutostartManager.h"
 #include "AuditLog.h"
 #include "IsoCatalogManifest.h"
@@ -21,6 +23,7 @@
 #include <QScreen>
 #include <QStyle>
 #include <QGraphicsDropShadowEffect>
+#include <QShortcut>
 
 namespace FlashSentry {
 
@@ -35,6 +38,7 @@ MainWindow::MainWindow(QWidget* parent)
     
     // Setup UI first
     setupUi();
+    setupShortcuts();
     
     // Initialize backend components
     initializeBackend();
@@ -94,6 +98,7 @@ MainWindow::~MainWindow()
 void MainWindow::setupUi()
 {
     setWindowTitle("FlashSentry");
+    setWindowIcon(QIcon(QStringLiteral(":/icons/flashsentry.svg")));
     setMinimumSize(900, 600);
     
     // Center on screen
@@ -147,25 +152,34 @@ QWidget* MainWindow::createHeader()
 {
     m_headerWidget = new QWidget;
     m_headerWidget->setObjectName("HeaderWidget");
-    m_headerWidget->setFixedHeight(70);
+    m_headerWidget->setFixedHeight(84);
     
     QHBoxLayout* layout = new QHBoxLayout(m_headerWidget);
-    layout->setContentsMargins(20, 12, 20, 12);
+    layout->setContentsMargins(20, 10, 20, 10);
     layout->setSpacing(16);
     
-    // Logo/Title
+    // Logo / title / tagline
     QHBoxLayout* titleLayout = new QHBoxLayout;
     titleLayout->setSpacing(12);
     
-    QLabel* logoLabel = new QLabel("🛡️");
-    logoLabel->setStyleSheet("font-size: 28px;");
+    QLabel* logoLabel = new QLabel;
+    logoLabel->setFixedSize(40, 40);
+    UiIcons::setLabelPixmap(logoLabel, ":/icons/flashsentry.svg", 36);
     titleLayout->addWidget(logoLabel);
     
+    QVBoxLayout* titleTextLayout = new QVBoxLayout;
+    titleTextLayout->setSpacing(0);
     m_titleLabel = new QLabel("FlashSentry");
     m_titleLabel->setFont(FSFont(Heading2));
     m_titleLabel->setStyleSheet(QString("color: %1;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary)));
-    titleLayout->addWidget(m_titleLabel);
+    titleTextLayout->addWidget(m_titleLabel);
+    QLabel* taglineLabel = new QLabel(QStringLiteral("USB Flash Drive Security Monitor"));
+    taglineLabel->setFont(FSFont(Small));
+    taglineLabel->setStyleSheet(QString("color: %1;").arg(
+        FSStyle.colorCss(StyleManager::ColorRole::TextMuted)));
+    titleTextLayout->addWidget(taglineLabel);
+    titleLayout->addLayout(titleTextLayout);
     
     layout->addLayout(titleLayout);
 
@@ -176,7 +190,7 @@ QWidget* MainWindow::createHeader()
     m_modeTabBar->addTab(QStringLiteral("ISO verify"));
     m_modeTabBar->setDocumentMode(true);
     m_modeTabBar->setExpanding(false);
-    m_modeTabBar->setStyleSheet(FSStyle.tabWidgetStyleSheet());
+    m_modeTabBar->setStyleSheet(FSStyle.tabBarStyleSheet());
     connect(m_modeTabBar, &QTabBar::currentChanged, this, &MainWindow::onModeTabChanged);
     layout->addWidget(m_modeTabBar);
 
@@ -184,24 +198,27 @@ QWidget* MainWindow::createHeader()
 
     // Search box
     m_searchEdit = new QLineEdit;
-    m_searchEdit->setPlaceholderText("🔍 Search devices...");
+    m_searchEdit->setPlaceholderText(QStringLiteral("Search devices..."));
     m_searchEdit->setFixedWidth(250);
     m_searchEdit->setClearButtonEnabled(true);
+    UiIcons::addLeadingSearchAction(m_searchEdit);
     connect(m_searchEdit, &QLineEdit::textChanged, this, &MainWindow::onSearchTextChanged);
     layout->addWidget(m_searchEdit);
     
     layout->addSpacing(16);
     
     // Refresh button
-    m_refreshBtn = new QPushButton("↻ Refresh");
+    m_refreshBtn = new QPushButton(QStringLiteral("Refresh"));
+    UiIcons::setButtonIcon(m_refreshBtn, ":/icons/refresh.svg", 18);
     m_refreshBtn->setCursor(Qt::PointingHandCursor);
     m_refreshBtn->setToolTip("Rescan for USB devices");
     connect(m_refreshBtn, &QPushButton::clicked, this, &MainWindow::onRefreshClicked);
     layout->addWidget(m_refreshBtn);
     
     // Settings button
-    m_settingsBtn = new QPushButton("⚙️");
+    m_settingsBtn = new QPushButton;
     m_settingsBtn->setFixedSize(40, 40);
+    UiIcons::setButtonIcon(m_settingsBtn, ":/icons/settings.svg", 22);
     m_settingsBtn->setCursor(Qt::PointingHandCursor);
     m_settingsBtn->setToolTip("Settings");
     connect(m_settingsBtn, &QPushButton::clicked, this, &MainWindow::onSettingsClicked);
@@ -311,8 +328,14 @@ QWidget* MainWindow::createSidebar()
     statsLayout->setSpacing(12);
     
     auto addStatRow = [&](int row, const QString& label, QLabel*& valueLabel, const QString& icon) {
-        QLabel* iconLabel = new QLabel(icon);
-        iconLabel->setStyleSheet("font-size: 16px;");
+        QLabel* iconLabel = new QLabel;
+        if (icon.startsWith(QStringLiteral(":/"))) {
+            UiIcons::setLabelPixmap(iconLabel, icon.toUtf8().constData(), 20);
+            iconLabel->setFixedSize(24, 24);
+        } else {
+            iconLabel->setText(icon);
+            iconLabel->setStyleSheet("font-size: 16px;");
+        }
         statsLayout->addWidget(iconLabel, row, 0);
         
         QLabel* textLabel = new QLabel(label);
@@ -328,9 +351,9 @@ QWidget* MainWindow::createSidebar()
         statsLayout->addWidget(valueLabel, row, 2);
     };
     
-    addStatRow(0, "Connected", m_connectedCountLabel, "📱");
-    addStatRow(1, "Whitelisted", m_whitelistedCountLabel, "✅");
-    addStatRow(2, "Hashing", m_hashingCountLabel, "⏳");
+    addStatRow(0, "Connected", m_connectedCountLabel, QStringLiteral(":/icons/usb-drive.svg"));
+    addStatRow(1, "Whitelisted", m_whitelistedCountLabel, QStringLiteral(":/icons/shield-check.svg"));
+    addStatRow(2, "Hashing", m_hashingCountLabel, QStringLiteral(":/icons/hash.svg"));
     
     layout->addWidget(statsWidget);
     
@@ -525,6 +548,8 @@ void MainWindow::loadSettings()
     m_settings.useMemoryMapping = m_qsettings->value("hashing/useMemoryMapping", true).toBool();
     m_settings.maxConcurrentHashes = m_qsettings->value("hashing/maxConcurrent", 1).toInt();
     m_settings.animationsEnabled = m_qsettings->value("appearance/animations", true).toBool();
+    m_settings.fontSizePt = m_qsettings->value("appearance/fontSizePt", 10).toInt();
+    FSStyle.setBaseFontSize(m_settings.fontSizePt);
     
     QString themeName = m_qsettings->value("appearance/theme", "Cyber Dark").toString();
     for (auto theme : FSStyle.availableThemes()) {
@@ -563,6 +588,7 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("hashing/useMemoryMapping", m_settings.useMemoryMapping);
     m_qsettings->setValue("hashing/maxConcurrent", m_settings.maxConcurrentHashes);
     m_qsettings->setValue("appearance/animations", m_settings.animationsEnabled);
+    m_qsettings->setValue("appearance/fontSizePt", m_settings.fontSizePt);
     m_qsettings->setValue("general/appModule", appModuleToString(m_settings.appModule));
     m_qsettings->setValue("security/defaultVerificationProfile", verificationProfileToString(m_settings.defaultVerificationProfile));
     m_qsettings->setValue("iso/scanDirectory", m_settings.isoScanDirectory);
@@ -580,6 +606,26 @@ void MainWindow::saveSettings()
     m_qsettings->sync();
 }
 
+void MainWindow::setupShortcuts()
+{
+    auto* refreshSc = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_R), this);
+    connect(refreshSc, &QShortcut::activated, this, &MainWindow::onRefreshClicked);
+
+    auto* settingsSc = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma), this);
+    connect(settingsSc, &QShortcut::activated, this, &MainWindow::onSettingsClicked);
+
+    auto* quitSc = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q), this);
+    connect(quitSc, &QShortcut::activated, this, &MainWindow::onQuitRequested);
+
+    auto* hideSc = new QShortcut(QKeySequence(Qt::Key_Escape), this);
+    connect(hideSc, &QShortcut::activated, this, [this]() {
+        if (shouldMinimizeToTray()) {
+            hide();
+            m_trayIcon->updateWindowVisibility(false);
+        }
+    });
+}
+
 void MainWindow::applyStyle()
 {
     setStyleSheet(FSStyle.mainWindowStyleSheet());
@@ -588,10 +634,11 @@ void MainWindow::applyStyle()
     m_headerWidget->setStyleSheet(QString(R"(
         QWidget#HeaderWidget {
             background-color: %1;
-            border-bottom: 1px solid %2;
+            border-bottom: 2px solid %3;
         }
     )").arg(FSStyle.colorCss(StyleManager::ColorRole::BackgroundAlt))
-       .arg(FSStyle.colorCss(StyleManager::ColorRole::Border)));
+       .arg(FSStyle.colorCss(StyleManager::ColorRole::Border))
+       .arg(FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary) + "55"));
     
     // Search field styling
     m_searchEdit->setStyleSheet(FSStyle.inputFieldStyleSheet());
@@ -1319,6 +1366,7 @@ void MainWindow::onSettingsClicked()
 {
     SettingsDialog dialog(this);
     dialog.loadSettings(m_settings);
+    dialog.setDatabaseStatistics(m_database->deviceCount(), m_database->databasePath());
     
     connect(&dialog, &SettingsDialog::themeChanged, this, &MainWindow::onThemeChanged);
     connect(&dialog, &SettingsDialog::exportDatabaseRequested, this,
@@ -1333,8 +1381,8 @@ void MainWindow::onSettingsClicked()
                 }
             });
     connect(&dialog, &SettingsDialog::importDatabaseRequested, this,
-            [this](const QString& path, bool merge) {
-                const int count = m_database->importFromFile(path, merge);
+            [this](const QString& path) {
+                const int count = m_database->importFromFile(path, true);
                 if (count >= 0) {
                     logMessage(QString("Imported %1 device(s) from %2").arg(count).arg(path));
                     updateSidebarStats();
@@ -1391,6 +1439,7 @@ void MainWindow::applySettings(const AppSettings& settings)
     m_trayIcon->setNotificationsEnabled(settings.showNotifications);
     m_hashWorker->setMaxConcurrent(settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(settings.animationsEnabled);
+    FSStyle.setBaseFontSize(settings.fontSizePt);
     applyAppModule();
     if (m_isoWidget) {
         m_isoWidget->setActiveProfile(settings.settingsProfile);
@@ -1656,7 +1705,7 @@ void MainWindow::updateEmptyState()
 {
     if (m_deviceCards.isEmpty()) {
         m_emptyStateLabel->setText(
-            "💾\n\nNo USB devices connected\n\n"
+            "No USB devices connected\n\n"
             "Connect a USB flash drive or switch to ISO Verify in Settings.\n\n"
             "Recommended: watch selected folders (fast) or automatic ISO checks — "
             "full-partition hashing is optional for advanced users."
@@ -1704,15 +1753,8 @@ bool MainWindow::showNewDriveDialog(const DeviceInfo& device)
         .arg(partitionCount)
         .arg(partitionNodes.join(", "));
 
-    QMessageBox msgBox(this);
-    msgBox.setWindowTitle("New Drive Detected");
-    msgBox.setTextFormat(Qt::RichText);
-    msgBox.setText(message);
-    msgBox.setIcon(QMessageBox::Question);
-    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    msgBox.setDefaultButton(QMessageBox::No);
-
-    return msgBox.exec() == QMessageBox::Yes;
+    return showStyledRichQuestion(this, QStringLiteral("New Drive Detected"), message)
+           == QMessageBox::Yes;
 }
 
 bool MainWindow::showNewDeviceDialog(const DeviceInfo& device)
@@ -1731,15 +1773,8 @@ bool MainWindow::showNewDeviceDialog(const DeviceInfo& device)
         .arg(device.sizeBytes > 0 ? QString("%1 GB").arg(device.sizeBytes / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1) : "Unknown")
         .arg(device.fsType.isEmpty() ? "Unknown" : device.fsType);
     
-    QMessageBox msgBox(this);
-    msgBox.setWindowTitle("New Device Detected");
-    msgBox.setTextFormat(Qt::RichText);
-    msgBox.setText(message);
-    msgBox.setIcon(QMessageBox::Question);
-    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    msgBox.setDefaultButton(QMessageBox::No);
-    
-    return msgBox.exec() == QMessageBox::Yes;
+    return showStyledRichQuestion(this, QStringLiteral("New Device Detected"), message)
+           == QMessageBox::Yes;
 }
 
 void MainWindow::acceptFingerprint(const DeviceInfo& device, const QString& actualHash,
@@ -1859,6 +1894,7 @@ bool MainWindow::showModifiedDeviceAlert(const DeviceInfo& device, const QString
     msgBox.addButton(QMessageBox::Cancel);
     msgBox.setDefaultButton(QMessageBox::Cancel);
 
+    applyDialogStyle(msgBox);
     msgBox.exec();
 
     if (msgBox.clickedButton() == approveBtn) {
@@ -1879,6 +1915,7 @@ bool MainWindow::showModifiedDeviceAlert(const DeviceInfo& device, const QString
 void MainWindow::offerUnmountWithoutHash(const QString& deviceNode, const QString& error)
 {
     QMessageBox msgBox(this);
+    Q_UNUSED(deviceNode);
     msgBox.setWindowTitle("Hash Failed Before Eject");
     msgBox.setIcon(QMessageBox::Warning);
     msgBox.setText(QString(

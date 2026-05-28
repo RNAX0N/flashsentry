@@ -200,6 +200,7 @@ int main(int argc, char* argv[])
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
     QApplication app(argc, argv);
+    app.setWindowIcon(QIcon(QStringLiteral(":/icons/flashsentry.svg")));
     qInstallMessageHandler(messageHandler);
     parser.process(app);
 

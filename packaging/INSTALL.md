@@ -47,3 +47,5 @@ sudo usermod -aG storage "$USER"
 systemctl --user enable --now flashsentry.service
 flashsentry --version
 ```
+
+**Note:** Do not use `rsync --exclude src` in the PKGBUILD — that excludes the project `src/` directory, not only makepkg's `packaging/src` folder.

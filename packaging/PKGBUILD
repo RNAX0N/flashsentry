@@ -9,7 +9,7 @@
 pkgname=flashsentry
 # Sync with ../VERSION — pkgver() appends git metadata for local builds
 pkgver=1.4.2
-pkgrel=3
+pkgrel=4
 pkgdesc="USB and ISO security monitor - verify Linux ISOs, watch folders, optional full-disk hash"
 arch=('x86_64' 'aarch64')
 url="https://github.com/RNAX0N/flashsentry"
@@ -38,7 +38,6 @@ conflicts=('flashsentry-git')
 backup=('etc/flashsentry/config.json')
 install=flashsentry.install
 
-# Repo root (absolute path — required; git+file:// with ".." breaks makepkg)
 _repo_root="$(cd -- "${startdir}/.." && pwd)"
 
 if [ "${FLASHSENTRY_RELEASE:-0}" = 1 ]; then
@@ -47,7 +46,6 @@ if [ "${FLASHSENTRY_RELEASE:-0}" = 1 ]; then
     )
     sha256sums=('SKIP')
 else
-    # Local checkout: copy tree in prepare() (no git+file:// fetch)
     source=()
     sha256sums=()
 fi
@@ -70,12 +68,9 @@ pkgver() {
   printf '%s.r%s.g%s' "${_base}" "${_commits}" "${_hash}"
 }
 
+# After pkgver(), makepkg uses ${pkgname}-${pkgver} (see makepkg rename step)
 _srcroot() {
-  if [ "${FLASHSENTRY_RELEASE:-0}" = 1 ]; then
-    echo "${srcdir}/${pkgname}-${pkgver}"
-  else
-    echo "${srcdir}/${pkgname}"
-  fi
+  echo "${srcdir}/${pkgname}-${pkgver}"
 }
 
 prepare() {
@@ -84,11 +79,13 @@ prepare() {
     mkdir -p "${srcdir}/${pkgname}"
     rsync -a --delete \
       --exclude 'pkg' \
-      --exclude 'src' \
+      --exclude 'packaging/pkg' \
+      --exclude 'packaging/src' \
       --exclude 'build' \
+      --exclude 'packaging/build' \
       "${_repo_root}/" "${srcdir}/${pkgname}/"
   fi
-  cd "$(_srcroot)"
+  cd "${srcdir}/${pkgname}"
   mkdir -p build
 }
 

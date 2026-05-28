@@ -49,14 +49,38 @@ QString hashDecompressedXz(const QString& path, QString* errorOut)
     }
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+    if (!ctx) {
+        proc.kill();
+        proc.waitForFinished(3000);
+        if (errorOut) {
+            *errorOut = QStringLiteral("OpenSSL context failed");
+        }
+        return {};
+    }
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1) {
+        EVP_MD_CTX_free(ctx);
+        proc.kill();
+        proc.waitForFinished(3000);
+        if (errorOut) {
+            *errorOut = QStringLiteral("OpenSSL hash initialization failed");
+        }
+        return {};
+    }
     QByteArray buf(1024 * 1024, Qt::Uninitialized);
     while (proc.waitForReadyRead(30000)) {
         const qint64 n = proc.read(buf.data(), buf.size());
         if (n <= 0) {
             break;
         }
-        EVP_DigestUpdate(ctx, buf.constData(), static_cast<size_t>(n));
+        if (EVP_DigestUpdate(ctx, buf.constData(), static_cast<size_t>(n)) != 1) {
+            EVP_MD_CTX_free(ctx);
+            proc.kill();
+            proc.waitForFinished(3000);
+            if (errorOut) {
+                *errorOut = QStringLiteral("OpenSSL hash update failed");
+            }
+            return {};
+        }
     }
     proc.waitForFinished(3600000);
     if (proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0) {
@@ -70,7 +94,13 @@ QString hashDecompressedXz(const QString& path, QString* errorOut)
 
     unsigned char hash[EVP_MAX_MD_SIZE];
     unsigned int len = 0;
-    EVP_DigestFinal_ex(ctx, hash, &len);
+    if (EVP_DigestFinal_ex(ctx, hash, &len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        if (errorOut) {
+            *errorOut = QStringLiteral("OpenSSL hash finalization failed");
+        }
+        return {};
+    }
     EVP_MD_CTX_free(ctx);
     return QByteArray(reinterpret_cast<char*>(hash), static_cast<int>(len)).toHex();
 }
@@ -113,16 +143,37 @@ QString hashFileSha256(const QString& path, QString* errorOut)
     }
 
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+    if (!ctx) {
+        if (errorOut) *errorOut = QStringLiteral("OpenSSL context failed");
+        return {};
+    }
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1) {
+        EVP_MD_CTX_free(ctx);
+        if (errorOut) *errorOut = QStringLiteral("OpenSSL hash initialization failed");
+        return {};
+    }
     QByteArray buf(1024 * 1024, Qt::Uninitialized);
     while (true) {
         const qint64 n = file.read(buf.data(), buf.size());
-        if (n <= 0) break;
-        EVP_DigestUpdate(ctx, buf.constData(), static_cast<size_t>(n));
+        if (n < 0) {
+            EVP_MD_CTX_free(ctx);
+            if (errorOut) *errorOut = file.errorString();
+            return {};
+        }
+        if (n == 0) break;
+        if (EVP_DigestUpdate(ctx, buf.constData(), static_cast<size_t>(n)) != 1) {
+            EVP_MD_CTX_free(ctx);
+            if (errorOut) *errorOut = QStringLiteral("OpenSSL hash update failed");
+            return {};
+        }
     }
     unsigned char hash[EVP_MAX_MD_SIZE];
     unsigned int len = 0;
-    EVP_DigestFinal_ex(ctx, hash, &len);
+    if (EVP_DigestFinal_ex(ctx, hash, &len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        if (errorOut) *errorOut = QStringLiteral("OpenSSL hash finalization failed");
+        return {};
+    }
     EVP_MD_CTX_free(ctx);
 
     return QByteArray(reinterpret_cast<char*>(hash), static_cast<int>(len)).toHex();

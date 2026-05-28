@@ -1,6 +1,7 @@
 #include "IsoCatalogManifest.h"
 
 #include <QCryptographicHash>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -61,7 +62,13 @@ QString userTofuPath()
 QStringList catalogDropInDirs()
 {
     QStringList dirs;
+#ifdef Q_OS_WIN
+    dirs << QCoreApplication::applicationDirPath() + QStringLiteral("/iso-catalog.d");
+    dirs << QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+              + QStringLiteral("/FlashSentry/iso-catalog.d");
+#else
     dirs << QStringLiteral("/usr/share/flashsentry/iso-catalog.d");
+#endif
     dirs << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
               + QStringLiteral("/iso-catalog.d");
     return dirs;

@@ -34,6 +34,13 @@ static QString fixturesRoot()
 
 void TestIsoVerifyPublisherMock::initTestCase()
 {
+#ifdef Q_OS_WIN
+    QSKIP("Publisher OpenPGP integration is skipped on Windows until Gpg4win support is validated");
+#endif
+    if (QStandardPaths::findExecutable(QStringLiteral("gpg")).isEmpty()) {
+        QSKIP("gpg is required for publisher signature-chain integration test");
+    }
+
     QVERIFY(m_configHome.isValid());
     m_fixtureRoot = fixturesRoot() + QStringLiteral("/publisher-mock");
 

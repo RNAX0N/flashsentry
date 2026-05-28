@@ -5,12 +5,33 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QProcess>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QTextStream>
 
 namespace FlashSentry {
 
 namespace {
+
+#ifdef Q_OS_WIN
+
+constexpr auto kRunKey = "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+constexpr auto kRunValue = "FlashSentry";
+
+QString flashsentryExecutable()
+{
+    const QString app = QCoreApplication::applicationFilePath();
+    return app.isEmpty() ? QStringLiteral("flashsentry.exe") : app;
+}
+
+QString quotedAutostartCommand()
+{
+    QString exe = flashsentryExecutable();
+    exe.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    return QStringLiteral("\"%1\" --minimized").arg(exe);
+}
+
+#else
 
 constexpr auto kServiceName = "flashsentry.service";
 constexpr auto kAutostartFileName = "flashsentry-autostart.desktop";
@@ -114,6 +135,8 @@ std::optional<bool> systemdAutostartEnabled()
     return std::nullopt;
 }
 
+#endif
+
 } // namespace
 
 bool AutostartManager::isAvailable()
@@ -123,6 +146,9 @@ bool AutostartManager::isAvailable()
 
 AutostartManager::Backend AutostartManager::backend()
 {
+#ifdef Q_OS_WIN
+    return Backend::WindowsRegistry;
+#else
     if (commandExists("systemctl") && systemdUnitExists()) {
         return Backend::Systemd;
     }
@@ -132,10 +158,19 @@ AutostartManager::Backend AutostartManager::backend()
         return Backend::Xdg;
     }
     return Backend::None;
+#endif
 }
 
 std::optional<bool> AutostartManager::isLoginAutostartEnabled()
 {
+#ifdef Q_OS_WIN
+    QSettings runKey(QString::fromLatin1(kRunKey), QSettings::NativeFormat);
+    const QString value = runKey.value(QString::fromLatin1(kRunValue)).toString();
+    if (value.isEmpty()) {
+        return false;
+    }
+    return value.contains(flashsentryExecutable(), Qt::CaseInsensitive);
+#else
     if (commandExists("systemctl") && systemdUnitExists()) {
         const auto systemdState = systemdAutostartEnabled();
         if (systemdState.has_value()) {
@@ -146,10 +181,27 @@ std::optional<bool> AutostartManager::isLoginAutostartEnabled()
         return std::nullopt;
     }
     return QFile::exists(xdgAutostartPath());
+#endif
 }
 
 bool AutostartManager::setLoginAutostartEnabled(bool enabled, QString* errorMessage)
 {
+#ifdef Q_OS_WIN
+    QSettings runKey(QString::fromLatin1(kRunKey), QSettings::NativeFormat);
+    if (enabled) {
+        runKey.setValue(QString::fromLatin1(kRunValue), quotedAutostartCommand());
+    } else {
+        runKey.remove(QString::fromLatin1(kRunValue));
+    }
+    runKey.sync();
+    if (runKey.status() != QSettings::NoError) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("Could not update Windows Run registry key");
+        }
+        return false;
+    }
+    return true;
+#else
     if (commandExists("systemctl") && systemdUnitExists()) {
         QString err;
         const QStringList args = enabled
@@ -185,6 +237,7 @@ bool AutostartManager::setLoginAutostartEnabled(bool enabled, QString* errorMess
             "Install flashsentry.service (Arch package) or run from a desktop session with XDG config.");
     }
     return false;
+#endif
 }
 
 QString AutostartManager::backendDescription()
@@ -194,6 +247,8 @@ QString AutostartManager::backendDescription()
         return QStringLiteral("systemd user service (flashsentry.service)");
     case Backend::Xdg:
         return QStringLiteral("desktop autostart entry");
+    case Backend::WindowsRegistry:
+        return QStringLiteral("Windows Run registry key");
     case Backend::None:
         return QString();
     }

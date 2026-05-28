@@ -1,8 +1,10 @@
 #pragma once
 
 #include <QObject>
+#ifndef Q_OS_WIN
 #include <QDBusInterface>
 #include <QDBusPendingCallWatcher>
+#endif
 #include <QHash>
 #include <QMutex>
 #include <memory>
@@ -162,11 +164,14 @@ signals:
     void error(const QString& deviceNode, const QString& message);
 
 private slots:
+#ifndef Q_OS_WIN
     void onMountFinished(QDBusPendingCallWatcher* watcher);
     void onUnmountFinished(QDBusPendingCallWatcher* watcher);
     void onPowerOffFinished(QDBusPendingCallWatcher* watcher);
+#endif
 
 private:
+#ifndef Q_OS_WIN
     /**
      * @brief Get UDisks2 block device object path
      */
@@ -209,12 +214,15 @@ private:
 
     // D-Bus connection
     std::unique_ptr<QDBusInterface> m_udisksInterface;
+#endif
 
     // Pending operation tracking
     mutable QMutex m_mutex;
+#ifndef Q_OS_WIN
     QHash<QDBusPendingCallWatcher*, QString> m_pendingMounts;
     QHash<QDBusPendingCallWatcher*, QString> m_pendingUnmounts;
     QHash<QDBusPendingCallWatcher*, QString> m_pendingPowerOffs;
+#endif
 
     // Mount status tracking
     QHash<QString, QString> m_mountPoints;  // deviceNode -> mountPoint

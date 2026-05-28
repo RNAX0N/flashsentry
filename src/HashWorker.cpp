@@ -8,6 +8,10 @@
 #include <QDebug>
 #include <QtConcurrent>
 
+#ifndef Q_OS_WIN
+#include <unistd.h>
+#endif
+
 namespace FlashSentry {
 
 namespace {

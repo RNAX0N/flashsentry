@@ -1,5 +1,6 @@
 #include "SettingsDialog.h"
 #include "AutostartManager.h"
+#include "Platform.h"
 #include "SettingsProfiles.h"
 
 #include <QApplication>
@@ -409,14 +410,24 @@ QWidget* SettingsDialog::createVerificationTab()
         connect(box, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
         badUsbForm->addRow(QStringLiteral(""), box);
     }
-    m_badUsbUsbmonCheck = new QCheckBox(QStringLiteral("Start usbmon/tcpdump capture on anomalies"));
+    const bool usbCaptureSupported = Platform::capabilities().usbmonCapture;
+    m_badUsbUsbmonCheck = new QCheckBox(
+        usbCaptureSupported
+            ? QStringLiteral("Start usbmon/tcpdump capture on anomalies")
+            : QStringLiteral("USB packet capture requires external USBPcap/Wireshark on this platform"));
+    m_badUsbUsbmonCheck->setEnabled(usbCaptureSupported);
     m_badUsbUsbmonOnAnomalyCheck = new QCheckBox(QStringLiteral("Capture only when an anomaly is detected"));
+    m_badUsbUsbmonOnAnomalyCheck->setEnabled(usbCaptureSupported);
     connect(m_badUsbUsbmonCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     connect(m_badUsbUsbmonOnAnomalyCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     badUsbForm->addRow(QStringLiteral(""), m_badUsbUsbmonCheck);
     badUsbForm->addRow(QStringLiteral(""), m_badUsbUsbmonOnAnomalyCheck);
     m_badUsbUsbmonCommandEdit = new QLineEdit;
-    m_badUsbUsbmonCommandEdit->setPlaceholderText(QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1"));
+    m_badUsbUsbmonCommandEdit->setEnabled(usbCaptureSupported);
+    m_badUsbUsbmonCommandEdit->setPlaceholderText(
+        usbCaptureSupported
+            ? QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1")
+            : QStringLiteral("USBPcap integration is planned; capture manually for now"));
     m_badUsbUsbmonCommandEdit->setToolTip(QStringLiteral("Template variables: {bus}, {out}, {stable_id}, {rule_id}"));
     connect(m_badUsbUsbmonCommandEdit, &QLineEdit::textChanged, this, &SettingsDialog::onSettingChanged);
     badUsbForm->addRow(QStringLiteral("Capture command:"), m_badUsbUsbmonCommandEdit);

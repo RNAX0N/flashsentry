@@ -1,6 +1,8 @@
 # FlashSentry screenshots
 
-UI reference images for the README and user guide. These are stylized mockups for documentation (replace with your own captures from a real session if you prefer).
+UI reference images for design discussion and future documentation. These are stylized mockups, not
+current application screenshots. Replace them with captures from a real session before embedding them
+as product screenshots in the README or user guide.
 
 | File | Description |
 |------|-------------|

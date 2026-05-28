@@ -10,12 +10,14 @@
 #include <QStackedWidget>
 #include <QSplitter>
 #include <QListWidget>
+#include <QTableWidget>
 #include <QTimer>
 #include <QTabBar>
 #include <QPushButton>
 #include <QCloseEvent>
 #include <QSettings>
 #include <memory>
+#include <optional>
 #include <QHash>
 #include <QSet>
 
@@ -308,6 +310,8 @@ private:
     QStringList relatedStorageNodesForHid(const HidDeviceInfo& device) const;
     void processBadUsbDevice(const HidDeviceInfo& device);
     void configureBadUsbMonitoring();
+    std::optional<HidDeviceCategory> promptForHidCategory(const HidDeviceInfo& device,
+                                                          HidDeviceCategory suggested) const;
 
     bool showModifiedDeviceAlert(const DeviceInfo& device, const QString& expected,
                                  const QString& actual, bool offerMount = true);
@@ -341,7 +345,7 @@ private:
     // UI - Main structure
     QWidget* m_centralWidget = nullptr;
     QVBoxLayout* m_mainLayout = nullptr;
-    QSplitter* m_splitter = nullptr;
+    QWidget* m_splitter = nullptr;
 
     // UI - Header
     QWidget* m_headerWidget = nullptr;
@@ -350,6 +354,7 @@ private:
     QLineEdit* m_searchEdit = nullptr;
     QPushButton* m_refreshBtn = nullptr;
     QPushButton* m_settingsBtn = nullptr;
+    QList<QPushButton*> m_navButtons;
 
     // UI - Sidebar
     QWidget* m_sidebarWidget = nullptr;
@@ -367,6 +372,9 @@ private:
     QVBoxLayout* m_deviceListLayout = nullptr;
     QLabel* m_emptyStateLabel = nullptr;
     QStackedWidget* m_contentStack = nullptr;
+    QTableWidget* m_deviceTable = nullptr;
+    QTableWidget* m_eventTable = nullptr;
+    int m_totalEventCount = 0;
 
     // UI - Status bar
     QLabel* m_statusLabel = nullptr;
@@ -401,6 +409,7 @@ private:
     QHash<QString, PendingHashLaunch> m_pendingHashLaunch;
     QHash<QString, PendingHashAction> m_pendingHashActions;
     QHash<QString, QString> m_lastVerificationHashes;
+    QHash<QString, QDateTime> m_deviceConnectedAt;
     QSet<QString> m_drivePromptInProgress;
     QSet<QString> m_rejectedDrives;
     QSet<QString> m_unmountBeforeHash;

@@ -43,6 +43,27 @@ BadUsbAnomalyResult analyzeConnect(const HidDeviceInfo& device,
             relatedStorageNodes);
     }
 
+    if (settings.badUsbAlertInterfaceDrift && baseline.has_value()
+        && baseline->userCategory != HidDeviceCategory::Unknown) {
+        const HidDeviceCategory observed = inferredHidDeviceCategory(device);
+        const bool categoryMismatch =
+            baseline->userCategory != observed
+            && !(baseline->userCategory == HidDeviceCategory::KeyboardMouseCombo
+                 && (observed == HidDeviceCategory::Keyboard || observed == HidDeviceCategory::Mouse))
+            && !(baseline->userCategory == HidDeviceCategory::Receiver
+                 && observed == HidDeviceCategory::KeyboardMouseCombo);
+        if (categoryMismatch) {
+            return makeResult(
+                device, BadUsbSeverity::Critical, QStringLiteral("category-capability-drift"),
+                QStringLiteral("USB HID category changed from the enrolled baseline"),
+                QStringLiteral("The user-confirmed device category was '%1', but the current HID "
+                               "capabilities look like '%2'.")
+                    .arg(hidDeviceCategoryLabel(baseline->userCategory),
+                         hidDeviceCategoryLabel(observed)),
+                relatedStorageNodes);
+        }
+    }
+
     if (settings.badUsbAlertNewKeyboard && device.isKeyboard()
         && (!baseline.has_value() || !baseline->trusted)) {
         return makeResult(

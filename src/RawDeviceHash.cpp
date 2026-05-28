@@ -10,6 +10,71 @@
 #include <QFile>
 #include <QCoreApplication>
 
+#include <cerrno>
+
+#ifndef ENOTSUP
+#define ENOTSUP EINVAL
+#endif
+
+#ifdef Q_OS_WIN
+
+namespace FlashSentry::RawDeviceHash {
+
+QString algorithmName(Algorithm algo)
+{
+    switch (algo) {
+        case Algorithm::SHA256: return QStringLiteral("SHA256");
+        case Algorithm::SHA512: return QStringLiteral("SHA512");
+        case Algorithm::BLAKE2b: return QStringLiteral("BLAKE2b");
+    }
+    return QStringLiteral("SHA256");
+}
+
+Algorithm algorithmFromName(const QString& name)
+{
+    const QString upper = name.toUpper();
+    if (upper == QStringLiteral("SHA512")) return Algorithm::SHA512;
+    if (upper == QStringLiteral("BLAKE2B") || upper == QStringLiteral("BLAKE2b")) {
+        return Algorithm::BLAKE2b;
+    }
+    return Algorithm::SHA256;
+}
+
+int openDevice(const QString& /*deviceNode*/)
+{
+    errno = ENOTSUP;
+    return -1;
+}
+
+uint64_t deviceSize(int /*fd*/, const QString& /*deviceNode*/)
+{
+    return 0;
+}
+
+HashResult hashOpenFd(int /*fd*/, const Options& options)
+{
+    HashResult result;
+    result.deviceNode = options.deviceNode;
+    result.algorithm = algorithmName(options.algorithm);
+    result.errorMessage =
+        QStringLiteral("Full-partition raw hashing is not implemented in this Windows build");
+    return result;
+}
+
+HashResult hashDevice(const Options& options, const QString& /*pkexecHelperPath*/)
+{
+    HashResult result;
+    result.deviceNode = options.deviceNode;
+    result.algorithm = algorithmName(options.algorithm);
+    result.errorMessage =
+        QStringLiteral("Full-partition raw hashing is not implemented in this Windows build");
+    return result;
+}
+
+} // namespace FlashSentry::RawDeviceHash
+
+#else
+
 #include <openssl/evp.h>
 
 #include <fcntl.h>
@@ -504,3 +569,5 @@ HashResult hashDevice(const Options& options, const QString& pkexecHelperPath)
 }
 
 } // namespace FlashSentry::RawDeviceHash
+
+#endif

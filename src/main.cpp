@@ -276,7 +276,9 @@ int main(int argc, char* argv[])
     // Setup signal handlers for graceful shutdown
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
+#ifndef Q_OS_WIN
     std::signal(SIGHUP, signalHandler);
+#endif
     
     // Register custom types
     qRegisterMetaType<DeviceInfo>("DeviceInfo");

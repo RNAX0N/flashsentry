@@ -65,9 +65,12 @@ Built with Qt6 for Arch Linux: tray integration, polkit for safe mounting, and a
 
 If you only need “is this entire stick bit-for-bit the same as last time?”, enable full-partition hashing in **Settings → Security**.
 
-## Screenshots
+## UI status
 
-![FlashSentry main window](docs/images/main-window.png)
+The installed application currently uses FlashSentry's Qt widget interface. Some images under
+[`docs/images/`](docs/images/) are **stylized UI mockups/reference concepts**, not screenshots of the
+current released application. They are useful for future UI direction, but they should not be treated
+as a promise that the installed app already matches that design.
 
 After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/). See [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) for capture guidance.
 
@@ -79,13 +82,29 @@ After `sudo cmake --install build --prefix /usr`, open the installed guides unde
 
 ## Installation
 
-### From source (Arch)
+### Arch package via pacman
+
+FlashSentry ships Arch packaging metadata under [`packaging/`](packaging/). Build a local
+`.pkg.tar.zst` package with `makepkg`, then install it with `pacman`:
 
 ```bash
 git clone https://github.com/RNAX0N/flashsentry.git
 cd flashsentry/packaging
 ./build-package.sh -si
 ```
+
+Remove:
+
+```bash
+sudo pacman -R flashsentry
+```
+
+Your user data under `~/.config/flashsentry/`, `~/.config/FlashSentry/`, and
+`~/.cache/FlashSentry/` is preserved unless you remove it manually.
+
+> Developer note: the default `PKGBUILD` builds the tagged release matching `pkgver`. For packaging
+> an untagged local checkout, adjust `source` in `packaging/PKGBUILD` to use the local tree (the file
+> includes a commented `git+file://...` example), then run the same `makepkg` / `pacman -U` commands.
 
 ### Runtime dependencies
 
@@ -171,16 +190,47 @@ See **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** for workflows and troubleshooti
 
 ## Building
 
-```bash
-# Arch build deps
-sudo pacman -S qt6-base qt6-tools cmake base-devel openssl pkgconf
+### Arch package build and pacman install
 
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . -j$(nproc)
+For normal Arch use, build a pacman package from the `packaging/PKGBUILD` and install that
+package instead of running directly from the CMake build tree:
+
+```bash
+# Tools needed by makepkg itself
+sudo pacman -S --needed base-devel git
+
+git clone https://github.com/RNAX0N/flashsentry.git
+cd flashsentry/packaging
+
+# Build the package and install dependencies declared in the PKGBUILD
+makepkg -s --cleanbuild
+
+# Install/upgrade through pacman
+sudo pacman -U ./flashsentry-*.pkg.tar.zst
+
+# Run after install
+flashsentry
+```
+
+Shortcut:
+
+```bash
+cd flashsentry/packaging
+makepkg -si
+```
+
+### Developer build without installing
+
+Use this only for local development or quick compile checks:
+
+```bash
+sudo pacman -S --needed qt6-base qt6-tools cmake base-devel openssl pkgconf
+
+cmake -B build-gcc -DCMAKE_BUILD_TYPE=Release -DFLASHSENTRY_BUILD_TESTS=ON -DCMAKE_CXX_COMPILER=g++
+cmake --build build-gcc -j$(nproc)
 
 # Run from build tree
-./flashsentry
+./build-gcc/flashsentry
 ```
 
 Optional tests:
@@ -190,7 +240,10 @@ cmake -DFLASHSENTRY_BUILD_TESTS=ON ..
 cmake --build . && ctest --test-dir build --output-on-failure
 ```
 
-Ten tests: `test_types`, `test_database_manager`, `test_merkle`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`, `test_verify_report`, `test_iso_verify_integration`, `test_iso_verify_publisher_mock`, `test_iso_http_mock` (fixtures under `tests/fixtures/`).
+Thirteen tests: `test_types`, `test_database_manager`, `test_merkle`, `test_badusb_analyzer`,
+`test_badusb_baseline`, `test_iso_catalog`, `test_iso_checksum`, `test_autostart`,
+`test_iso_scan_rules`, `test_verify_report`, `test_iso_verify_integration`,
+`test_iso_verify_publisher_mock`, `test_iso_http_mock` (fixtures under `tests/fixtures/`).
 
 Install (binary, polkit policy, udev rules, and docs under `/usr/share/doc/flashsentry/`):
 

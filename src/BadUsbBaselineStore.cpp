@@ -60,7 +60,50 @@ std::optional<BadUsbBaselineEntry> BadUsbBaselineStore::getDevice(const QString&
     return *it;
 }
 
-bool BadUsbBaselineStore::upsertBaseline(const HidDeviceInfo& info, bool trusted, const QString& notes)
+std::optional<BadUsbBaselineEntry> BadUsbBaselineStore::matchDevice(const HidDeviceInfo& info) const
+{
+    QMutexLocker locker(&m_mutex);
+    const QString stableId = info.stableId();
+    const auto exact = m_devices.constFind(stableId);
+    if (exact != m_devices.constEnd()) {
+        return *exact;
+    }
+
+    const QStringList aliases = identifierAliasesFor(info);
+    for (auto it = m_devices.constBegin(); it != m_devices.constEnd(); ++it) {
+        for (const QString& alias : aliases) {
+            if (!alias.isEmpty() && it->identifierAliases.contains(alias)) {
+                return *it;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+QStringList BadUsbBaselineStore::identifierAliasesFor(const HidDeviceInfo& info)
+{
+    QStringList aliases;
+    aliases << info.stableId();
+    aliases << info.vidPidSerialKey();
+    aliases << info.productKey();
+    if (!info.vidPidKey().isEmpty() && info.serial.isEmpty()) {
+        // VID/PID alone is only used when no serial exists; this is less precise but better
+        // than treating the same no-serial keyboard as new on every port move.
+        aliases << info.vidPidKey();
+    }
+    for (const QString& signature : info.interfaceSignatures()) {
+        if (!signature.isEmpty()) {
+            aliases << QStringLiteral("iface:%1:%2:%3")
+                           .arg(info.vendorId.toLower(), info.productId.toLower(), signature);
+        }
+    }
+    aliases.removeAll(QString());
+    aliases.removeDuplicates();
+    return aliases;
+}
+
+bool BadUsbBaselineStore::upsertBaseline(const HidDeviceInfo& info, bool trusted,
+                                         const QString& notes, HidDeviceCategory category)
 {
     const QString stableId = info.stableId();
     const QDateTime now = QDateTime::currentDateTimeUtc();
@@ -73,6 +116,10 @@ bool BadUsbBaselineStore::upsertBaseline(const HidDeviceInfo& info, bool trusted
         }
         entry.device = info;
         entry.trusted = trusted;
+        entry.userCategory = category == HidDeviceCategory::Unknown
+            ? inferredHidDeviceCategory(info)
+            : category;
+        entry.identifierAliases = identifierAliasesFor(info);
         entry.lastSeenUtc = now;
         if (!notes.isEmpty()) {
             entry.notes = notes;
@@ -149,7 +196,10 @@ bool BadUsbBaselineStore::load()
     QHash<QString, BadUsbBaselineEntry> loaded;
     const QJsonArray devices = doc.object().value(QStringLiteral("devices")).toArray();
     for (const QJsonValue& value : devices) {
-        const BadUsbBaselineEntry entry = BadUsbBaselineEntry::fromJson(value.toObject());
+        BadUsbBaselineEntry entry = BadUsbBaselineEntry::fromJson(value.toObject());
+        if (entry.identifierAliases.isEmpty()) {
+            entry.identifierAliases = identifierAliasesFor(entry.device);
+        }
         if (!entry.stableId.isEmpty()) {
             loaded.insert(entry.stableId, entry);
         }

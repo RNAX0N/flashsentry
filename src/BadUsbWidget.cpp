@@ -1,5 +1,6 @@
 #include "BadUsbWidget.h"
 #include "BadUsbAnalyzer.h"
+#include "Platform.h"
 
 #include <QDesktopServices>
 #include <QHeaderView>
@@ -56,7 +57,10 @@ void BadUsbWidget::setupUi()
 
     auto* buttonRow = new QHBoxLayout;
     m_trustBtn = new QPushButton(QStringLiteral("Trust / add to baseline"));
-    m_captureBtn = new QPushButton(QStringLiteral("Start usbmon capture"));
+    m_captureBtn = new QPushButton(Platform::capabilities().usbmonCapture
+                                       ? QStringLiteral("Start usbmon capture")
+                                       : QStringLiteral("USBPcap capture planned"));
+    m_captureBtn->setEnabled(Platform::capabilities().usbmonCapture);
     m_refreshBtn = new QPushButton(QStringLiteral("Refresh HID devices"));
     m_openCaptureBtn = new QPushButton(QStringLiteral("Open capture folder"));
     buttonRow->addWidget(m_trustBtn);

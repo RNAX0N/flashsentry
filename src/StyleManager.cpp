@@ -581,6 +581,42 @@ QString StyleManager::scrollAreaStyleSheet() const
     .arg(colorCss(ColorRole::AccentSecondary));
 }
 
+QString StyleManager::dataTableStyleSheet() const
+{
+    return QString(R"(
+        QTableWidget {
+            background-color: %1;
+            alternate-background-color: %2;
+            color: %3;
+            gridline-color: %4;
+            border: 1px solid %4;
+            border-radius: 8px;
+        }
+        QTableWidget::item {
+            padding: 6px 8px;
+        }
+        QTableWidget::item:selected {
+            background-color: %5;
+            color: %3;
+        }
+        QHeaderView::section {
+            background-color: %6;
+            color: %7;
+            padding: 8px;
+            border: none;
+            border-bottom: 1px solid %4;
+            font-weight: 600;
+        }
+    )")
+        .arg(colorCss(ColorRole::Surface))
+        .arg(colorCss(ColorRole::BackgroundAlt))
+        .arg(colorCss(ColorRole::TextPrimary))
+        .arg(colorCss(ColorRole::Border))
+        .arg(colorCss(ColorRole::SurfaceHover))
+        .arg(colorCss(ColorRole::BackgroundAlt))
+        .arg(colorCss(ColorRole::TextSecondary));
+}
+
 QString StyleManager::tooltipStyleSheet() const
 {
     return QString(R"(

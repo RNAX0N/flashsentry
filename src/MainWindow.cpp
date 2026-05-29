@@ -6,6 +6,7 @@
 #include "IsoCatalogManifest.h"
 #include "SettingsProfiles.h"
 #include "WelcomeWizard.h"
+#include "EventDetailDialog.h"
 #include "VerifyHistory.h"
 #include "HashCheckpoint.h"
 #include "HashOptionsDialog.h"
@@ -27,6 +28,28 @@
 #include <QStyle>
 #include <QGraphicsDropShadowEffect>
 #include <QShortcut>
+#include <QCursor>
+#include <QUuid>
+
+namespace {
+
+FlashSentry::UiEventEntry makeUiEvent(const QString& event, const QString& device,
+                                      const QString& type, const QString& result,
+                                      const QString& detail, const QString& deviceNode = {})
+{
+    FlashSentry::UiEventEntry e;
+    e.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    e.time = QDateTime::currentDateTime();
+    e.event = event;
+    e.device = device;
+    e.type = type;
+    e.result = result;
+    e.detail = detail;
+    e.deviceNode = deviceNode;
+    return e;
+}
+
+} // namespace
 
 namespace FlashSentry {
 
@@ -109,29 +132,96 @@ void MainWindow::setupUi()
 {
     setWindowTitle("FlashSentry");
     setWindowIcon(QIcon(QStringLiteral(":/icons/flashsentry.svg")));
-    setMinimumSize(900, 600);
-    
-    // Center on screen
+    setMinimumSize(1100, 720);
+
     if (auto* screen = QApplication::primaryScreen()) {
         QRect screenGeometry = screen->availableGeometry();
-        int x = (screenGeometry.width() - 1100) / 2;
-        int y = (screenGeometry.height() - 700) / 2;
-        setGeometry(x, y, 1100, 700);
+        int x = (screenGeometry.width() - 1200) / 2;
+        int y = (screenGeometry.height() - 760) / 2;
+        setGeometry(x, y, 1200, 760);
     }
-    
-    // Central widget
+
     m_centralWidget = new QWidget;
     setCentralWidget(m_centralWidget);
-    
     m_mainLayout = new QVBoxLayout(m_centralWidget);
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setSpacing(0);
-    
-    // Add header
-    m_mainLayout->addWidget(createHeader());
-    
-    m_appModeStack = new QStackedWidget;
-    m_appModeStack->addWidget(createDeviceListArea());
+
+    auto* shell = new QHBoxLayout;
+    shell->setContentsMargins(0, 0, 0, 0);
+    shell->setSpacing(0);
+
+    m_navSidebar = new NavSidebar;
+    connect(m_navSidebar, &NavSidebar::pageSelected, this, &MainWindow::onNavPageSelected);
+    shell->addWidget(m_navSidebar);
+
+    m_pageStack = new QStackedWidget;
+    m_pageStack->setObjectName(QStringLiteral("AppPageStack"));
+
+    m_usbMonitorPage = new UsbMonitorPage;
+    connect(m_usbMonitorPage, &UsbMonitorPage::deviceNameEdited, this,
+            [this](const QString& node, const QString& name) {
+                m_userDeviceNames.insert(node, name);
+                if (auto info = m_deviceMonitor->getDevice(node)) {
+                    DeviceInfo d = *info;
+                    QString id = canonicalDeviceId(d);
+                    if (auto rec = m_database->getDevice(id)) {
+                        DeviceRecord updated = *rec;
+                        updated.notes = name;
+                        updated.lastKnownInfo = d;
+                        m_database->updateDevice(updated);
+                    }
+                }
+                refreshUsbMonitorHome();
+            });
+    connect(m_usbMonitorPage, &UsbMonitorPage::deviceActionsRequested, this,
+            &MainWindow::showDeviceActionsMenu);
+    connect(m_usbMonitorPage, &UsbMonitorPage::eventDetailsRequested, this,
+            [this](const UiEventEntry& entry) {
+                EventDetailDialog dlg(entry, this);
+                dlg.exec();
+            });
+    m_pageStack->addWidget(m_usbMonitorPage);
+
+    auto* historyPage = new PlaceholderModulePage(
+        QStringLiteral("Device History"),
+        QStringLiteral("Historical device sessions and verification results will appear here."));
+    m_pageStack->addWidget(historyPage);
+
+    auto* allowBlockPage = new PlaceholderModulePage(
+        QStringLiteral("Allow/Block List"),
+        QStringLiteral("Manage trusted and blocked devices. Use Actions on the USB Monitor page for now."));
+    m_pageStack->addWidget(allowBlockPage);
+
+    m_pageStack->addWidget(new PlaceholderModulePage(
+        QStringLiteral("Alerts"),
+        QStringLiteral("Security alerts and anomaly notifications will be collected here.")));
+
+    m_pageStack->addWidget(new PlaceholderModulePage(
+        QStringLiteral("Reports"),
+        QStringLiteral("Verification and audit reports will be available in this module.")));
+
+    m_settingsPage = new PlaceholderModulePage(
+        QStringLiteral("Settings"),
+        QStringLiteral("Configure hashing, ISO verification, themes, and security defaults."));
+    m_settingsPage->setPrimaryAction(QStringLiteral("Open settings…"), true);
+    connect(m_settingsPage, &PlaceholderModulePage::primaryActionTriggered, this,
+            &MainWindow::onSettingsClicked);
+    m_pageStack->addWidget(m_settingsPage);
+
+    auto* aboutPage = new PlaceholderModulePage(
+        QStringLiteral("About"),
+        QStringLiteral("FlashSentry — USB flash drive security monitor for Linux."));
+    m_pageStack->addWidget(aboutPage);
+
+    shell->addWidget(m_pageStack, 1);
+    m_mainLayout->addLayout(shell, 1);
+
+    m_hiddenDeviceHost = new QWidget;
+    m_hiddenDeviceHost->setVisible(false);
+    m_hiddenDeviceLayout = new QVBoxLayout(m_hiddenDeviceHost);
+    m_hiddenDeviceLayout->setContentsMargins(0, 0, 0, 0);
+
     m_isoWidget = new IsoVerifierWidget;
     connect(m_isoWidget, &IsoVerifierWidget::logMessageRequested,
             this, &MainWindow::onIsoLogMessage);
@@ -147,7 +237,6 @@ void MainWindow::setupUi()
                            LogLevel::Info);
             });
 
-    m_appModeStack->addWidget(m_isoWidget);
     m_badUsbWidget = new BadUsbWidget;
     connect(m_badUsbWidget, &BadUsbWidget::logMessageRequested,
             this, &MainWindow::onIsoLogMessage);
@@ -165,25 +254,15 @@ void MainWindow::setupUi()
             QDesktopServices::openUrl(QUrl::fromLocalFile(m_usbmonCapture->outputDirectory()));
         }
     });
+
     m_watchListsPanel = new WatchListsPanel;
     connect(m_watchListsPanel, &WatchListsPanel::editDeviceRequested, this,
             &MainWindow::onWatchListRequested);
-    m_appModeStack->addWidget(m_watchListsPanel);
-    m_appModeStack->addWidget(m_badUsbWidget);
 
-    m_contentSplitter = new QSplitter(Qt::Horizontal);
-    m_contentSplitter->setHandleWidth(1);
-    m_contentSplitter->setChildrenCollapsible(false);
-    m_contentSplitter->addWidget(m_appModeStack);
-    m_contentSplitter->addWidget(createSidebar());
-    m_contentSplitter->setSizes({820, SIDEBAR_WIDTH});
-    m_mainLayout->addWidget(m_contentSplitter, 1);
-
-    // Create status bar
     createStatusBar();
-    
-    // Update empty state
-    updateEmptyState();
+    m_navSidebar->setCurrentPage(AppPage::UsbMonitor);
+    m_pageStack->setCurrentWidget(m_usbMonitorPage);
+    refreshUsbMonitorHome();
 }
 
 QWidget* MainWindow::createHeader()
@@ -453,15 +532,13 @@ void MainWindow::createStatusBar()
     m_catalogStatusBtn->setStyleSheet(QString("color: %1; text-align: left;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     connect(m_catalogStatusBtn, &QPushButton::clicked, this, [this]() {
-        if (m_modeTabBar) {
-            m_modeTabBar->setCurrentIndex(1);
-        }
         m_settings.appModule = AppModule::IsoVerifier;
         applyAppModule();
         saveSettings();
         if (m_isoWidget) {
             m_isoWidget->refreshCatalogStatus();
         }
+        onSettingsClicked();
     });
     status->addPermanentWidget(m_catalogStatusBtn);
 
@@ -771,42 +848,6 @@ void MainWindow::setupShortcuts()
 void MainWindow::applyStyle()
 {
     setStyleSheet(FSStyle.mainWindowStyleSheet());
-    
-    // Header styling
-    m_headerWidget->setStyleSheet(QString(R"(
-        QWidget#HeaderWidget {
-            background-color: %1;
-            border-bottom: 2px solid %2;
-            box-shadow: 0 2px 12px %3;
-        }
-    )").arg(FSStyle.colorCss(StyleManager::ColorRole::BackgroundAlt))
-       .arg(FSStyle.colorCss(StyleManager::ColorRole::Border))
-       .arg(FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary) + "55"));
-    
-    // Search field styling
-    m_searchEdit->setStyleSheet(FSStyle.inputFieldStyleSheet());
-    
-    // Button styling
-    m_refreshBtn->setStyleSheet(FSStyle.buttonStyleSheet());
-    m_settingsBtn->setStyleSheet(FSStyle.buttonStyleSheet());
-    
-    // Sidebar styling
-    m_sidebarWidget->setStyleSheet(QString(R"(
-        QWidget#SidebarWidget {
-            background-color: %1;
-            border-left: 1px solid %2;
-        }
-    )").arg(FSStyle.colorCss(StyleManager::ColorRole::BackgroundAlt))
-       .arg(FSStyle.colorCss(StyleManager::ColorRole::Border)));
-    
-    if (m_contentSplitter) {
-        m_contentSplitter->setStyleSheet(QString(
-            "QSplitter::handle { background-color: %1; }"
-        ).arg(FSStyle.colorCss(StyleManager::ColorRole::Border)));
-    }
-
-    // Scroll area styling
-    m_deviceScrollArea->setStyleSheet(FSStyle.scrollAreaStyleSheet());
 }
 
 bool MainWindow::shouldMinimizeToTray() const
@@ -881,6 +922,8 @@ void MainWindow::hideEvent(QHideEvent* event)
 
 void MainWindow::onDeviceConnected(const DeviceInfo& device)
 {
+    m_deviceConnectedAt.insert(device.deviceNode, QDateTime::currentDateTime());
+    m_deviceDisconnectedAt.remove(device.deviceNode);
     logMessage(QString("Device connected: %1 (%2)").arg(device.displayName(), device.deviceNode));
     
     // Add device card
@@ -916,6 +959,7 @@ void MainWindow::onDeviceDisconnected(const QString& deviceNode)
         drive = driveKey(card->device());
     }
 
+    m_deviceDisconnectedAt.insert(deviceNode, QDateTime::currentDateTime());
     logMessage(QString("Device disconnected: %1").arg(deviceName));
     
     // Cancel any pending hash for this device
@@ -1564,6 +1608,18 @@ void MainWindow::recordVerifyHistory(const VerifyHistoryEntry& entry)
 {
     VerifyHistory::instance().append(entry);
     refreshVerifyHistoryPanel(m_historyFilterDevice);
+
+    QString type = QStringLiteral("Verify");
+    switch (entry.kind) {
+        case VerifyHistoryKind::IsoScan: type = QStringLiteral("ISO"); break;
+        case VerifyHistoryKind::Manifest: type = QStringLiteral("Watch"); break;
+        case VerifyHistoryKind::Hash:
+        default: break;
+    }
+    appendUiEvent(makeUiEvent(
+        entry.summary.isEmpty() ? QStringLiteral("Verification") : entry.summary,
+        entry.deviceLabel.isEmpty() ? entry.deviceNode : entry.deviceLabel, type, entry.status,
+        entry.detail.isEmpty() ? entry.summary : entry.detail, entry.deviceNode));
 }
 
 void MainWindow::refreshVerifyHistoryPanel(const QString& deviceNodeFilter)
@@ -1830,6 +1886,114 @@ void MainWindow::onModeTabChanged(int index)
     saveSettings();
 }
 
+
+void MainWindow::onNavPageSelected(AppPage page)
+{
+    if (!m_pageStack) {
+        return;
+    }
+    if (page == AppPage::Settings) {
+        m_pageStack->setCurrentWidget(m_settingsPage);
+        return;
+    }
+    const int index = static_cast<int>(page);
+    if (index >= 0 && index < m_pageStack->count()) {
+        m_pageStack->setCurrentIndex(index);
+    }
+    if (page == AppPage::UsbMonitor) {
+        refreshUsbMonitorHome();
+    }
+}
+
+void MainWindow::appendUiEvent(const UiEventEntry& entry)
+{
+    m_uiEvents.prepend(entry);
+    while (m_uiEvents.size() > m_maxUiEvents) {
+        m_uiEvents.removeLast();
+    }
+    refreshUsbMonitorHome();
+}
+
+void MainWindow::refreshUsbMonitorHome()
+{
+    if (!m_usbMonitorPage || !m_deviceMonitor) {
+        return;
+    }
+
+    UsbMonitorStats stats;
+    const auto connected = m_deviceMonitor->connectedDevices();
+    stats.connected = connected.size();
+
+    int allowed = 0;
+    int blocked = static_cast<int>(m_rejectedDrives.size());
+    for (const DeviceRecord& rec : m_database->getAllDevices()) {
+        if (rec.trustLevel >= 1) {
+            ++allowed;
+        }
+    }
+
+    stats.blocked = blocked;
+    stats.events = m_uiEvents.size();
+    m_usbMonitorPage->setStats(stats);
+
+    QList<UsbDeviceRow> rows;
+    for (const DeviceInfo& d : connected) {
+        UsbDeviceRow row;
+        row.deviceNode = d.deviceNode;
+        row.displayName = m_userDeviceNames.value(d.deviceNode, d.displayName());
+        if (auto rec = m_database->getDevice(d)) {
+            if (!rec->notes.isEmpty()) {
+                row.displayName = rec->notes;
+            }
+        }
+        row.type = d.fsType.isEmpty() ? QStringLiteral("USB storage") : d.fsType;
+        if (DeviceCard* card = getDeviceCard(d.deviceNode)) {
+            row.status = verificationStatusToString(card->verificationStatus());
+        } else if (m_database->hasDevice(d)) {
+            row.status = QStringLiteral("Known");
+        } else {
+            row.status = QStringLiteral("New");
+        }
+                {
+            const char* units[] = {"B", "KB", "MB", "GB", "TB"};
+            double value = static_cast<double>(d.sizeBytes);
+            int unit = 0;
+            while (value >= 1024.0 && unit < 4) {
+                value /= 1024.0;
+                ++unit;
+            }
+            row.capacity = QStringLiteral("%1 %2").arg(value, 0, 'f', unit > 0 ? 2 : 0).arg(units[unit]);
+        }
+        row.vendorModel = QStringLiteral("%1 / %2").arg(d.vendor, d.model);
+        row.connectedAt = m_deviceConnectedAt.value(d.deviceNode).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
+        row.disconnectedAt = m_deviceDisconnectedAt.value(d.deviceNode).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
+        row.isConnected = true;
+        rows.append(row);
+    }
+    m_usbMonitorPage->setDevices(rows);
+    m_usbMonitorPage->setEvents(m_uiEvents);
+}
+
+void MainWindow::showDeviceActionsMenu(const QString& deviceNode)
+{
+    QMenu menu(this);
+    menu.setStyleSheet(FSStyle.menuStyleSheet());
+    menu.addAction(QStringLiteral("Mount"), [this, deviceNode]() { onMountRequested(deviceNode); });
+    menu.addAction(QStringLiteral("Unmount"), [this, deviceNode]() { onUnmountRequested(deviceNode); });
+    menu.addAction(QStringLiteral("Open folder"), [this, deviceNode]() {
+        if (auto info = m_deviceMonitor->getDevice(deviceNode)) {
+            if (!info->mountPoint.isEmpty()) {
+                onOpenMountPointRequested(info->mountPoint);
+            }
+        }
+    });
+    menu.addAction(QStringLiteral("Watch folders…"), [this, deviceNode]() { onWatchListRequested(deviceNode); });
+    menu.addAction(QStringLiteral("Rehash"), [this, deviceNode]() { onRehashRequested(deviceNode); });
+    menu.addSeparator();
+    menu.addAction(QStringLiteral("Eject"), [this, deviceNode]() { onEjectRequested(deviceNode); });
+    menu.exec(QCursor::pos());
+}
+
 // ============================================================================
 // Helper Methods
 // ============================================================================
@@ -1862,7 +2026,9 @@ DeviceCard* MainWindow::addDeviceCard(const DeviceInfo& device)
     connect(card, &DeviceCard::clicked, this, &MainWindow::onDeviceCardClicked);
     
     // Insert before the stretch
-    m_deviceListLayout->insertWidget(m_deviceListLayout->count() - 1, card);
+    if (m_hiddenDeviceLayout) {
+        m_hiddenDeviceLayout->addWidget(card);
+    }
     m_deviceCards[device.deviceNode] = card;
     
     // Note: Don't use FSStyle.applyFadeIn(card) here as DeviceCard 
@@ -2090,50 +2256,69 @@ void MainWindow::mountIfVerified(const QString& deviceNode)
 
 void MainWindow::logMessage(const QString& message, LogLevel level)
 {
-    QString timestamp = QDateTime::currentDateTime().toString("hh:mm:ss");
     QString prefix;
-    QString color;
+    QString result;
     
     switch (level) {
         case LogLevel::Debug:
             prefix = "DEBUG";
-            color = FSStyle.colorCss(StyleManager::ColorRole::TextMuted);
+            result = QStringLiteral("debug");
             break;
         case LogLevel::Info:
             prefix = "INFO";
-            color = FSStyle.colorCss(StyleManager::ColorRole::TextSecondary);
+            result = QStringLiteral("info");
             break;
         case LogLevel::Warning:
             prefix = "WARN";
-            color = FSStyle.colorCss(StyleManager::ColorRole::Warning);
+            result = QStringLiteral("warn");
             break;
         case LogLevel::Error:
             prefix = "ERROR";
-            color = FSStyle.colorCss(StyleManager::ColorRole::Error);
+            result = QStringLiteral("error");
             break;
         case LogLevel::Security:
             prefix = "SECURITY";
-            color = FSStyle.colorCss(StyleManager::ColorRole::Modified);
+            result = QStringLiteral("alert");
             break;
     }
-    
-    QString logText = QString("[%1] %2").arg(timestamp, message);
-    
-    QListWidgetItem* item = new QListWidgetItem(logText);
-    item->setForeground(QColor(color));
-    m_logList->addItem(item);
-    m_logList->scrollToBottom();
-    
-    // Keep log size reasonable
-    while (m_logList->count() > 500) {
-        delete m_logList->takeItem(0);
+
+    UiEventEntry ev = makeUiEvent(message, QStringLiteral("—"), QStringLiteral("System"), result,
+                                 QStringLiteral("[%1] %2").arg(prefix, message));
+    m_uiEvents.prepend(ev);
+    while (m_uiEvents.size() > m_maxUiEvents) {
+        m_uiEvents.removeLast();
     }
-    
+    if (m_usbMonitorPage) {
+        m_usbMonitorPage->setEvents(m_uiEvents);
+        UsbMonitorStats stats;
+        if (m_deviceMonitor) {
+            stats.connected = m_deviceMonitor->connectedDevices().size();
+        }
+        stats.events = m_uiEvents.size();
+        m_usbMonitorPage->setStats(stats);
+    }
+
+    if (m_logList) {
+        const QString timestamp = QDateTime::currentDateTime().toString("hh:mm:ss");
+        const QString logText = QString("[%1] %2").arg(timestamp, message);
+        auto* item = new QListWidgetItem(logText);
+        item->setForeground(QColor(FSStyle.color(StyleManager::ColorRole::TextSecondary)));
+        m_logList->addItem(item);
+        m_logList->scrollToBottom();
+        while (m_logList->count() > 500) {
+            delete m_logList->takeItem(0);
+        }
+    }
+
     qDebug() << QString("[%1] %2").arg(prefix, message);
 }
 
 void MainWindow::updateEmptyState()
 {
+    refreshUsbMonitorHome();
+    if (!m_emptyStateLabel || !m_contentStack) {
+        return;
+    }
     if (m_deviceCards.isEmpty()) {
         m_emptyStateLabel->setText(
             "No USB devices connected\n\n"
@@ -2168,12 +2353,20 @@ void MainWindow::refreshWatchListsPanel()
 
 void MainWindow::updateSidebarStats()
 {
-    m_connectedCountLabel->setText(QString::number(m_deviceCards.size()));
-    m_whitelistedCountLabel->setText(QString::number(m_database->deviceCount()));
-    m_hashingCountLabel->setText(QString::number(m_activeHashCount));
-    
+    if (m_connectedCountLabel) {
+        m_connectedCountLabel->setText(QString::number(m_deviceCards.size()));
+    }
+    if (m_whitelistedCountLabel) {
+        m_whitelistedCountLabel->setText(QString::number(m_database->deviceCount()));
+    }
+    if (m_hashingCountLabel) {
+        m_hashingCountLabel->setText(QString::number(m_activeHashCount));
+    }
+
     m_trayIcon->setDeviceCount(m_deviceCards.size(), m_database->deviceCount());
     refreshWatchListsPanel();
+    refreshUsbMonitorHome();
+    updateStatusBar();
 }
 
 bool MainWindow::showNewDriveDialog(const DeviceInfo& device)

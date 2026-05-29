@@ -224,6 +224,9 @@ public:
      */
     QString scrollAreaStyleSheet() const;
 
+    /** Data tables on module pages (USB Monitor, etc.). */
+    QString dataTableStyleSheet() const;
+
     /**
      * @brief Get stylesheet for tooltips
      */

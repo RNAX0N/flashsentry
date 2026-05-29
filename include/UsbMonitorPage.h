@@ -23,16 +23,20 @@ public:
 signals:
     void deviceNameEdited(const QString& deviceNode, const QString& name);
     void deviceActionsRequested(const QString& deviceNode);
+    void deviceHistoryRequested(const QString& deviceNode);
     void eventDetailsRequested(const UiEventEntry& entry);
 
 private slots:
     void onDeviceCellChanged(int row, int column);
     void onDeviceActionsClicked();
+    void onDeviceHistoryClicked();
     void onEventDetailsClicked();
 
 private:
     void setupUi();
     void styleTables();
+    void applyDeviceTableLayout();
+    void applyEventsTableLayout();
     QWidget* createStatCard(const QString& title, QLabel*& valueLabel);
 
     QLabel* m_connectedValue = nullptr;

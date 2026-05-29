@@ -60,6 +60,12 @@ public:
     /** Populate database tab summary (device count, path). */
     void setDatabaseStatistics(int deviceCount, const QString& databasePath);
 
+    /** Embed tabs in the main window (hides OK/Cancel). */
+    void setEmbeddedMode(bool embedded);
+
+public slots:
+    void restoreDefaultsTriggered();
+
 signals:
     /**
      * @brief Emitted when theme is changed (for live preview)
@@ -154,12 +160,17 @@ private:
     QTabWidget* m_tabWidget = nullptr;
     QDialogButtonBox* m_buttonBox = nullptr;
     QPushButton* m_restoreDefaultsBtn = nullptr;
+    QWidget* m_buttonBar = nullptr;
+    bool m_embeddedMode = false;
 
     // General tab
     QCheckBox* m_startMinimizedCheck = nullptr;
     QCheckBox* m_minimizeToTrayCheck = nullptr;
     QCheckBox* m_showNotificationsCheck = nullptr;
     QCheckBox* m_autoStartCheck = nullptr;
+    QSpinBox* m_recentEventsLimitSpin = nullptr;
+    QSpinBox* m_deviceHistoryRetentionSpin = nullptr;
+    QSpinBox* m_deviceHistoryMaxEntriesSpin = nullptr;
 
     // Security tab
     QCheckBox* m_autoHashOnConnectCheck = nullptr;

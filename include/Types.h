@@ -645,6 +645,10 @@ struct AppSettings {
     bool badUsbUsbmonOnAnomalyOnly = true;
     QString badUsbUsbmonCommand =
         QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1");
+    int recentEventsLimit = 100;
+    /** 0 = retain all device history entries. */
+    int deviceHistoryRetentionDays = 0;
+    int deviceHistoryMaxEntries = 500;
 
     QJsonObject toJson() const {
         QJsonObject obj;
@@ -689,6 +693,9 @@ struct AppSettings {
         obj["badusb_usbmon_enabled"] = badUsbUsbmonEnabled;
         obj["badusb_usbmon_on_anomaly_only"] = badUsbUsbmonOnAnomalyOnly;
         obj["badusb_usbmon_command"] = badUsbUsbmonCommand;
+        obj["recent_events_limit"] = recentEventsLimit;
+        obj["device_history_retention_days"] = deviceHistoryRetentionDays;
+        obj["device_history_max_entries"] = deviceHistoryMaxEntries;
         return obj;
     }
 
@@ -743,6 +750,9 @@ struct AppSettings {
         settings.badUsbUsbmonOnAnomalyOnly = obj["badusb_usbmon_on_anomaly_only"].toBool(true);
         settings.badUsbUsbmonCommand = obj["badusb_usbmon_command"].toString(
             QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1"));
+        settings.recentEventsLimit = obj["recent_events_limit"].toInt(100);
+        settings.deviceHistoryRetentionDays = obj["device_history_retention_days"].toInt(0);
+        settings.deviceHistoryMaxEntries = obj["device_history_max_entries"].toInt(500);
         return settings;
     }
 };

@@ -36,6 +36,15 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     m_startMinimizedCheck->setChecked(settings.startMinimized);
     m_minimizeToTrayCheck->setChecked(settings.minimizeToTray);
     m_showNotificationsCheck->setChecked(settings.showNotifications);
+    if (m_recentEventsLimitSpin) {
+        m_recentEventsLimitSpin->setValue(settings.recentEventsLimit);
+    }
+    if (m_deviceHistoryRetentionSpin) {
+        m_deviceHistoryRetentionSpin->setValue(settings.deviceHistoryRetentionDays);
+    }
+    if (m_deviceHistoryMaxEntriesSpin) {
+        m_deviceHistoryMaxEntriesSpin->setValue(settings.deviceHistoryMaxEntries);
+    }
     
     // Security
     m_autoHashOnConnectCheck->setChecked(settings.autoHashOnConnect);
@@ -135,6 +144,15 @@ AppSettings SettingsDialog::getSettings() const
     settings.startMinimized = m_startMinimizedCheck->isChecked();
     settings.minimizeToTray = m_minimizeToTrayCheck->isChecked();
     settings.showNotifications = m_showNotificationsCheck->isChecked();
+    if (m_recentEventsLimitSpin) {
+        settings.recentEventsLimit = m_recentEventsLimitSpin->value();
+    }
+    if (m_deviceHistoryRetentionSpin) {
+        settings.deviceHistoryRetentionDays = m_deviceHistoryRetentionSpin->value();
+    }
+    if (m_deviceHistoryMaxEntriesSpin) {
+        settings.deviceHistoryMaxEntries = m_deviceHistoryMaxEntriesSpin->value();
+    }
     
     // Security
     settings.autoHashOnConnect = m_autoHashOnConnectCheck->isChecked();
@@ -220,21 +238,39 @@ void SettingsDialog::setupUi()
     
     m_mainLayout->addWidget(m_tabWidget);
     
-    // Button box
-    QHBoxLayout* buttonLayout = new QHBoxLayout;
-    
+    m_buttonBar = new QWidget;
+    QHBoxLayout* buttonLayout = new QHBoxLayout(m_buttonBar);
+    buttonLayout->setContentsMargins(0, 0, 0, 0);
+
     m_restoreDefaultsBtn = new QPushButton("Restore Defaults");
     connect(m_restoreDefaultsBtn, &QPushButton::clicked, this, &SettingsDialog::onRestoreDefaults);
     buttonLayout->addWidget(m_restoreDefaultsBtn);
-    
+
     buttonLayout->addStretch();
-    
+
     m_buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     connect(m_buttonBox, &QDialogButtonBox::accepted, this, &SettingsDialog::onAccepted);
     connect(m_buttonBox, &QDialogButtonBox::rejected, this, &SettingsDialog::onRejected);
     buttonLayout->addWidget(m_buttonBox);
-    
-    m_mainLayout->addLayout(buttonLayout);
+
+    m_mainLayout->addWidget(m_buttonBar);
+}
+
+void SettingsDialog::setEmbeddedMode(bool embedded)
+{
+    m_embeddedMode = embedded;
+    if (m_buttonBar) {
+        m_buttonBar->setVisible(!embedded);
+    }
+    if (embedded) {
+        setWindowFlags(Qt::Widget);
+        setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
+    }
+}
+
+void SettingsDialog::restoreDefaultsTriggered()
+{
+    onRestoreDefaults();
 }
 
 QWidget* SettingsDialog::createGeneralTab()
@@ -274,6 +310,32 @@ QWidget* SettingsDialog::createGeneralTab()
     behaviorLayout->addWidget(m_showNotificationsCheck);
     
     layout->addWidget(behaviorGroup);
+
+    QGroupBox* historyGroup = new QGroupBox(QStringLiteral("Event history"));
+    auto* historyForm = new QFormLayout(historyGroup);
+    m_recentEventsLimitSpin = new QSpinBox;
+    m_recentEventsLimitSpin->setRange(20, 2000);
+    m_recentEventsLimitSpin->setToolTip(QStringLiteral("Rows shown in USB Monitor → Recent events"));
+    connect(m_recentEventsLimitSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &SettingsDialog::onSettingChanged);
+    historyForm->addRow(QStringLiteral("Recent events (USB Monitor):"), m_recentEventsLimitSpin);
+
+    m_deviceHistoryRetentionSpin = new QSpinBox;
+    m_deviceHistoryRetentionSpin->setRange(0, 3650);
+    m_deviceHistoryRetentionSpin->setSpecialValueText(QStringLiteral("Unlimited"));
+    m_deviceHistoryRetentionSpin->setToolTip(QStringLiteral("Per-device history on Device History page (0 = all time)"));
+    connect(m_deviceHistoryRetentionSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &SettingsDialog::onSettingChanged);
+    historyForm->addRow(QStringLiteral("Device history retention (days):"),
+                        m_deviceHistoryRetentionSpin);
+
+    m_deviceHistoryMaxEntriesSpin = new QSpinBox;
+    m_deviceHistoryMaxEntriesSpin->setRange(50, 10000);
+    connect(m_deviceHistoryMaxEntriesSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &SettingsDialog::onSettingChanged);
+    historyForm->addRow(QStringLiteral("Max entries per device:"), m_deviceHistoryMaxEntriesSpin);
+
+    layout->addWidget(historyGroup);
     
     layout->addStretch();
     

@@ -7,12 +7,16 @@
 #include "SettingsProfiles.h"
 #include "WelcomeWizard.h"
 #include "EventDetailDialog.h"
+#include "DeviceTimelineLog.h"
 #include "VerifyHistory.h"
 #include "HashCheckpoint.h"
 #include "HashOptionsDialog.h"
 
+#include <algorithm>
+
 #include <QApplication>
 #include <QMessageBox>
+#include <QSet>
 #include <QDesktopServices>
 #include <QUrl>
 #include <QStatusBar>
@@ -75,6 +79,7 @@ MainWindow::MainWindow(QWidget* parent)
     // Load settings
     loadSettings();
     VerifyHistory::instance().load();
+    DeviceTimelineLog::instance().load();
     HashCheckpointStore::instance().load();
     
     // Apply styling
@@ -176,6 +181,8 @@ void MainWindow::setupUi()
             });
     connect(m_usbMonitorPage, &UsbMonitorPage::deviceActionsRequested, this,
             &MainWindow::showDeviceActionsMenu);
+    connect(m_usbMonitorPage, &UsbMonitorPage::deviceHistoryRequested, this,
+            &MainWindow::showDeviceHistory);
     connect(m_usbMonitorPage, &UsbMonitorPage::eventDetailsRequested, this,
             [this](const UiEventEntry& entry) {
                 EventDetailDialog dlg(entry, this);
@@ -183,10 +190,18 @@ void MainWindow::setupUi()
             });
     m_pageStack->addWidget(m_usbMonitorPage);
 
-    auto* historyPage = new PlaceholderModulePage(
-        QStringLiteral("Device History"),
-        QStringLiteral("Historical device sessions and verification results will appear here."));
-    m_pageStack->addWidget(historyPage);
+    m_deviceHistoryPage = new DeviceHistoryPage;
+    connect(m_deviceHistoryPage, &DeviceHistoryPage::deviceSelectionChanged, this,
+            [this](const QString& node) {
+                Q_UNUSED(node);
+                refreshDeviceHistoryPage();
+            });
+    connect(m_deviceHistoryPage, &DeviceHistoryPage::eventDetailsRequested, this,
+            [this](const UiEventEntry& entry) {
+                EventDetailDialog dlg(entry, this);
+                dlg.exec();
+            });
+    m_pageStack->addWidget(m_deviceHistoryPage);
 
     auto* allowBlockPage = new PlaceholderModulePage(
         QStringLiteral("Allow/Block List"),
@@ -201,12 +216,50 @@ void MainWindow::setupUi()
         QStringLiteral("Reports"),
         QStringLiteral("Verification and audit reports will be available in this module.")));
 
-    m_settingsPage = new PlaceholderModulePage(
-        QStringLiteral("Settings"),
-        QStringLiteral("Configure hashing, ISO verification, themes, and security defaults."));
-    m_settingsPage->setPrimaryAction(QStringLiteral("Open settings…"), true);
-    connect(m_settingsPage, &PlaceholderModulePage::primaryActionTriggered, this,
-            &MainWindow::onSettingsClicked);
+    m_settingsPage = new SettingsPage;
+    connect(m_settingsPage, &SettingsPage::settingsApplyRequested, this,
+            &MainWindow::applySettingsPage);
+    connect(m_settingsPage, &SettingsPage::themeChanged, this, &MainWindow::onThemeChanged);
+    connect(m_settingsPage, &SettingsPage::exportDatabaseRequested, this,
+            [this](const QString& path) {
+                if (m_database->exportToFile(path)) {
+                    logMessage(QString("Database exported to %1").arg(path));
+                    QMessageBox::information(this, QStringLiteral("Export Complete"),
+                                             QStringLiteral("Database exported successfully."));
+                } else {
+                    QMessageBox::warning(this, QStringLiteral("Export Failed"),
+                                         QStringLiteral("Could not export the database."));
+                }
+            });
+    connect(m_settingsPage, &SettingsPage::importDatabaseRequested, this,
+            [this](const QString& path) {
+                const int count = m_database->importFromFile(path, true);
+                if (count >= 0) {
+                    logMessage(QString("Imported %1 device(s) from %2").arg(count).arg(path));
+                    updateSidebarStats();
+                    QMessageBox::information(this, QStringLiteral("Import Complete"),
+                                             QString::number(count) + QStringLiteral(" device(s) imported."));
+                } else {
+                    QMessageBox::warning(this, QStringLiteral("Import Failed"),
+                                         QStringLiteral("Could not import the database file."));
+                }
+            });
+    connect(m_settingsPage, &SettingsPage::backupDatabaseRequested, this, [this]() {
+        const QString backupPath = m_database->createBackup();
+        if (!backupPath.isEmpty()) {
+            logMessage(QString("Database backup: %1").arg(backupPath));
+            QMessageBox::information(this, QStringLiteral("Backup Created"),
+                                     QStringLiteral("Backup saved to:\n%1").arg(backupPath));
+        } else {
+            QMessageBox::warning(this, QStringLiteral("Backup Failed"),
+                                 QStringLiteral("Could not create a database backup."));
+        }
+    });
+    connect(m_settingsPage, &SettingsPage::clearDatabaseRequested, this, [this]() {
+        m_database->clearAllDevices();
+        logMessage(QStringLiteral("Database cleared"), LogLevel::Warning);
+        updateSidebarStats();
+    });
     m_pageStack->addWidget(m_settingsPage);
 
     auto* aboutPage = new PlaceholderModulePage(
@@ -730,6 +783,15 @@ void MainWindow::loadSettings()
     m_settings.badUsbUsbmonCommand =
         m_qsettings->value("badusb/usbmonCommand",
                            QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1")).toString();
+    m_settings.recentEventsLimit =
+        m_qsettings->value("ui/recentEventsLimit", m_settings.recentEventsLimit).toInt();
+    m_settings.deviceHistoryRetentionDays =
+        m_qsettings->value("ui/deviceHistoryRetentionDays", m_settings.deviceHistoryRetentionDays)
+            .toInt();
+    m_settings.deviceHistoryMaxEntries =
+        m_qsettings->value("ui/deviceHistoryMaxEntries", m_settings.deviceHistoryMaxEntries)
+            .toInt();
+    m_maxUiEvents = qMax(20, m_settings.recentEventsLimit);
     {
         const QString storedProfile =
             m_qsettings->value("general/settingsProfile", QStringLiteral("default")).toString();
@@ -775,6 +837,14 @@ void MainWindow::loadSettings()
     if (m_qsettings->contains("window/geometry")) {
         restoreGeometry(m_qsettings->value("window/geometry").toByteArray());
     }
+
+    if (m_settingsPage) {
+        m_settingsPage->loadSettings(m_settings);
+        if (m_database) {
+            m_settingsPage->setDatabaseStatistics(m_database->deviceCount(),
+                                                    m_database->databasePath());
+        }
+    }
 }
 
 void MainWindow::saveSettings()
@@ -819,6 +889,9 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("badusb/usbmonEnabled", m_settings.badUsbUsbmonEnabled);
     m_qsettings->setValue("badusb/usbmonOnAnomalyOnly", m_settings.badUsbUsbmonOnAnomalyOnly);
     m_qsettings->setValue("badusb/usbmonCommand", m_settings.badUsbUsbmonCommand);
+    m_qsettings->setValue("ui/recentEventsLimit", m_settings.recentEventsLimit);
+    m_qsettings->setValue("ui/deviceHistoryRetentionDays", m_settings.deviceHistoryRetentionDays);
+    m_qsettings->setValue("ui/deviceHistoryMaxEntries", m_settings.deviceHistoryMaxEntries);
     m_qsettings->setValue("appearance/theme", FSStyle.themeName(FSStyle.currentTheme()));
     m_qsettings->setValue("window/geometry", saveGeometry());
     
@@ -924,7 +997,8 @@ void MainWindow::onDeviceConnected(const DeviceInfo& device)
 {
     m_deviceConnectedAt.insert(device.deviceNode, QDateTime::currentDateTime());
     m_deviceDisconnectedAt.remove(device.deviceNode);
-    logMessage(QString("Device connected: %1 (%2)").arg(device.displayName(), device.deviceNode));
+    logMessage(QString("Device connected: %1 (%2)").arg(device.displayName(), device.deviceNode),
+               LogLevel::Info, device.deviceNode);
     
     // Add device card
     addDeviceCard(device);
@@ -960,7 +1034,7 @@ void MainWindow::onDeviceDisconnected(const QString& deviceNode)
     }
 
     m_deviceDisconnectedAt.insert(deviceNode, QDateTime::currentDateTime());
-    logMessage(QString("Device disconnected: %1").arg(deviceName));
+    logMessage(QString("Device disconnected: %1").arg(deviceName), LogLevel::Info, deviceNode);
     
     // Cancel any pending hash for this device
     for (auto it = m_hashJobDevices.begin(); it != m_hashJobDevices.end(); ++it) {
@@ -1707,63 +1781,38 @@ void MainWindow::onRefreshClicked()
 
 void MainWindow::onSettingsClicked()
 {
-    SettingsDialog dialog(this);
-    dialog.loadSettings(m_settings);
-    dialog.setDatabaseStatistics(m_database->deviceCount(), m_database->databasePath());
-    
-    connect(&dialog, &SettingsDialog::themeChanged, this, &MainWindow::onThemeChanged);
-    connect(&dialog, &SettingsDialog::exportDatabaseRequested, this,
-            [this](const QString& path) {
-                if (m_database->exportToFile(path)) {
-                    logMessage(QString("Database exported to %1").arg(path));
-                    QMessageBox::information(this, "Export Complete",
-                                             "Database exported successfully.");
-                } else {
-                    QMessageBox::warning(this, "Export Failed",
-                                         "Could not export the database.");
-                }
-            });
-    connect(&dialog, &SettingsDialog::importDatabaseRequested, this,
-            [this](const QString& path) {
-                const int count = m_database->importFromFile(path, true);
-                if (count >= 0) {
-                    logMessage(QString("Imported %1 device(s) from %2").arg(count).arg(path));
-                    updateSidebarStats();
-                    QMessageBox::information(this, "Import Complete",
-                                             QString("Imported %1 device(s).").arg(count));
-                } else {
-                    QMessageBox::warning(this, "Import Failed",
-                                         "Could not import the database file.");
-                }
-            });
-    connect(&dialog, &SettingsDialog::backupDatabaseRequested, this, [this, &dialog]() {
-        const QString backupPath = m_database->createBackup();
-        if (!backupPath.isEmpty()) {
-            logMessage(QString("Database backup: %1").arg(backupPath));
-            QMessageBox::information(&dialog, "Backup Created",
-                                     QString("Backup saved to:\n%1").arg(backupPath));
-        } else {
-            QMessageBox::warning(&dialog, "Backup Failed",
-                                 "Could not create a database backup.");
-        }
-    });
-    connect(&dialog, &SettingsDialog::clearDatabaseRequested, this, [this]() {
-        m_database->clearAllDevices();
-        logMessage("Database cleared", LogLevel::Warning);
-        updateSidebarStats();
-    });
-    
-    if (dialog.exec() == QDialog::Accepted) {
-        const QString previousDbPath = m_database->databasePath();
-        m_settings = dialog.getSettings();
-        applySettings(m_settings);
-        saveSettings();
-
-        if (!m_settings.databasePath.isEmpty()
-            && m_settings.databasePath != previousDbPath) {
-            m_database->initialize(m_settings.databasePath);
-        }
+    if (m_settingsPage) {
+        m_settingsPage->loadSettings(m_settings);
+        m_settingsPage->setDatabaseStatistics(m_database->deviceCount(),
+                                              m_database->databasePath());
     }
+    if (m_navSidebar) {
+        m_navSidebar->setCurrentPage(AppPage::Settings);
+    }
+    onNavPageSelected(AppPage::Settings);
+}
+
+void MainWindow::applySettingsPage(const AppSettings& settings)
+{
+    const QString previousDbPath = m_database->databasePath();
+    m_settings = settings;
+    applySettings(m_settings);
+    m_maxUiEvents = qMax(20, m_settings.recentEventsLimit);
+    while (m_uiEvents.size() > m_maxUiEvents) {
+        m_uiEvents.removeLast();
+    }
+    saveSettings();
+
+    if (!m_settings.databasePath.isEmpty() && m_settings.databasePath != previousDbPath) {
+        m_database->initialize(m_settings.databasePath);
+    }
+    if (m_settingsPage) {
+        m_settingsPage->setDatabaseStatistics(m_database->deviceCount(),
+                                              m_database->databasePath());
+    }
+    refreshUsbMonitorHome();
+    refreshDeviceHistoryPage();
+    logMessage(QStringLiteral("Settings saved"), LogLevel::Info);
 }
 
 void MainWindow::onThemeChanged(StyleManager::Theme theme)
@@ -1779,6 +1828,10 @@ void MainWindow::onThemeChanged(StyleManager::Theme theme)
 
 void MainWindow::applySettings(const AppSettings& settings)
 {
+    m_maxUiEvents = qMax(20, settings.recentEventsLimit);
+    while (m_uiEvents.size() > m_maxUiEvents) {
+        m_uiEvents.removeLast();
+    }
     m_trayIcon->setNotificationsEnabled(settings.showNotifications);
     m_hashWorker->setMaxConcurrent(settings.maxConcurrentHashes);
     FSStyle.setAnimationsEnabled(settings.animationsEnabled);
@@ -1892,17 +1945,29 @@ void MainWindow::onNavPageSelected(AppPage page)
     if (!m_pageStack) {
         return;
     }
-    if (page == AppPage::Settings) {
-        m_pageStack->setCurrentWidget(m_settingsPage);
-        return;
-    }
     const int index = static_cast<int>(page);
     if (index >= 0 && index < m_pageStack->count()) {
         m_pageStack->setCurrentIndex(index);
     }
+    if (page == AppPage::Settings && m_settingsPage) {
+        m_settingsPage->loadSettings(m_settings);
+        m_settingsPage->setDatabaseStatistics(m_database->deviceCount(),
+                                              m_database->databasePath());
+    }
     if (page == AppPage::UsbMonitor) {
         refreshUsbMonitorHome();
     }
+    if (page == AppPage::DeviceHistory) {
+        refreshDeviceHistoryPage();
+    }
+}
+
+void MainWindow::persistTimelineEvent(const UiEventEntry& entry)
+{
+    if (entry.deviceNode.isEmpty()) {
+        return;
+    }
+    DeviceTimelineLog::instance().append(entry);
 }
 
 void MainWindow::appendUiEvent(const UiEventEntry& entry)
@@ -1911,7 +1976,130 @@ void MainWindow::appendUiEvent(const UiEventEntry& entry)
     while (m_uiEvents.size() > m_maxUiEvents) {
         m_uiEvents.removeLast();
     }
+    persistTimelineEvent(entry);
     refreshUsbMonitorHome();
+}
+
+QList<UiEventEntry> MainWindow::deviceHistoryEvents(const QString& deviceNode) const
+{
+    QList<UiEventEntry> out = DeviceTimelineLog::instance().entriesForDevice(
+        deviceNode, m_settings.deviceHistoryRetentionDays, m_settings.deviceHistoryMaxEntries);
+
+    auto timelineKey = [](const UiEventEntry& e) {
+        return QStringLiteral("%1|%2|%3")
+            .arg(e.time.toSecsSinceEpoch())
+            .arg(e.event, e.result);
+    };
+    QSet<QString> seen;
+    for (const UiEventEntry& e : out) {
+        seen.insert(timelineKey(e));
+    }
+
+    const int verifyLimit = m_settings.deviceHistoryMaxEntries > 0
+                                ? m_settings.deviceHistoryMaxEntries
+                                : 500;
+    for (const VerifyHistoryEntry& vh :
+         VerifyHistory::instance().entriesForDevice(deviceNode, verifyLimit)) {
+        UiEventEntry e;
+        e.id = QStringLiteral("vh-%1-%2")
+                   .arg(vh.timestamp.toSecsSinceEpoch())
+                   .arg(vh.summary);
+        e.time = vh.timestamp;
+        e.event = vh.summary.isEmpty() ? QStringLiteral("Verification") : vh.summary;
+        e.device = vh.deviceLabel.isEmpty() ? vh.deviceNode : vh.deviceLabel;
+        switch (vh.kind) {
+            case VerifyHistoryKind::IsoScan:
+                e.type = QStringLiteral("ISO");
+                break;
+            case VerifyHistoryKind::Manifest:
+                e.type = QStringLiteral("Watch");
+                break;
+            case VerifyHistoryKind::Hash:
+            default:
+                e.type = QStringLiteral("Verify");
+                break;
+        }
+        e.result = vh.status;
+        e.detail = vh.detail.isEmpty() ? vh.summary : vh.detail;
+        e.deviceNode = vh.deviceNode;
+
+        if (m_settings.deviceHistoryRetentionDays > 0) {
+            const QDateTime cutoff =
+                QDateTime::currentDateTime().addDays(-m_settings.deviceHistoryRetentionDays);
+            if (e.time < cutoff) {
+                continue;
+            }
+        }
+        if (seen.contains(timelineKey(e))) {
+            continue;
+        }
+        out.append(e);
+        seen.insert(timelineKey(e));
+    }
+
+    std::sort(out.begin(), out.end(), [](const UiEventEntry& a, const UiEventEntry& b) {
+        return a.time > b.time;
+    });
+
+    if (m_settings.deviceHistoryMaxEntries > 0 && out.size() > m_settings.deviceHistoryMaxEntries) {
+        out = out.mid(0, m_settings.deviceHistoryMaxEntries);
+    }
+    return out;
+}
+
+void MainWindow::refreshDeviceHistoryPage()
+{
+    if (!m_deviceHistoryPage || !m_deviceMonitor) {
+        return;
+    }
+
+    QStringList nodes;
+    QStringList labels;
+    auto addDevice = [this, &nodes, &labels](const QString& node, const QString& label) {
+        if (node.isEmpty() || nodes.contains(node)) {
+            return;
+        }
+        nodes.append(node);
+        labels.append(label.isEmpty() ? node : label);
+    };
+
+    for (const DeviceInfo& d : m_deviceMonitor->connectedDevices()) {
+        addDevice(d.deviceNode, m_userDeviceNames.value(d.deviceNode, d.displayName()));
+    }
+    for (const QString& node : DeviceTimelineLog::instance().knownDeviceNodes()) {
+        QString label = node;
+        if (auto info = m_deviceMonitor->getDevice(node)) {
+            label = info->displayName();
+        }
+        addDevice(node, label);
+    }
+    for (const DeviceRecord& rec : m_database->getAllDevices()) {
+        if (!rec.lastKnownInfo.deviceNode.isEmpty()) {
+            addDevice(rec.lastKnownInfo.deviceNode, rec.lastKnownInfo.displayName());
+        }
+    }
+
+    const QString current = m_deviceHistoryPage->selectedDeviceNode();
+    m_deviceHistoryPage->setDeviceChoices(labels, nodes);
+    if (!current.isEmpty() && nodes.contains(current)) {
+        m_deviceHistoryPage->setSelectedDevice(current);
+    } else if (!nodes.isEmpty()) {
+        m_deviceHistoryPage->setSelectedDevice(nodes.first());
+    }
+
+    const QString selected = m_deviceHistoryPage->selectedDeviceNode();
+    m_deviceHistoryPage->setEvents(deviceHistoryEvents(selected));
+}
+
+void MainWindow::showDeviceHistory(const QString& deviceNode)
+{
+    if (m_navSidebar) {
+        m_navSidebar->setCurrentPage(AppPage::DeviceHistory);
+    }
+    if (m_deviceHistoryPage && !deviceNode.isEmpty()) {
+        m_deviceHistoryPage->setSelectedDevice(deviceNode);
+    }
+    onNavPageSelected(AppPage::DeviceHistory);
 }
 
 void MainWindow::refreshUsbMonitorHome()
@@ -2254,7 +2442,7 @@ void MainWindow::mountIfVerified(const QString& deviceNode)
     }
 }
 
-void MainWindow::logMessage(const QString& message, LogLevel level)
+void MainWindow::logMessage(const QString& message, LogLevel level, const QString& deviceNode)
 {
     QString prefix;
     QString result;
@@ -2283,8 +2471,9 @@ void MainWindow::logMessage(const QString& message, LogLevel level)
     }
 
     UiEventEntry ev = makeUiEvent(message, QStringLiteral("—"), QStringLiteral("System"), result,
-                                 QStringLiteral("[%1] %2").arg(prefix, message));
+                                 QStringLiteral("[%1] %2").arg(prefix, message), deviceNode);
     m_uiEvents.prepend(ev);
+    persistTimelineEvent(ev);
     while (m_uiEvents.size() > m_maxUiEvents) {
         m_uiEvents.removeLast();
     }

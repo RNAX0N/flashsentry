@@ -36,6 +36,8 @@
 #include "AppNavigation.h"
 #include "NavSidebar.h"
 #include "UsbMonitorPage.h"
+#include "DeviceHistoryPage.h"
+#include "SettingsPage.h"
 #include "PlaceholderModulePage.h"
 #include "UiEventTypes.h"
 #include "BadUsbBaselineStore.h"
@@ -263,7 +265,8 @@ private:
     /**
      * @brief Log a message to the log panel
      */
-    void logMessage(const QString& message, LogLevel level = LogLevel::Info);
+    void logMessage(const QString& message, LogLevel level = LogLevel::Info,
+                    const QString& deviceNode = QString());
 
     /**
      * @brief Update the empty state message
@@ -277,9 +280,14 @@ private:
     void refreshVerifyHistoryPanel(const QString& deviceNodeFilter = {});
     void refreshWatchListsPanel();
     void refreshUsbMonitorHome();
+    void refreshDeviceHistoryPage();
     void appendUiEvent(const UiEventEntry& entry);
+    void persistTimelineEvent(const UiEventEntry& entry);
+    QList<UiEventEntry> deviceHistoryEvents(const QString& deviceNode) const;
+    void showDeviceHistory(const QString& deviceNode);
     void showDeviceActionsMenu(const QString& deviceNode);
     void onNavPageSelected(AppPage page);
+    void applySettingsPage(const AppSettings& settings);
     void recordVerifyHistory(const VerifyHistoryEntry& entry);
 
     /**
@@ -352,7 +360,8 @@ private:
     NavSidebar* m_navSidebar = nullptr;
     QStackedWidget* m_pageStack = nullptr;
     UsbMonitorPage* m_usbMonitorPage = nullptr;
-    PlaceholderModulePage* m_settingsPage = nullptr;
+    DeviceHistoryPage* m_deviceHistoryPage = nullptr;
+    SettingsPage* m_settingsPage = nullptr;
     QWidget* m_hiddenDeviceHost = nullptr;
     QVBoxLayout* m_hiddenDeviceLayout = nullptr;
 

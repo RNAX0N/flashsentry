@@ -73,6 +73,9 @@ set(SOURCES
     src/WatchListsPanel.cpp
     src/NavSidebar.cpp
     src/UsbMonitorPage.cpp
+    src/DeviceHistoryPage.cpp
+    src/DeviceTimelineLog.cpp
+    src/SettingsPage.cpp
     src/PlaceholderModulePage.cpp
     src/EventDetailDialog.cpp
     src/IsoVerifierWidget.cpp
@@ -123,6 +126,9 @@ set(HEADERS
     include/AppNavigation.h
     include/NavSidebar.h
     include/UsbMonitorPage.h
+    include/DeviceHistoryPage.h
+    include/DeviceTimelineLog.h
+    include/SettingsPage.h
     include/PlaceholderModulePage.h
     include/EventDetailDialog.h
     include/UiEventTypes.h

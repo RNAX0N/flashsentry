@@ -6,6 +6,7 @@
 #include <QButtonGroup>
 #include <QLabel>
 #include <QFrame>
+#include <QPixmap>
 
 namespace FlashSentry {
 
@@ -13,7 +14,7 @@ NavSidebar::NavSidebar(QWidget* parent)
     : QWidget(parent)
 {
     setObjectName(QStringLiteral("NavSidebar"));
-    setFixedWidth(200);
+    setFixedWidth(216);
 
     auto* outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
@@ -22,16 +23,27 @@ NavSidebar::NavSidebar(QWidget* parent)
     auto* brand = new QWidget;
     brand->setObjectName(QStringLiteral("NavBrand"));
     auto* brandLayout = new QVBoxLayout(brand);
-    brandLayout->setContentsMargins(16, 20, 16, 16);
-    auto* title = new QLabel(QStringLiteral("FlashSentry"));
-    title->setFont(FSFont(Heading3));
-    title->setStyleSheet(QString("color: %1; font-weight: 700;")
-                             .arg(FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary)));
-    brandLayout->addWidget(title);
-    auto* sub = new QLabel(QStringLiteral("USB Security"));
-    sub->setStyleSheet(QString("color: %1;")
-                           .arg(FSStyle.colorCss(StyleManager::ColorRole::TextMuted)));
-    brandLayout->addWidget(sub);
+    brandLayout->setContentsMargins(8, 16, 8, 12);
+    brandLayout->setSpacing(0);
+
+    const QPixmap logoPx(QStringLiteral(":/branding/flashsentry-logo.png"));
+    if (!logoPx.isNull()) {
+        auto* logoLabel = new QLabel;
+        logoLabel->setObjectName(QStringLiteral("NavLogo"));
+        logoLabel->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+        logoLabel->setPixmap(logoPx.scaledToWidth(200, Qt::SmoothTransformation));
+        brandLayout->addWidget(logoLabel);
+    } else {
+        auto* title = new QLabel(QStringLiteral("FlashSentry"));
+        title->setFont(FSFont(Heading3));
+        title->setStyleSheet(QString("color: %1; font-weight: 700;")
+                                 .arg(FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary)));
+        brandLayout->addWidget(title);
+        auto* sub = new QLabel(QStringLiteral("USB Security"));
+        sub->setStyleSheet(QString("color: %1;")
+                               .arg(FSStyle.colorCss(StyleManager::ColorRole::TextMuted)));
+        brandLayout->addWidget(sub);
+    }
     outer->addWidget(brand);
 
     auto* line = new QFrame;

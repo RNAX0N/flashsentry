@@ -1,9 +1,24 @@
 #include <QtTest>
 #include <QTemporaryDir>
 #include <QFile>
+#include <QProcessEnvironment>
+
 #include "DatabaseManager.h"
+#include "policy/PolicyGateway.h"
+#include "policy/PolicyServiceLocator.h"
 
 using namespace FlashSentry;
+
+namespace {
+
+void installIsolatedPolicy(const QString& configDir)
+{
+    qputenv("FLASHSENTRY_POLICY_IN_PROCESS", "1");
+    qputenv("FLASHSENTRY_POLICY_CONFIG", configDir.toUtf8());
+    Policy::PolicyServiceLocator::install(Policy::PolicyGateway::createInProcess());
+}
+
+} // namespace
 
 class TestDatabaseManager : public QObject {
     Q_OBJECT
@@ -18,10 +33,10 @@ void TestDatabaseManager::partitionAwareLookupAndMigration()
 {
     QTemporaryDir tempDir;
     QVERIFY(tempDir.isValid());
+    installIsolatedPolicy(tempDir.path());
 
     DatabaseManager db;
-    const QString dbPath = tempDir.path() + "/devices.json";
-    QVERIFY(db.initialize(dbPath));
+    QVERIFY(db.initialize());
 
     DeviceInfo info;
     info.serial = "SER001";
@@ -49,9 +64,10 @@ void TestDatabaseManager::verifyHashUsesLegacyId()
 {
     QTemporaryDir tempDir;
     QVERIFY(tempDir.isValid());
+    installIsolatedPolicy(tempDir.path());
 
     DatabaseManager db;
-    QVERIFY(db.initialize(tempDir.path() + "/devices.json"));
+    QVERIFY(db.initialize());
 
     DeviceInfo info;
     info.serial = "SER002";
@@ -76,8 +92,26 @@ void TestDatabaseManager::importMergeAndReplace()
     QTemporaryDir tempDir;
     QVERIFY(tempDir.isValid());
 
+    QTemporaryDir seedDir;
+    QVERIFY(seedDir.isValid());
+    installIsolatedPolicy(seedDir.path());
+
+    DatabaseManager seedDb;
+    QVERIFY(seedDb.initialize());
+
+    DeviceRecord second;
+    second.uniqueId = "device_b/sdb1";
+    second.hash = "hash_b";
+    second.firstSeen = QDateTime::currentDateTimeUtc();
+    second.lastSeen = second.firstSeen;
+    QVERIFY(seedDb.addDevice(second));
+
+    const QString importPath = tempDir.path() + "/import.json";
+    QVERIFY(seedDb.exportToFile(importPath, true));
+
+    installIsolatedPolicy(tempDir.path());
     DatabaseManager db;
-    QVERIFY(db.initialize(tempDir.path() + "/devices.json"));
+    QVERIFY(db.initialize());
 
     DeviceRecord first;
     first.uniqueId = "device_a/sda1";
@@ -85,18 +119,6 @@ void TestDatabaseManager::importMergeAndReplace()
     first.firstSeen = QDateTime::currentDateTimeUtc();
     first.lastSeen = first.firstSeen;
     QVERIFY(db.addDevice(first));
-
-    const QString importPath = tempDir.path() + "/import.json";
-    DatabaseManager exporter;
-    QVERIFY(exporter.initialize(importPath));
-
-    DeviceRecord second;
-    second.uniqueId = "device_b/sdb1";
-    second.hash = "hash_b";
-    second.firstSeen = QDateTime::currentDateTimeUtc();
-    second.lastSeen = second.firstSeen;
-    QVERIFY(exporter.addDevice(second));
-    QVERIFY(exporter.save());
 
     QCOMPARE(db.importFromFile(importPath, true), 1);
     QCOMPARE(db.deviceCount(), 2);

@@ -226,6 +226,7 @@ public:
 
     /** Data tables on module pages (USB Monitor, etc.). */
     QString dataTableStyleSheet() const;
+    QString compactTableButtonStyleSheet() const;
 
     /**
      * @brief Get stylesheet for tooltips

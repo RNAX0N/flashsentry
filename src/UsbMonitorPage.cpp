@@ -1,6 +1,8 @@
 #include "UsbMonitorPage.h"
 #include "StyleManager.h"
+#include "UiIcons.h"
 
+#include <QFontMetrics>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -20,6 +22,23 @@ QTableWidgetItem* readOnlyItem(const QString& text)
     auto* item = new QTableWidgetItem(text);
     item->setFlags(item->flags() & ~Qt::ItemIsEditable);
     return item;
+}
+
+QWidget* tableButtonCell(QPushButton* btn)
+{
+    btn->setFixedHeight(20);
+    btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    btn->setStyleSheet(FSStyle.compactTableButtonStyleSheet());
+    auto* cell = new QWidget;
+    auto* lay = new QHBoxLayout(cell);
+    lay->setContentsMargins(2, 1, 2, 1);
+    lay->addWidget(btn, 0, Qt::AlignCenter);
+    return cell;
+}
+
+QIcon usbDeviceIcon()
+{
+    return UiIcons::icon(":/icons/usb-drive.svg", 18);
 }
 
 } // namespace
@@ -67,7 +86,7 @@ void UsbMonitorPage::setupUi()
                                     .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     layout->addWidget(devicesLabel);
 
-    m_deviceTable = new QTableWidget(0, 8);
+    m_deviceTable = new QTableWidget(0, 9);
     m_deviceTable->setHorizontalHeaderLabels({
         QStringLiteral("Device name"),
         QStringLiteral("Type"),
@@ -76,16 +95,15 @@ void UsbMonitorPage::setupUi()
         QStringLiteral("Vendor / model"),
         QStringLiteral("Connected"),
         QStringLiteral("Disconnected"),
+        QStringLiteral("History"),
         QStringLiteral("Actions"),
     });
-    m_deviceTable->horizontalHeader()->setStretchLastSection(false);
-    m_deviceTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     m_deviceTable->verticalHeader()->setVisible(false);
     m_deviceTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_deviceTable->setSelectionMode(QAbstractItemView::SingleSelection);
     m_deviceTable->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
     m_deviceTable->setAlternatingRowColors(true);
-  connect(m_deviceTable, &QTableWidget::cellChanged, this, &UsbMonitorPage::onDeviceCellChanged);
+    connect(m_deviceTable, &QTableWidget::cellChanged, this, &UsbMonitorPage::onDeviceCellChanged);
     layout->addWidget(m_deviceTable);
 
     auto* eventsLabel = new QLabel(QStringLiteral("Recent events"));
@@ -103,8 +121,6 @@ void UsbMonitorPage::setupUi()
         QStringLiteral("Result"),
         QStringLiteral(""),
     });
-    m_eventsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    m_eventsTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     m_eventsTable->verticalHeader()->setVisible(false);
     m_eventsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_eventsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -154,6 +170,44 @@ void UsbMonitorPage::styleTables()
     m_eventsTable->setStyleSheet(tableCss);
 }
 
+void UsbMonitorPage::applyDeviceTableLayout()
+{
+    auto* hdr = m_deviceTable->horizontalHeader();
+    hdr->setStretchLastSection(false);
+    hdr->setSectionResizeMode(0, QHeaderView::Interactive);
+    hdr->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(4, QHeaderView::Stretch);
+    hdr->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(6, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(7, QHeaderView::Fixed);
+    hdr->setSectionResizeMode(8, QHeaderView::Fixed);
+    m_deviceTable->setColumnWidth(7, 76);
+    m_deviceTable->setColumnWidth(8, 84);
+
+    const QFontMetrics fm(m_deviceTable->font());
+    const int nameWidth = fm.horizontalAdvance(QStringLiteral("SanDisk Ultra USB 3.0")) + 40;
+    m_deviceTable->setColumnWidth(0, qMin(nameWidth, 220));
+}
+
+void UsbMonitorPage::applyEventsTableLayout()
+{
+    auto* hdr = m_eventsTable->horizontalHeader();
+    hdr->setStretchLastSection(false);
+    hdr->setSectionResizeMode(1, QHeaderView::Stretch);
+    hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(4, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(5, QHeaderView::Fixed);
+    m_eventsTable->setColumnWidth(5, 88);
+
+    const QFontMetrics fm(m_eventsTable->font());
+    const int minTime = fm.horizontalAdvance(QStringLiteral("2026-05-28 12:34:56")) + 28;
+    hdr->setSectionResizeMode(0, QHeaderView::Interactive);
+    m_eventsTable->setColumnWidth(0, qMax(minTime * 2, m_eventsTable->columnWidth(0)));
+}
+
 void UsbMonitorPage::setStats(const UsbMonitorStats& stats)
 {
     m_connectedValue->setText(QString::number(stats.connected));
@@ -167,9 +221,11 @@ void UsbMonitorPage::setDevices(const QList<UsbDeviceRow>& rows)
     m_deviceRows = rows;
     m_blockDeviceTableSignals = true;
     m_deviceTable->setRowCount(rows.size());
+    const QIcon driveIcon = usbDeviceIcon();
     for (int r = 0; r < rows.size(); ++r) {
         const UsbDeviceRow& row = rows.at(r);
         auto* nameItem = new QTableWidgetItem(row.displayName);
+        nameItem->setIcon(driveIcon);
         nameItem->setData(Qt::UserRole, row.deviceNode);
         if (!row.nameEditable) {
             nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
@@ -182,45 +238,45 @@ void UsbMonitorPage::setDevices(const QList<UsbDeviceRow>& rows)
         m_deviceTable->setItem(r, 5, readOnlyItem(row.connectedAt));
         m_deviceTable->setItem(r, 6, readOnlyItem(row.disconnectedAt));
 
-        auto* actionsWidget = new QWidget;
-        auto* actionsLayout = new QHBoxLayout(actionsWidget);
-        actionsLayout->setContentsMargins(4, 2, 4, 2);
+        auto* historyBtn = new QPushButton(QStringLiteral("History"));
+        historyBtn->setProperty("deviceNode", row.deviceNode);
+        historyBtn->setCursor(Qt::PointingHandCursor);
+        connect(historyBtn, &QPushButton::clicked, this, &UsbMonitorPage::onDeviceHistoryClicked);
+        m_deviceTable->setCellWidget(r, 7, tableButtonCell(historyBtn));
+
         auto* actionsBtn = new QPushButton(QStringLiteral("Actions"));
         actionsBtn->setProperty("deviceNode", row.deviceNode);
         actionsBtn->setCursor(Qt::PointingHandCursor);
-        actionsBtn->setStyleSheet(FSStyle.buttonStyleSheet());
         connect(actionsBtn, &QPushButton::clicked, this, &UsbMonitorPage::onDeviceActionsClicked);
-        actionsLayout->addWidget(actionsBtn);
-        m_deviceTable->setCellWidget(r, 7, actionsWidget);
-        m_deviceTable->setRowHeight(r, 40);
+        m_deviceTable->setCellWidget(r, 8, tableButtonCell(actionsBtn));
+
+        m_deviceTable->setRowHeight(r, 30);
     }
     m_blockDeviceTableSignals = false;
+    applyDeviceTableLayout();
 }
 
 void UsbMonitorPage::setEvents(const QList<UiEventEntry>& events)
 {
     m_eventRows = events;
     m_eventsTable->setRowCount(events.size());
+    const QString timeFmt = QStringLiteral("yyyy-MM-dd hh:mm:ss");
     for (int r = 0; r < events.size(); ++r) {
         const UiEventEntry& e = events.at(r);
-        m_eventsTable->setItem(r, 0, readOnlyItem(e.time.toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"))));
+        m_eventsTable->setItem(r, 0, readOnlyItem(e.time.toString(timeFmt)));
         m_eventsTable->setItem(r, 1, readOnlyItem(e.event));
         m_eventsTable->setItem(r, 2, readOnlyItem(e.device));
         m_eventsTable->setItem(r, 3, readOnlyItem(e.type));
         m_eventsTable->setItem(r, 4, readOnlyItem(e.result));
 
-        auto* detailsWidget = new QWidget;
-        auto* detailsLayout = new QHBoxLayout(detailsWidget);
-        detailsLayout->setContentsMargins(4, 2, 4, 2);
         auto* detailsBtn = new QPushButton(QStringLiteral("Details"));
         detailsBtn->setProperty("eventRow", r);
         detailsBtn->setCursor(Qt::PointingHandCursor);
-        detailsBtn->setStyleSheet(FSStyle.primaryButtonStyleSheet());
         connect(detailsBtn, &QPushButton::clicked, this, &UsbMonitorPage::onEventDetailsClicked);
-        detailsLayout->addWidget(detailsBtn);
-        m_eventsTable->setCellWidget(r, 5, detailsWidget);
-        m_eventsTable->setRowHeight(r, 36);
+        m_eventsTable->setCellWidget(r, 5, tableButtonCell(detailsBtn));
+        m_eventsTable->setRowHeight(r, 30);
     }
+    applyEventsTableLayout();
 }
 
 void UsbMonitorPage::onDeviceCellChanged(int row, int column)
@@ -243,6 +299,15 @@ void UsbMonitorPage::onDeviceActionsClicked()
         return;
     }
     emit deviceActionsRequested(btn->property("deviceNode").toString());
+}
+
+void UsbMonitorPage::onDeviceHistoryClicked()
+{
+    auto* btn = qobject_cast<QPushButton*>(sender());
+    if (!btn) {
+        return;
+    }
+    emit deviceHistoryRequested(btn->property("deviceNode").toString());
 }
 
 void UsbMonitorPage::onEventDetailsClicked()

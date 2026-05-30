@@ -427,6 +427,34 @@ struct BadUsbAnomalyResult {
 
 enum class AppModule { UsbMonitor, IsoVerifier, BadUsbMonitor };
 
+/** How USB Monitor counts devices as "Allowed" in stat cards. */
+enum class AllowedCountMode {
+    TrustLevel = 0,
+    VerifiedHash = 1,
+    TrustOrHash = 2,
+};
+
+inline AllowedCountMode allowedCountModeFromString(const QString& s)
+{
+    if (s == QLatin1String("verified_hash") || s == QLatin1String("hash")) {
+        return AllowedCountMode::VerifiedHash;
+    }
+    if (s == QLatin1String("trust_or_hash") || s == QLatin1String("either")) {
+        return AllowedCountMode::TrustOrHash;
+    }
+    return AllowedCountMode::TrustLevel;
+}
+
+inline QString allowedCountModeToString(AllowedCountMode mode)
+{
+    switch (mode) {
+        case AllowedCountMode::VerifiedHash: return QStringLiteral("verified_hash");
+        case AllowedCountMode::TrustOrHash: return QStringLiteral("trust_or_hash");
+        case AllowedCountMode::TrustLevel:
+        default: return QStringLiteral("trust_level");
+    }
+}
+
 inline AppModule appModuleFromString(const QString& s) {
     if (s == QLatin1String("iso_verifier") || s == QLatin1String("iso"))
         return AppModule::IsoVerifier;
@@ -645,6 +673,11 @@ struct AppSettings {
     bool badUsbUsbmonOnAnomalyOnly = true;
     QString badUsbUsbmonCommand =
         QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1");
+    int recentEventsLimit = 100;
+    /** 0 = retain all device history entries. */
+    int deviceHistoryRetentionDays = 0;
+    int deviceHistoryMaxEntries = 500;
+    AllowedCountMode allowedCountMode = AllowedCountMode::TrustOrHash;
 
     QJsonObject toJson() const {
         QJsonObject obj;
@@ -689,6 +722,10 @@ struct AppSettings {
         obj["badusb_usbmon_enabled"] = badUsbUsbmonEnabled;
         obj["badusb_usbmon_on_anomaly_only"] = badUsbUsbmonOnAnomalyOnly;
         obj["badusb_usbmon_command"] = badUsbUsbmonCommand;
+        obj["recent_events_limit"] = recentEventsLimit;
+        obj["device_history_retention_days"] = deviceHistoryRetentionDays;
+        obj["device_history_max_entries"] = deviceHistoryMaxEntries;
+        obj["allowed_count_mode"] = allowedCountModeToString(allowedCountMode);
         return obj;
     }
 
@@ -743,6 +780,11 @@ struct AppSettings {
         settings.badUsbUsbmonOnAnomalyOnly = obj["badusb_usbmon_on_anomaly_only"].toBool(true);
         settings.badUsbUsbmonCommand = obj["badusb_usbmon_command"].toString(
             QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1"));
+        settings.recentEventsLimit = obj["recent_events_limit"].toInt(100);
+        settings.deviceHistoryRetentionDays = obj["device_history_retention_days"].toInt(0);
+        settings.deviceHistoryMaxEntries = obj["device_history_max_entries"].toInt(500);
+        settings.allowedCountMode =
+            allowedCountModeFromString(obj["allowed_count_mode"].toString(QStringLiteral("trust_or_hash")));
         return settings;
     }
 };

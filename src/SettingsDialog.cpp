@@ -1,4 +1,5 @@
 #include "SettingsDialog.h"
+#include "AutostartManager.h"
 #include "SettingsProfiles.h"
 #include "UiIcons.h"
 
@@ -36,6 +37,18 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     m_startMinimizedCheck->setChecked(settings.startMinimized);
     m_minimizeToTrayCheck->setChecked(settings.minimizeToTray);
     m_showNotificationsCheck->setChecked(settings.showNotifications);
+    if (m_autoStartCheck) {
+        m_autoStartCheck->setChecked(settings.autoStartAtLogin);
+    }
+    if (m_recentEventsLimitSpin) {
+        m_recentEventsLimitSpin->setValue(settings.recentEventsLimit);
+    }
+    if (m_deviceHistoryRetentionSpin) {
+        m_deviceHistoryRetentionSpin->setValue(settings.deviceHistoryRetentionDays);
+    }
+    if (m_deviceHistoryMaxEntriesSpin) {
+        m_deviceHistoryMaxEntriesSpin->setValue(settings.deviceHistoryMaxEntries);
+    }
     
     // Security
     m_autoHashOnConnectCheck->setChecked(settings.autoHashOnConnect);
@@ -85,7 +98,12 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
     if (m_badUsbUsbmonOnAnomalyCheck) m_badUsbUsbmonOnAnomalyCheck->setChecked(settings.badUsbUsbmonOnAnomalyOnly);
     if (m_badUsbUsbmonCommandEdit) m_badUsbUsbmonCommandEdit->setText(settings.badUsbUsbmonCommand);
     m_defaultTrustCombo->setCurrentIndex(settings.defaultTrustLevel);
-    
+    if (m_allowedCountModeCombo) {
+        const int mi = m_allowedCountModeCombo->findData(
+            allowedCountModeToString(settings.allowedCountMode));
+        m_allowedCountModeCombo->setCurrentIndex(mi >= 0 ? mi : 2);
+    }
+
     // Hashing
     int algoIndex = m_hashAlgorithmCombo->findText(settings.hashAlgorithm);
     if (algoIndex >= 0) {
@@ -135,6 +153,16 @@ AppSettings SettingsDialog::getSettings() const
     settings.startMinimized = m_startMinimizedCheck->isChecked();
     settings.minimizeToTray = m_minimizeToTrayCheck->isChecked();
     settings.showNotifications = m_showNotificationsCheck->isChecked();
+    settings.autoStartAtLogin = m_autoStartCheck && m_autoStartCheck->isChecked();
+    if (m_recentEventsLimitSpin) {
+        settings.recentEventsLimit = m_recentEventsLimitSpin->value();
+    }
+    if (m_deviceHistoryRetentionSpin) {
+        settings.deviceHistoryRetentionDays = m_deviceHistoryRetentionSpin->value();
+    }
+    if (m_deviceHistoryMaxEntriesSpin) {
+        settings.deviceHistoryMaxEntries = m_deviceHistoryMaxEntriesSpin->value();
+    }
     
     // Security
     settings.autoHashOnConnect = m_autoHashOnConnectCheck->isChecked();
@@ -172,7 +200,11 @@ AppSettings SettingsDialog::getSettings() const
     if (m_badUsbUsbmonOnAnomalyCheck) settings.badUsbUsbmonOnAnomalyOnly = m_badUsbUsbmonOnAnomalyCheck->isChecked();
     if (m_badUsbUsbmonCommandEdit) settings.badUsbUsbmonCommand = m_badUsbUsbmonCommandEdit->text().trimmed();
     settings.defaultTrustLevel = m_defaultTrustCombo->currentIndex();
-    
+    if (m_allowedCountModeCombo) {
+        settings.allowedCountMode =
+            allowedCountModeFromString(m_allowedCountModeCombo->currentData().toString());
+    }
+
     // Hashing
     settings.hashAlgorithm = m_hashAlgorithmCombo->currentText();
     settings.hashBufferSizeKB = m_bufferSizeSpin->value();
@@ -220,21 +252,39 @@ void SettingsDialog::setupUi()
     
     m_mainLayout->addWidget(m_tabWidget);
     
-    // Button box
-    QHBoxLayout* buttonLayout = new QHBoxLayout;
-    
+    m_buttonBar = new QWidget;
+    QHBoxLayout* buttonLayout = new QHBoxLayout(m_buttonBar);
+    buttonLayout->setContentsMargins(0, 0, 0, 0);
+
     m_restoreDefaultsBtn = new QPushButton("Restore Defaults");
     connect(m_restoreDefaultsBtn, &QPushButton::clicked, this, &SettingsDialog::onRestoreDefaults);
     buttonLayout->addWidget(m_restoreDefaultsBtn);
-    
+
     buttonLayout->addStretch();
-    
+
     m_buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     connect(m_buttonBox, &QDialogButtonBox::accepted, this, &SettingsDialog::onAccepted);
     connect(m_buttonBox, &QDialogButtonBox::rejected, this, &SettingsDialog::onRejected);
     buttonLayout->addWidget(m_buttonBox);
-    
-    m_mainLayout->addLayout(buttonLayout);
+
+    m_mainLayout->addWidget(m_buttonBar);
+}
+
+void SettingsDialog::setEmbeddedMode(bool embedded)
+{
+    m_embeddedMode = embedded;
+    if (m_buttonBar) {
+        m_buttonBar->setVisible(!embedded);
+    }
+    if (embedded) {
+        setWindowFlags(Qt::Widget);
+        setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
+    }
+}
+
+void SettingsDialog::restoreDefaultsTriggered()
+{
+    onRestoreDefaults();
 }
 
 QWidget* SettingsDialog::createGeneralTab()
@@ -254,7 +304,8 @@ QWidget* SettingsDialog::createGeneralTab()
     
     m_autoStartCheck = new QCheckBox("Start automatically at login");
     m_autoStartCheck->setToolTip("Launch FlashSentry when you log in");
-    m_autoStartCheck->setEnabled(false); // TODO: Implement autostart
+    m_autoStartCheck->setEnabled(AutostartManager::isAvailable());
+    connect(m_autoStartCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     startupLayout->addWidget(m_autoStartCheck);
     
     layout->addWidget(startupGroup);
@@ -274,6 +325,32 @@ QWidget* SettingsDialog::createGeneralTab()
     behaviorLayout->addWidget(m_showNotificationsCheck);
     
     layout->addWidget(behaviorGroup);
+
+    QGroupBox* historyGroup = new QGroupBox(QStringLiteral("Event history"));
+    auto* historyForm = new QFormLayout(historyGroup);
+    m_recentEventsLimitSpin = new QSpinBox;
+    m_recentEventsLimitSpin->setRange(20, 2000);
+    m_recentEventsLimitSpin->setToolTip(QStringLiteral("Rows shown in USB Monitor → Recent events"));
+    connect(m_recentEventsLimitSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &SettingsDialog::onSettingChanged);
+    historyForm->addRow(QStringLiteral("Recent events (USB Monitor):"), m_recentEventsLimitSpin);
+
+    m_deviceHistoryRetentionSpin = new QSpinBox;
+    m_deviceHistoryRetentionSpin->setRange(0, 3650);
+    m_deviceHistoryRetentionSpin->setSpecialValueText(QStringLiteral("Unlimited"));
+    m_deviceHistoryRetentionSpin->setToolTip(QStringLiteral("Per-device history on Device History page (0 = all time)"));
+    connect(m_deviceHistoryRetentionSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &SettingsDialog::onSettingChanged);
+    historyForm->addRow(QStringLiteral("Device history retention (days):"),
+                        m_deviceHistoryRetentionSpin);
+
+    m_deviceHistoryMaxEntriesSpin = new QSpinBox;
+    m_deviceHistoryMaxEntriesSpin->setRange(50, 10000);
+    connect(m_deviceHistoryMaxEntriesSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &SettingsDialog::onSettingChanged);
+    historyForm->addRow(QStringLiteral("Max entries per device:"), m_deviceHistoryMaxEntriesSpin);
+
+    layout->addWidget(historyGroup);
     
     layout->addStretch();
     
@@ -466,7 +543,20 @@ QWidget* SettingsDialog::createSecurityTab()
     connect(m_defaultTrustCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), 
             this, &SettingsDialog::onSettingChanged);
     trustLayout->addRow("Default trust level:", m_defaultTrustCombo);
-    
+
+    m_allowedCountModeCombo = new QComboBox;
+    m_allowedCountModeCombo->addItem(QStringLiteral("Trusted (whitelist level)"),
+                                     allowedCountModeToString(AllowedCountMode::TrustLevel));
+    m_allowedCountModeCombo->addItem(QStringLiteral("Has stored verification hash"),
+                                     allowedCountModeToString(AllowedCountMode::VerifiedHash));
+    m_allowedCountModeCombo->addItem(QStringLiteral("Trusted or verified hash"),
+                                     allowedCountModeToString(AllowedCountMode::TrustOrHash));
+    m_allowedCountModeCombo->setToolTip(
+        QStringLiteral("Controls the Allowed count on USB Monitor and Allow/Block List"));
+    connect(m_allowedCountModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &SettingsDialog::onSettingChanged);
+    trustLayout->addRow(QStringLiteral("Count as allowed:"), m_allowedCountModeCombo);
+
     layout->addWidget(trustGroup);
     
     layout->addStretch();
@@ -651,7 +741,7 @@ QWidget* SettingsDialog::createDatabaseTab()
     QHBoxLayout* pathLayout = new QHBoxLayout;
     m_databasePathEdit = new QLineEdit;
     m_databasePathEdit->setPlaceholderText("Default location");
-    m_databasePathEdit->setReadOnly(true);
+    connect(m_databasePathEdit, &QLineEdit::textChanged, this, &SettingsDialog::onSettingChanged);
     pathLayout->addWidget(m_databasePathEdit);
     
     m_browseDatabaseBtn = new QPushButton("Browse...");
@@ -805,12 +895,20 @@ void SettingsDialog::onThemeChanged(int index)
         .arg(bg.name()).arg(text.name()).arg(accent.name()));
     
     onSettingChanged();
+    if (m_embeddedMode) {
+        emit liveSettingsChanged(getSettings());
+    }
 }
 
 void SettingsDialog::onSettingChanged()
 {
-    if (m_blockSignals) return;
+    if (m_blockSignals) {
+        return;
+    }
     m_hasChanges = true;
+    if (m_embeddedMode) {
+        emit liveSettingsChanged(getSettings());
+    }
 }
 
 void SettingsDialog::onExportDatabase()
@@ -896,6 +994,9 @@ void SettingsDialog::onRestoreDefaults()
     if (reply == QMessageBox::Yes) {
         loadSettings(defaultSettings());
         m_hasChanges = true;
+        if (m_embeddedMode) {
+            emit liveSettingsChanged(getSettings());
+        }
     }
 }
 

@@ -48,7 +48,7 @@ public:
      * @param path Path to the database file (JSON)
      * @return true if successful
      */
-    bool initialize(const QString& path);
+    bool initialize(const QString& path = QString());
 
     /**
      * @brief Check if database is initialized and valid
@@ -336,6 +336,11 @@ private:
      * @brief Mark database as modified
      */
     void markModified();
+
+    void syncFromPolicyGateway();
+    bool persistDevice(const DeviceRecord& record, const QString& reason);
+    bool persistRecordById(const QString& uniqueId, const QString& reason);
+    QString policyActor() const;
 
     // Database file path
     QString m_databasePath;

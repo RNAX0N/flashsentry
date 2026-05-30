@@ -73,10 +73,25 @@ set(SOURCES
     src/WatchListsPanel.cpp
     src/NavSidebar.cpp
     src/UsbMonitorPage.cpp
+    src/DeviceHistoryPage.cpp
+    src/DeviceTimelineLog.cpp
+    src/BlockedDriveStore.cpp
+    src/AllowBlockListPage.cpp
+    src/ContentPageShell.cpp
+    src/SettingsPage.cpp
     src/PlaceholderModulePage.cpp
     src/EventDetailDialog.cpp
     src/IsoVerifierWidget.cpp
     src/DatabaseManager.cpp
+    src/policy/PolicyPaths.cpp
+    src/policy/PolicyBlobCodec.cpp
+    src/policy/PolicyAudit.cpp
+    src/policy/PolicyStoreEngine.cpp
+    src/policy/PolicyGateway.cpp
+    src/policy/PolicyInProcessGateway.cpp
+    src/policy/PolicyDaemonClient.cpp
+    src/policy/PolicyDaemonLauncher.cpp
+    src/policy/PolicyServiceLocator.cpp
     src/MountManager.cpp
     src/DeviceCard.cpp
     src/TrayIcon.cpp
@@ -123,11 +138,27 @@ set(HEADERS
     include/AppNavigation.h
     include/NavSidebar.h
     include/UsbMonitorPage.h
+    include/DeviceHistoryPage.h
+    include/DeviceTimelineLog.h
+    include/BlockedDriveStore.h
+    include/AllowBlockListPage.h
+    include/ContentPageShell.h
+    include/SettingsPage.h
     include/PlaceholderModulePage.h
     include/EventDetailDialog.h
     include/UiEventTypes.h
     include/IsoVerifierWidget.h
     include/DatabaseManager.h
+    include/policy/PolicyPaths.h
+    include/policy/PolicyBlobCodec.h
+    include/policy/PolicyAudit.h
+    include/policy/PolicyStoreEngine.h
+    include/policy/PolicyGateway.h
+    include/policy/PolicyInProcessGateway.h
+    include/policy/PolicyDaemonClient.h
+    include/policy/PolicyDaemonLauncher.h
+    include/policy/PolicyServiceLocator.h
+    include/policy/PolicySnapshot.h
     include/MountManager.h
     include/DeviceCard.h
     include/TrayIcon.h
@@ -148,8 +179,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus Qt6::Concurrent
-    Qt6::Network
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus Qt6::Concurrent Qt6::Network
     ${LIBUDEV_LIBRARIES} ${OPENSSL_LIBRARIES} pthread
 )
 
@@ -162,8 +192,25 @@ include(GNUInstallDirs)
 
 set(FLASHSENTRY_HELPER_RELDIR "${CMAKE_INSTALL_LIBDIR}/flashsentry")
 set(FLASHSENTRY_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper")
+add_executable(flashsentry-policyd
+    src/flashsentry-policyd.cpp
+    src/policy/PolicyPaths.cpp
+    src/policy/PolicyBlobCodec.cpp
+    src/policy/PolicyAudit.cpp
+    src/policy/PolicyStoreEngine.cpp
+)
+target_include_directories(flashsentry-policyd PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${OPENSSL_INCLUDE_DIRS}
+)
+target_link_libraries(flashsentry-policyd PRIVATE
+    Qt6::Core Qt6::Network
+    ${OPENSSL_LIBRARIES}
+)
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     FLASHSENTRY_READ_HELPER_PATH="${FLASHSENTRY_READ_HELPER}"
+    FLASHSENTRY_POLICYD_PATH="$<TARGET_FILE:flashsentry-policyd>"
     FLASHSENTRY_VERSION="${PROJECT_VERSION}"
 )
 
@@ -184,7 +231,7 @@ target_compile_definitions(flashsentry-read-helper PRIVATE
     FLASHSENTRY_VERSION="${PROJECT_VERSION}"
 )
 
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS ${PROJECT_NAME} flashsentry-policyd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install(TARGETS flashsentry-read-helper RUNTIME DESTINATION ${FLASHSENTRY_HELPER_RELDIR})
 install(CODE "

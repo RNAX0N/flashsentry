@@ -581,6 +581,13 @@ QString StyleManager::scrollAreaStyleSheet() const
     .arg(colorCss(ColorRole::AccentSecondary));
 }
 
+QString StyleManager::compactTableButtonStyleSheet() const
+{
+    return buttonStyleSheet()
+           + QStringLiteral(
+                 " QPushButton { min-height: 20px; max-height: 20px; padding: 2px 10px; font-size: 11px; }");
+}
+
 QString StyleManager::dataTableStyleSheet() const
 {
     return QString(R"(

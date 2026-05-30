@@ -1,5 +1,9 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
+    <qresource prefix="/branding">
+        <file>branding/flashsentry-logo.png</file>
+        <file>branding/flashsentry-logo-banner.png</file>
+    </qresource>
     <qresource prefix="/icons">
         <file>icons/flashsentry.svg</file>
         <file>icons/usb-drive.svg</file>

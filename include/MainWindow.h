@@ -36,6 +36,9 @@
 #include "AppNavigation.h"
 #include "NavSidebar.h"
 #include "UsbMonitorPage.h"
+#include "DeviceHistoryPage.h"
+#include "SettingsPage.h"
+#include "AllowBlockListPage.h"
 #include "PlaceholderModulePage.h"
 #include "UiEventTypes.h"
 #include "BadUsbBaselineStore.h"
@@ -263,7 +266,8 @@ private:
     /**
      * @brief Log a message to the log panel
      */
-    void logMessage(const QString& message, LogLevel level = LogLevel::Info);
+    void logMessage(const QString& message, LogLevel level = LogLevel::Info,
+                    const QString& deviceNode = QString());
 
     /**
      * @brief Update the empty state message
@@ -277,9 +281,22 @@ private:
     void refreshVerifyHistoryPanel(const QString& deviceNodeFilter = {});
     void refreshWatchListsPanel();
     void refreshUsbMonitorHome();
+    void refreshDeviceHistoryPage();
+    void refreshAllowBlockListPage();
     void appendUiEvent(const UiEventEntry& entry);
+    void persistTimelineEvent(const UiEventEntry& entry);
+    QList<UiEventEntry> deviceHistoryEvents(const QString& deviceNode) const;
+    void showDeviceHistory(const QString& deviceNode);
     void showDeviceActionsMenu(const QString& deviceNode);
     void onNavPageSelected(AppPage page);
+    void applySettingsPage(const AppSettings& settings);
+    void applyLiveSettings(const AppSettings& settings);
+    void refreshShellStyles();
+    bool isRecordCountedAsAllowed(const DeviceRecord& record) const;
+    bool isDriveBlocked(const DeviceInfo& device) const;
+    void blockDriveForDevice(const DeviceInfo& device, const QString& label = {});
+    void unblockDriveForDevice(const DeviceInfo& device);
+    void allowDriveForDevice(const DeviceInfo& device);
     void recordVerifyHistory(const VerifyHistoryEntry& entry);
 
     /**
@@ -352,7 +369,11 @@ private:
     NavSidebar* m_navSidebar = nullptr;
     QStackedWidget* m_pageStack = nullptr;
     UsbMonitorPage* m_usbMonitorPage = nullptr;
-    PlaceholderModulePage* m_settingsPage = nullptr;
+    DeviceHistoryPage* m_deviceHistoryPage = nullptr;
+    AllowBlockListPage* m_allowBlockListPage = nullptr;
+    QWidget* m_isoVerifierPage = nullptr;
+    QWidget* m_badUsbMonitorPage = nullptr;
+    SettingsPage* m_settingsPage = nullptr;
     QWidget* m_hiddenDeviceHost = nullptr;
     QVBoxLayout* m_hiddenDeviceLayout = nullptr;
 
@@ -418,7 +439,8 @@ private:
     QHash<QString, PendingHashAction> m_pendingHashActions;
     QHash<QString, QString> m_lastVerificationHashes;
     QSet<QString> m_drivePromptInProgress;
-    QSet<QString> m_rejectedDrives;
+    QTimer* m_liveSettingsTimer = nullptr;
+    AppSettings m_pendingLiveSettings;
     QSet<QString> m_unmountBeforeHash;
     QSet<QString> m_isoVerifyTriggeredMounts;
     QHash<QString, QList<QDateTime>> m_hidConnectHistory;

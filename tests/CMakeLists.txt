@@ -10,14 +10,27 @@ target_include_directories(test_types PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_types PRIVATE Qt6::Test)
 add_test(NAME test_types COMMAND test_types)
 
+set(FLASHSENTRY_POLICY_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicyPaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicyBlobCodec.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicyAudit.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicyStoreEngine.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicyGateway.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicyInProcessGateway.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicyDaemonClient.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicyDaemonLauncher.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicyServiceLocator.cpp
+)
+
 add_executable(test_database_manager
     test_database_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/DatabaseManager.cpp
     ${CMAKE_SOURCE_DIR}/include/DatabaseManager.h
+    ${FLASHSENTRY_POLICY_SOURCES}
 )
 target_include_directories(test_database_manager PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_include_directories(test_database_manager PRIVATE ${OPENSSL_INCLUDE_DIRS})
-target_link_libraries(test_database_manager PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
+target_link_libraries(test_database_manager PRIVATE Qt6::Test Qt6::Core Qt6::Network ${OPENSSL_LIBRARIES})
 add_test(NAME test_database_manager COMMAND test_database_manager)
 
 add_executable(test_merkle test_merkle.cpp ${CMAKE_SOURCE_DIR}/src/MerkleTree.cpp)

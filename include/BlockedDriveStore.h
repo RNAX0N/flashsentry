@@ -14,13 +14,12 @@ struct BlockedDriveEntry {
     QDateTime blockedAt;
 };
 
-/** Persisted block list (survives app restart). */
+/** Block list cache; authoritative state lives in the policy store (policyd). */
 class BlockedDriveStore {
 public:
     static BlockedDriveStore& instance();
 
-    void load();
-    void save();
+    void refreshFromGateway();
 
     bool isBlocked(const QString& driveKey, const QString& uniqueId = {}) const;
 

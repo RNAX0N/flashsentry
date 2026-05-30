@@ -9,6 +9,8 @@
 #include "EventDetailDialog.h"
 #include "DeviceTimelineLog.h"
 #include "BlockedDriveStore.h"
+#include "policy/PolicyGateway.h"
+#include "policy/PolicyServiceLocator.h"
 #include "ContentPageShell.h"
 #include "VerifyHistory.h"
 #include "HashCheckpoint.h"
@@ -82,7 +84,7 @@ MainWindow::MainWindow(QWidget* parent)
     loadSettings();
     VerifyHistory::instance().load();
     DeviceTimelineLog::instance().load();
-    BlockedDriveStore::instance().load();
+    BlockedDriveStore::instance().refreshFromGateway();
     HashCheckpointStore::instance().load();
 
     m_liveSettingsTimer = new QTimer(this);
@@ -663,6 +665,10 @@ void MainWindow::createStatusBar()
 
 void MainWindow::initializeBackend()
 {
+    if (!Policy::PolicyServiceLocator::hasGateway()) {
+        Policy::PolicyServiceLocator::install(Policy::PolicyGateway::createDefault());
+    }
+
     // Create device monitor
     m_deviceMonitor = std::make_unique<DeviceMonitor>(this);
     
@@ -671,11 +677,10 @@ void MainWindow::initializeBackend()
 
     m_manifestWorker = std::make_unique<ManifestWorker>(this);
     
-    // Create database manager
+    // Create database manager (trust data via policy gateway / policyd)
     m_database = std::make_unique<DatabaseManager>(this);
-    QString dbPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) 
-                     + "/flashsentry/devices.json";
-    m_database->initialize(dbPath);
+    m_database->initialize();
+    BlockedDriveStore::instance().refreshFromGateway();
     
     // Create mount manager
     m_mountManager = std::make_unique<MountManager>(this);
@@ -1086,6 +1091,7 @@ void MainWindow::onDeviceConnected(const DeviceInfo& device)
     updateEmptyState();
     m_trayIcon->updateDeviceList(m_deviceMonitor->connectedDevices());
     maybeTriggerIsoVerifyForMountedDevice(device);
+    refreshAllowBlockListPage();
 }
 
 void MainWindow::onDeviceDisconnected(const QString& deviceNode)

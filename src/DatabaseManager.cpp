@@ -1,4 +1,7 @@
 #include "DatabaseManager.h"
+#include "policy/PolicyGateway.h"
+#include "policy/PolicyPaths.h"
+#include "policy/PolicyServiceLocator.h"
 
 #include <QFile>
 #include <QDir>
@@ -28,28 +31,72 @@ DatabaseManager::~DatabaseManager()
 
 bool DatabaseManager::initialize(const QString& path)
 {
-    QWriteLocker locker(&m_lock);
-    
-    m_databasePath = path.isEmpty() ? defaultDatabasePath() : path;
-    
-    if (!ensureDirectory()) {
-        emit databaseError("Failed to create database directory");
+    Q_UNUSED(path);
+    if (!Policy::PolicyServiceLocator::hasGateway()) {
+        Policy::PolicyServiceLocator::install(Policy::PolicyGateway::createDefault());
+    }
+
+    Policy::PolicyGateway* gate = Policy::PolicyServiceLocator::gateway();
+    if (!gate) {
+        emit databaseError(QStringLiteral("Policy gateway unavailable"));
         return false;
     }
-    
-    // Try to load existing database
-    if (QFile::exists(m_databasePath)) {
-        if (!loadFromFile()) {
-            emit databaseError("Failed to load database, creating new one");
-            m_devices.clear();
-        }
+
+    QString err;
+    if (!gate->load(&err)) {
+        emit databaseError(err.isEmpty() ? QStringLiteral("Policy load failed") : err);
+        return false;
     }
-    
-    m_initialized = true;
-    m_modified = false;
-    
+
+    {
+        QWriteLocker locker(&m_lock);
+        m_databasePath = Policy::PolicyPaths::storeFilePath();
+        m_initialized = true;
+        m_modified = false;
+        syncFromPolicyGateway();
+    }
+
     emit databaseLoaded(m_devices.size());
     return true;
+}
+
+QString DatabaseManager::policyActor() const
+{
+    return QStringLiteral("database");
+}
+
+void DatabaseManager::syncFromPolicyGateway()
+{
+    Policy::PolicyGateway* gate = Policy::PolicyServiceLocator::gateway();
+    if (!gate) {
+        return;
+    }
+    const Policy::PolicySnapshot snap = gate->snapshot();
+    m_devices.clear();
+    for (const DeviceRecord& rec : snap.devices) {
+        m_devices.insert(rec.uniqueId, rec);
+    }
+}
+
+bool DatabaseManager::persistDevice(const DeviceRecord& record, const QString& reason)
+{
+    Policy::PolicyGateway* gate = Policy::PolicyServiceLocator::gateway();
+    if (!gate) {
+        return false;
+    }
+    return gate->upsertDevice(record, policyActor(), reason);
+}
+
+bool DatabaseManager::persistRecordById(const QString& uniqueId, const QString& reason)
+{
+    QReadLocker locker(&m_lock);
+    auto it = m_devices.find(uniqueId);
+    if (it == m_devices.end()) {
+        return false;
+    }
+    const DeviceRecord rec = *it;
+    locker.unlock();
+    return persistDevice(rec, reason);
 }
 
 bool DatabaseManager::isInitialized() const
@@ -121,15 +168,18 @@ bool DatabaseManager::addDevice(const DeviceRecord& record)
 {
     {
         QWriteLocker locker(&m_lock);
-        
         if (m_devices.contains(record.uniqueId)) {
             return false;
         }
-        
-        m_devices.insert(record.uniqueId, record);
-        markModified();
     }
-    
+    if (!persistDevice(record, QStringLiteral("add"))) {
+        return false;
+    }
+    {
+        QWriteLocker locker(&m_lock);
+        syncFromPolicyGateway();
+        m_modified = false;
+    }
     emit deviceAdded(record.uniqueId);
     return true;
 }
@@ -138,30 +188,34 @@ bool DatabaseManager::updateDevice(const DeviceRecord& record)
 {
     {
         QWriteLocker locker(&m_lock);
-        
         if (!m_devices.contains(record.uniqueId)) {
             return false;
         }
-        
-        m_devices[record.uniqueId] = record;
-        markModified();
     }
-    
+    if (!persistDevice(record, QStringLiteral("update"))) {
+        return false;
+    }
+    {
+        QWriteLocker locker(&m_lock);
+        syncFromPolicyGateway();
+        m_modified = false;
+    }
     emit deviceUpdated(record.uniqueId);
     return true;
 }
 
 void DatabaseManager::upsertDevice(const DeviceRecord& record)
 {
-    bool isNew;
-    
+    const bool isNew = [&] {
+        QReadLocker locker(&m_lock);
+        return !m_devices.contains(record.uniqueId);
+    }();
+    persistDevice(record, QStringLiteral("upsert"));
     {
         QWriteLocker locker(&m_lock);
-        isNew = !m_devices.contains(record.uniqueId);
-        m_devices[record.uniqueId] = record;
-        markModified();
+        syncFromPolicyGateway();
+        m_modified = false;
     }
-    
     if (isNew) {
         emit deviceAdded(record.uniqueId);
     } else {
@@ -173,14 +227,18 @@ bool DatabaseManager::removeDevice(const QString& uniqueId)
 {
     {
         QWriteLocker locker(&m_lock);
-        
-        if (!m_devices.remove(uniqueId)) {
+        if (!m_devices.contains(uniqueId)) {
             return false;
         }
-        
-        markModified();
     }
-    
+    if (auto* gate = Policy::PolicyServiceLocator::gateway()) {
+        gate->removeDevice(uniqueId, policyActor(), QStringLiteral("remove"));
+    }
+    {
+        QWriteLocker locker(&m_lock);
+        syncFromPolicyGateway();
+        m_modified = false;
+    }
     emit deviceRemoved(uniqueId);
     return true;
 }
@@ -189,40 +247,52 @@ int DatabaseManager::removeDevices(const QStringList& uniqueIds)
 {
     int removed = 0;
     QStringList actuallyRemoved;
-    
+
     {
-        QWriteLocker locker(&m_lock);
-        
+        QReadLocker locker(&m_lock);
         for (const auto& id : uniqueIds) {
-            if (m_devices.remove(id)) {
-                removed++;
+            if (m_devices.contains(id)) {
                 actuallyRemoved.append(id);
             }
         }
-        
-        if (removed > 0) {
-            markModified();
-        }
     }
-    
+
+    Policy::PolicyGateway* gate = Policy::PolicyServiceLocator::gateway();
+    for (const auto& id : actuallyRemoved) {
+        if (gate) {
+            gate->removeDevice(id, policyActor(), QStringLiteral("bulk_remove"));
+        }
+        ++removed;
+    }
+
+    if (removed > 0) {
+        QWriteLocker locker(&m_lock);
+        syncFromPolicyGateway();
+        m_modified = false;
+    }
+
     for (const auto& id : actuallyRemoved) {
         emit deviceRemoved(id);
     }
-    
+
     return removed;
 }
 
 void DatabaseManager::clearAllDevices()
 {
     QStringList ids;
-    
+    {
+        QReadLocker locker(&m_lock);
+        ids = m_devices.keys();
+    }
+    if (auto* gate = Policy::PolicyServiceLocator::gateway()) {
+        gate->clearDevices(policyActor(), QStringLiteral("clear_all"));
+    }
     {
         QWriteLocker locker(&m_lock);
-        ids = m_devices.keys();
-        m_devices.clear();
-        markModified();
+        syncFromPolicyGateway();
+        m_modified = false;
     }
-    
     for (const auto& id : ids) {
         emit deviceRemoved(id);
     }
@@ -251,10 +321,13 @@ bool DatabaseManager::updateHash(const QString& uniqueId, const QString& hash,
             it->hashScanMode = hashScanMode;
         }
         it->lastHashed = QDateTime::currentDateTime();
-        
-        markModified();
     }
-    
+    persistRecordById(uniqueId, QStringLiteral("update_hash"));
+    {
+        QWriteLocker locker(&m_lock);
+        syncFromPolicyGateway();
+        m_modified = false;
+    }
     emit deviceUpdated(uniqueId);
     return true;
 }
@@ -315,9 +388,13 @@ bool DatabaseManager::setTrustLevel(const QString& uniqueId, int level)
         }
         
         it->trustLevel = level;
-        markModified();
     }
-    
+    persistRecordById(uniqueId, QStringLiteral("set_trust"));
+    {
+        QWriteLocker locker(&m_lock);
+        syncFromPolicyGateway();
+        m_modified = false;
+    }
     emit deviceUpdated(uniqueId);
     return true;
 }
@@ -333,9 +410,13 @@ bool DatabaseManager::setAutoMount(const QString& uniqueId, bool autoMount)
         }
         
         it->autoMount = autoMount;
-        markModified();
     }
-    
+    persistRecordById(uniqueId, QStringLiteral("set_auto_mount"));
+    {
+        QWriteLocker locker(&m_lock);
+        syncFromPolicyGateway();
+        m_modified = false;
+    }
     emit deviceUpdated(uniqueId);
     return true;
 }
@@ -350,49 +431,44 @@ bool DatabaseManager::updateLastSeen(const QString& uniqueId)
     }
     
     it->lastSeen = QDateTime::currentDateTime();
-    markModified();
-    
-    return true;
+    const bool ok = persistRecordById(uniqueId, QStringLiteral("last_seen"));
+    syncFromPolicyGateway();
+    m_modified = false;
+    return ok;
 }
 
 bool DatabaseManager::save()
 {
     QWriteLocker locker(&m_lock);
-    
     if (!m_initialized) {
-        emit databaseError("Database not initialized");
+        emit databaseError(QStringLiteral("Database not initialized"));
         return false;
     }
-    
-    if (writeToFile()) {
-        m_modified = false;
-        m_lastSaved = QDateTime::currentDateTime();
-        locker.unlock();
-        emit databaseSaved();
-        return true;
-    }
-    
-    return false;
+    m_modified = false;
+    m_lastSaved = QDateTime::currentDateTime();
+    locker.unlock();
+    emit databaseSaved();
+    return true;
 }
 
 bool DatabaseManager::reload()
 {
+    if (auto* gate = Policy::PolicyServiceLocator::gateway()) {
+        QString err;
+        if (!gate->reload(&err)) {
+            emit databaseError(err);
+            return false;
+        }
+    }
     QWriteLocker locker(&m_lock);
-    
     if (!m_initialized) {
         return false;
     }
-    
-    m_devices.clear();
-    
-    if (loadFromFile()) {
-        m_modified = false;
-        locker.unlock();
-        emit databaseLoaded(m_devices.size());
-        return true;
-    }
-    
-    return false;
+    syncFromPolicyGateway();
+    m_modified = false;
+    locker.unlock();
+    emit databaseLoaded(m_devices.size());
+    return true;
 }
 
 QString DatabaseManager::createBackup(const QString& backupPath)
@@ -411,9 +487,9 @@ QString DatabaseManager::createBackup(const QString& backupPath)
                    "_backup_" + timestamp + "." + fi.suffix();
     }
     
-    // Copy current database file
-    if (QFile::exists(m_databasePath)) {
-        if (QFile::copy(m_databasePath, destPath)) {
+    const QString storePath = Policy::PolicyPaths::storeFilePath();
+    if (QFile::exists(storePath)) {
+        if (QFile::copy(storePath, destPath)) {
             m_lastBackup = QDateTime::currentDateTime();
             
             // Cleanup old backups
@@ -439,134 +515,54 @@ bool DatabaseManager::restoreFromBackup(const QString& backupPath)
         emit databaseError("Backup file not found: " + backupPath);
         return false;
     }
-    
-    // Create a backup of current state first
+
     createBackup();
-    
+
+    const QString storePath = Policy::PolicyPaths::storeFilePath();
+    if (QFile::exists(storePath)) {
+        QFile::remove(storePath);
+    }
+    if (!QFile::copy(backupPath, storePath)) {
+        emit databaseError(QStringLiteral("Failed to install backup into policy store"));
+        return false;
+    }
+
+    if (auto* gate = Policy::PolicyServiceLocator::gateway()) {
+        QString err;
+        if (!gate->reload(&err)) {
+            emit databaseError(err.isEmpty() ? QStringLiteral("Policy reload failed") : err);
+            return false;
+        }
+    }
+
     QWriteLocker locker(&m_lock);
-    
-    // Read backup file
-    QFile file(backupPath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        emit databaseError("Failed to open backup file");
-        return false;
-    }
-    
-    QByteArray data = file.readAll();
-    file.close();
-    
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-    
-    if (error.error != QJsonParseError::NoError) {
-        emit databaseError("Invalid backup file: " + error.errorString());
-        return false;
-    }
-    
-    // Parse and load
-    QJsonObject root = doc.object();
-    QJsonArray devicesArray = root["devices"].toArray();
-    
-    m_devices.clear();
-    
-    for (const auto& item : devicesArray) {
-        DeviceRecord record = DeviceRecord::fromJson(item.toObject());
-        m_devices.insert(record.uniqueId, record);
-    }
-    
-    m_modified = true;
-    
-    if (!writeToFile()) {
-        emit databaseError("Failed to save restored database");
-        return false;
-    }
-    
+    syncFromPolicyGateway();
     m_modified = false;
     locker.unlock();
-    
     emit databaseLoaded(m_devices.size());
     return true;
 }
 
 bool DatabaseManager::exportToFile(const QString& path, bool prettyPrint) const
 {
-    QReadLocker locker(&m_lock);
-    
-    QJsonObject root;
-    root["version"] = DB_VERSION;
-    root["exported"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-    root["device_count"] = static_cast<int>(m_devices.size());
-    
-    QJsonArray devicesArray;
-    for (const auto& record : m_devices) {
-        devicesArray.append(record.toJson());
+    if (auto* gate = Policy::PolicyServiceLocator::gateway()) {
+        return gate->exportJson(path, prettyPrint);
     }
-    root["devices"] = devicesArray;
-    
-    QJsonDocument doc(root);
-    QByteArray data = prettyPrint ? doc.toJson(QJsonDocument::Indented) 
-                                  : doc.toJson(QJsonDocument::Compact);
-    
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        return false;
-    }
-    
-    qint64 written = file.write(data);
-    file.close();
-    
-    return written == data.size();
+    return false;
 }
 
 int DatabaseManager::importFromFile(const QString& path, bool merge)
 {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        emit databaseError("Failed to open import file: " + path);
-        return -1;
-    }
-    
-    QByteArray data = file.readAll();
-    file.close();
-    
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-    
-    if (error.error != QJsonParseError::NoError) {
-        emit databaseError("Invalid import file: " + error.errorString());
-        return -1;
-    }
-    
-    QJsonObject root = doc.object();
-    QJsonArray devicesArray = root["devices"].toArray();
-    
-    int imported = 0;
-    
-    {
-        QWriteLocker locker(&m_lock);
-        
-        if (!merge) {
-            m_devices.clear();
+    if (auto* gate = Policy::PolicyServiceLocator::gateway()) {
+        const int count = gate->importJson(path, merge, policyActor());
+        if (count >= 0) {
+            QWriteLocker locker(&m_lock);
+            syncFromPolicyGateway();
+            m_modified = false;
         }
-        
-        for (const auto& item : devicesArray) {
-            DeviceRecord record = DeviceRecord::fromJson(item.toObject());
-            
-            if (!m_devices.contains(record.uniqueId)) {
-                m_devices.insert(record.uniqueId, record);
-                imported++;
-            } else if (!merge) {
-                m_devices[record.uniqueId] = record;
-                imported++;
-            }
-        }
-        
-        if (imported > 0) {
-            markModified();
-        }
+        return count;
     }
-    
-    return imported;
+    return -1;
 }
 
 DatabaseManager::Stats DatabaseManager::getStats() const
@@ -635,24 +631,30 @@ QStringList DatabaseManager::validateIntegrity() const
 
 void DatabaseManager::compact()
 {
-    QWriteLocker locker(&m_lock);
-    
-    // Remove devices with invalid data
     QStringList toRemove;
-    
-    for (auto it = m_devices.begin(); it != m_devices.end(); ++it) {
-        if (it->uniqueId.isEmpty()) {
-            toRemove.append(it.key());
+    {
+        QReadLocker locker(&m_lock);
+        for (auto it = m_devices.begin(); it != m_devices.end(); ++it) {
+            if (it->uniqueId.isEmpty()) {
+                toRemove.append(it.key());
+            }
         }
     }
-    
+
+    if (toRemove.isEmpty()) {
+        return;
+    }
+
+    Policy::PolicyGateway* gate = Policy::PolicyServiceLocator::gateway();
     for (const auto& id : toRemove) {
-        m_devices.remove(id);
+        if (gate) {
+            gate->removeDevice(id, policyActor(), QStringLiteral("compact"));
+        }
     }
-    
-    if (!toRemove.isEmpty()) {
-        markModified();
-    }
+
+    QWriteLocker locker(&m_lock);
+    syncFromPolicyGateway();
+    m_modified = false;
 }
 
 bool DatabaseManager::loadFromFile()
@@ -774,8 +776,7 @@ bool DatabaseManager::ensureDirectory()
 
 QString DatabaseManager::defaultDatabasePath()
 {
-    QString configDir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
-    return configDir + "/flashsentry/devices.json";
+    return Policy::PolicyPaths::storeFilePath();
 }
 
 void DatabaseManager::markModified()
@@ -815,7 +816,9 @@ bool DatabaseManager::updateWatchManifest(const QString& uniqueId, const WatchMa
     if (it == m_devices.end()) return false;
     it->watchManifest = manifest;
     it->lastManifestRoot = manifest.manifestRoot;
-    markModified();
+    persistRecordById(uniqueId, QStringLiteral("watch_manifest"));
+    syncFromPolicyGateway();
+    m_modified = false;
     emit deviceUpdated(uniqueId);
     return true;
 }
@@ -824,9 +827,13 @@ bool DatabaseManager::setVerificationProfile(const QString& uniqueId, Verificati
 {
     QWriteLocker locker(&m_lock);
     auto it = m_devices.find(uniqueId);
-    if (it == m_devices.end()) return false;
+    if (it == m_devices.end()) {
+        return false;
+    }
     it->verificationProfile = profile;
-    markModified();
+    persistRecordById(uniqueId, QStringLiteral("verification_profile"));
+    syncFromPolicyGateway();
+    m_modified = false;
     emit deviceUpdated(uniqueId);
     return true;
 }

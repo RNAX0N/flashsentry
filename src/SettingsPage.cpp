@@ -61,6 +61,7 @@ SettingsPage::SettingsPage(QWidget* parent)
     root->addWidget(outer);
 
     connect(m_form, &SettingsDialog::themeChanged, this, &SettingsPage::themeChanged);
+    connect(m_form, &SettingsDialog::liveSettingsChanged, this, &SettingsPage::liveSettingsChanged);
     connect(m_form, &SettingsDialog::exportDatabaseRequested, this,
             &SettingsPage::exportDatabaseRequested);
     connect(m_form, &SettingsDialog::importDatabaseRequested, this,

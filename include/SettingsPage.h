@@ -22,6 +22,7 @@ public:
 
 signals:
     void settingsApplyRequested(const AppSettings& settings);
+    void liveSettingsChanged(const AppSettings& settings);
     void themeChanged(StyleManager::Theme theme);
     void exportDatabaseRequested(const QString& path);
     void importDatabaseRequested(const QString& path);

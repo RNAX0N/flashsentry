@@ -72,6 +72,9 @@ signals:
      */
     void themeChanged(StyleManager::Theme theme);
 
+    /** Emitted when any setting changes (live apply in embedded mode). */
+    void liveSettingsChanged(const AppSettings& settings);
+
     /**
      * @brief Emitted when user requests database export
      */
@@ -171,6 +174,7 @@ private:
     QSpinBox* m_recentEventsLimitSpin = nullptr;
     QSpinBox* m_deviceHistoryRetentionSpin = nullptr;
     QSpinBox* m_deviceHistoryMaxEntriesSpin = nullptr;
+    QComboBox* m_allowedCountModeCombo = nullptr;
 
     // Security tab
     QCheckBox* m_autoHashOnConnectCheck = nullptr;

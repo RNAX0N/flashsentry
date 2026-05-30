@@ -11,6 +11,8 @@ enum class AppPage {
     AllowBlockList,
     Alerts,
     Reports,
+    IsoVerifier,
+    BadUsbMonitor,
     Settings,
     About,
 };
@@ -23,6 +25,8 @@ inline QString appPageLabel(AppPage page)
         case AppPage::AllowBlockList: return QStringLiteral("Allow/Block List");
         case AppPage::Alerts: return QStringLiteral("Alerts");
         case AppPage::Reports: return QStringLiteral("Reports");
+        case AppPage::IsoVerifier: return QStringLiteral("ISO Verifier");
+        case AppPage::BadUsbMonitor: return QStringLiteral("BadUSB Monitor");
         case AppPage::Settings: return QStringLiteral("Settings");
         case AppPage::About: return QStringLiteral("About");
     }

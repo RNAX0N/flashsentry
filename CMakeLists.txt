@@ -75,6 +75,9 @@ set(SOURCES
     src/UsbMonitorPage.cpp
     src/DeviceHistoryPage.cpp
     src/DeviceTimelineLog.cpp
+    src/BlockedDriveStore.cpp
+    src/AllowBlockListPage.cpp
+    src/ContentPageShell.cpp
     src/SettingsPage.cpp
     src/PlaceholderModulePage.cpp
     src/EventDetailDialog.cpp
@@ -128,6 +131,9 @@ set(HEADERS
     include/UsbMonitorPage.h
     include/DeviceHistoryPage.h
     include/DeviceTimelineLog.h
+    include/BlockedDriveStore.h
+    include/AllowBlockListPage.h
+    include/ContentPageShell.h
     include/SettingsPage.h
     include/PlaceholderModulePage.h
     include/EventDetailDialog.h

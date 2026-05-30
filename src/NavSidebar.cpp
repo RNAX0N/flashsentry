@@ -103,8 +103,14 @@ void NavSidebar::rebuildButtons()
     m_buttons.clear();
 
     const QList<AppPage> pages = {
-        AppPage::UsbMonitor,     AppPage::DeviceHistory, AppPage::AllowBlockList,
-        AppPage::Alerts,         AppPage::Reports,     AppPage::Settings,
+        AppPage::UsbMonitor,
+        AppPage::DeviceHistory,
+        AppPage::AllowBlockList,
+        AppPage::Alerts,
+        AppPage::Reports,
+        AppPage::IsoVerifier,
+        AppPage::BadUsbMonitor,
+        AppPage::Settings,
         AppPage::About,
     };
 

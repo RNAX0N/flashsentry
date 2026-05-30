@@ -15,8 +15,17 @@
 #include "VerifyHistory.h"
 #include "HashCheckpoint.h"
 #include "HashOptionsDialog.h"
+#include "AlertsPage.h"
+#include "ReportsPage.h"
+#include "AboutPage.h"
+#include "policy/PolicyPaths.h"
 
 #include <algorithm>
+
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSysInfo>
 
 #include <QApplication>
 #include <QMessageBox>
@@ -55,6 +64,86 @@ FlashSentry::UiEventEntry makeUiEvent(const QString& event, const QString& devic
     e.detail = detail;
     e.deviceNode = deviceNode;
     return e;
+}
+
+bool isAlertResult(const QString& result)
+{
+    const QString r = result.toLower();
+    return r == QLatin1String("alert") || r == QLatin1String("security")
+           || r == QLatin1String("warn") || r == QLatin1String("warning")
+           || r == QLatin1String("error") || r == QLatin1String("fail")
+           || r == QLatin1String("failed") || r == QLatin1String("mismatch")
+           || r == QLatin1String("blocked") || r == QLatin1String("rejected");
+}
+
+bool isAlertUiEvent(const FlashSentry::UiEventEntry& e)
+{
+    if (isAlertResult(e.result)) {
+        return true;
+    }
+    const QString ev = e.event.toLower();
+    return ev.contains(QStringLiteral("mismatch")) || ev.contains(QStringLiteral("blocked"))
+           || ev.contains(QStringLiteral("anomaly")) || ev.contains(QStringLiteral("failed"))
+           || ev.contains(QStringLiteral("reject")) || ev.contains(QStringLiteral("security"));
+}
+
+QList<FlashSentry::AuditLogRow> readAuditLogTail(const QString& path, int maxLines, bool policyFormat)
+{
+    QList<FlashSentry::AuditLogRow> rows;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return rows;
+    }
+
+    QStringList lines;
+    while (!f.atEnd()) {
+        const QString line = QString::fromUtf8(f.readLine()).trimmed();
+        if (line.isEmpty()) {
+            continue;
+        }
+        lines.append(line);
+        while (lines.size() > maxLines) {
+            lines.removeFirst();
+        }
+    }
+
+    for (int i = lines.size() - 1; i >= 0; --i) {
+        const QJsonDocument doc = QJsonDocument::fromJson(lines.at(i).toUtf8());
+        if (!doc.isObject()) {
+            continue;
+        }
+        const QJsonObject o = doc.object();
+        FlashSentry::AuditLogRow row;
+        row.time = QDateTime::fromString(o.value(QStringLiteral("ts")).toString(), Qt::ISODate);
+        if (!row.time.isValid()) {
+            row.time = QDateTime::currentDateTime();
+        }
+        row.source = path;
+
+        if (policyFormat) {
+            row.category = o.value(QStringLiteral("actor")).toString();
+            row.event = o.value(QStringLiteral("action")).toString();
+            row.detail = o.value(QStringLiteral("target")).toString();
+            row.source = o.value(QStringLiteral("detail")).toString();
+        } else {
+            row.event = o.value(QStringLiteral("event")).toString();
+            if (row.event == QLatin1String("iso_verify")) {
+                row.category = QStringLiteral("ISO");
+                row.detail = o.value(QStringLiteral("path")).toString();
+                if (row.detail.isEmpty()) {
+                    row.detail = o.value(QStringLiteral("device")).toString();
+                }
+            } else if (row.event == QLatin1String("badusb_anomaly")) {
+                row.category = QStringLiteral("BadUSB");
+                row.detail = o.value(QStringLiteral("summary")).toString();
+            } else {
+                row.category = QStringLiteral("System");
+                row.detail = o.value(QStringLiteral("detail")).toString();
+            }
+        }
+        rows.append(row);
+    }
+    return rows;
 }
 
 } // namespace
@@ -261,13 +350,46 @@ void MainWindow::setupUi()
             &MainWindow::showDeviceHistory);
     m_pageStack->addWidget(m_allowBlockListPage);
 
-    m_pageStack->addWidget(new PlaceholderModulePage(
-        QStringLiteral("Alerts"),
-        QStringLiteral("Security alerts and anomaly notifications will be collected here.")));
+    m_alertsPage = new AlertsPage;
+    connect(m_alertsPage, &AlertsPage::eventDetailsRequested, this,
+            [this](const UiEventEntry& entry) {
+                EventDetailDialog dlg(entry, this);
+                dlg.exec();
+            });
+    connect(m_alertsPage, &AlertsPage::filterChanged, this, &MainWindow::refreshAlertsPage);
+    m_pageStack->addWidget(m_alertsPage);
 
-    m_pageStack->addWidget(new PlaceholderModulePage(
-        QStringLiteral("Reports"),
-        QStringLiteral("Verification and audit reports will be available in this module.")));
+    m_reportsPage = new ReportsPage;
+    connect(m_reportsPage, &ReportsPage::refreshRequested, this, &MainWindow::refreshReportsPage);
+    connect(m_reportsPage, &ReportsPage::openAuditLogRequested, this, [this]() {
+        const QString path = AuditLog::logPath();
+        if (QFileInfo::exists(path)) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+        } else {
+            logMessage(QStringLiteral("Verification audit log not created yet: %1").arg(path),
+                       LogLevel::Info);
+        }
+    });
+    connect(m_reportsPage, &ReportsPage::openPolicyAuditRequested, this, [this]() {
+        const QString path = Policy::PolicyPaths::auditLogPath();
+        if (QFileInfo::exists(path)) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+        } else {
+            logMessage(QStringLiteral("Policy audit log not created yet: %1").arg(path),
+                       LogLevel::Info);
+        }
+    });
+    m_pageStack->addWidget(m_reportsPage);
+
+    m_aboutPage = new AboutPage;
+    connect(m_aboutPage, &AboutPage::openRepositoryRequested, this, []() {
+        QDesktopServices::openUrl(QUrl(QStringLiteral("https://github.com/RNAX0N/flashsentry")));
+    });
+    connect(m_aboutPage, &AboutPage::openUserGuideRequested, this, []() {
+        QDesktopServices::openUrl(
+            QUrl(QStringLiteral("https://github.com/RNAX0N/flashsentry/blob/main/docs/USER_GUIDE.md")));
+    });
+    m_pageStack->addWidget(m_aboutPage);
 
     m_isoWidget = new IsoVerifierWidget;
     connect(m_isoWidget, &IsoVerifierWidget::logMessageRequested,
@@ -356,11 +478,6 @@ void MainWindow::setupUi()
         updateSidebarStats();
     });
     m_pageStack->addWidget(m_settingsPage);
-
-    auto* aboutPage = new PlaceholderModulePage(
-        QStringLiteral("About"),
-        QStringLiteral("FlashSentry — USB flash drive security monitor for Linux."));
-    m_pageStack->addWidget(aboutPage);
 
     shell->addWidget(m_pageStack, 1);
     m_mainLayout->addLayout(shell, 1);
@@ -1760,6 +1877,15 @@ void MainWindow::recordVerifyHistory(const VerifyHistoryEntry& entry)
 {
     VerifyHistory::instance().append(entry);
     refreshVerifyHistoryPanel(m_historyFilterDevice);
+    if (m_reportsPage) {
+        refreshReportsPage();
+    }
+    const QString status = entry.status.toLower();
+    if (m_alertsPage
+        && (status == QLatin1String("fail") || status == QLatin1String("mismatch")
+            || status == QLatin1String("error") || status == QLatin1String("partial"))) {
+        refreshAlertsPage();
+    }
 
     QString type = QStringLiteral("Verify");
     switch (entry.kind) {
@@ -2045,6 +2171,15 @@ void MainWindow::onNavPageSelected(AppPage page)
     if (page == AppPage::AllowBlockList) {
         refreshAllowBlockListPage();
     }
+    if (page == AppPage::Alerts) {
+        refreshAlertsPage();
+    }
+    if (page == AppPage::Reports) {
+        refreshReportsPage();
+    }
+    if (page == AppPage::About) {
+        refreshAboutPage();
+    }
 }
 
 void MainWindow::persistTimelineEvent(const UiEventEntry& entry)
@@ -2063,6 +2198,9 @@ void MainWindow::appendUiEvent(const UiEventEntry& entry)
     }
     persistTimelineEvent(entry);
     refreshUsbMonitorHome();
+    if (m_alertsPage && isAlertUiEvent(entry)) {
+        refreshAlertsPage();
+    }
 }
 
 QList<UiEventEntry> MainWindow::deviceHistoryEvents(const QString& deviceNode) const
@@ -2259,6 +2397,15 @@ void MainWindow::refreshShellStyles()
     if (m_allowBlockListPage) {
         m_allowBlockListPage->setStyleSheet(QString());
     }
+    if (m_alertsPage) {
+        m_alertsPage->setStyleSheet(QString());
+    }
+    if (m_reportsPage) {
+        m_reportsPage->setStyleSheet(QString());
+    }
+    if (m_aboutPage) {
+        m_aboutPage->setStyleSheet(QString());
+    }
     if (m_settingsPage) {
         m_settingsPage->setStyleSheet(QString());
     }
@@ -2372,6 +2519,99 @@ void MainWindow::refreshAllowBlockListPage()
     }
     m_allowBlockListPage->setSummary(allowed, blocked, rows.size());
     m_allowBlockListPage->setRows(rows);
+}
+
+QList<UiEventEntry> MainWindow::collectAlertEntries() const
+{
+    QList<UiEventEntry> alerts;
+    for (const UiEventEntry& e : m_uiEvents) {
+        if (isAlertUiEvent(e)) {
+            alerts.append(e);
+        }
+    }
+
+    const QList<VerifyHistoryEntry> history = VerifyHistory::instance().recentEntries(200);
+    for (const VerifyHistoryEntry& vh : history) {
+        const QString s = vh.status.toLower();
+        if (s == QLatin1String("pass") || s.isEmpty()) {
+            continue;
+        }
+        UiEventEntry e;
+        e.id = QStringLiteral("vh-%1").arg(vh.timestamp.toSecsSinceEpoch());
+        e.time = vh.timestamp;
+        e.event = vh.summary.isEmpty() ? QStringLiteral("Verification") : vh.summary;
+        e.device = vh.deviceLabel.isEmpty() ? vh.deviceNode : vh.deviceLabel;
+        switch (vh.kind) {
+            case VerifyHistoryKind::IsoScan:
+                e.type = QStringLiteral("ISO");
+                break;
+            case VerifyHistoryKind::Manifest:
+                e.type = QStringLiteral("Watch");
+                break;
+            case VerifyHistoryKind::Hash:
+            default:
+                e.type = QStringLiteral("Verify");
+                break;
+        }
+        e.result = vh.status;
+        e.detail = vh.detail.isEmpty() ? vh.summary : vh.detail;
+        e.deviceNode = vh.deviceNode;
+        alerts.append(e);
+    }
+
+    std::sort(alerts.begin(), alerts.end(), [](const UiEventEntry& a, const UiEventEntry& b) {
+        return a.time > b.time;
+    });
+
+    QSet<QString> seen;
+    QList<UiEventEntry> deduped;
+    for (const UiEventEntry& e : alerts) {
+        const QString key = QStringLiteral("%1|%2|%3|%4")
+                                .arg(e.time.toSecsSinceEpoch())
+                                .arg(e.event, e.device, e.result);
+        if (seen.contains(key)) {
+            continue;
+        }
+        seen.insert(key);
+        deduped.append(e);
+    }
+    return deduped;
+}
+
+void MainWindow::refreshAlertsPage()
+{
+    if (!m_alertsPage) {
+        return;
+    }
+    m_alertsPage->setAlerts(collectAlertEntries());
+}
+
+void MainWindow::refreshReportsPage()
+{
+    if (!m_reportsPage) {
+        return;
+    }
+
+    const QString auditPath = AuditLog::logPath();
+    const QString policyPath = Policy::PolicyPaths::auditLogPath();
+    m_reportsPage->setLogPaths(auditPath, policyPath);
+    m_reportsPage->setVerificationRows(VerifyHistory::instance().recentEntries(150));
+    m_reportsPage->setAuditRows(readAuditLogTail(auditPath, 200, false));
+    m_reportsPage->setPolicyAuditRows(readAuditLogTail(policyPath, 200, true));
+}
+
+void MainWindow::refreshAboutPage()
+{
+    if (!m_aboutPage || !m_database) {
+        return;
+    }
+#ifdef FLASHSENTRY_VERSION
+    m_aboutPage->setVersion(QStringLiteral(FLASHSENTRY_VERSION));
+#else
+    m_aboutPage->setVersion(QStringLiteral("1.4.2"));
+#endif
+    m_aboutPage->setDatabaseSummary(m_database->deviceCount(), m_database->databasePath());
+    m_aboutPage->setRuntimeInfo(QString::fromUtf8(qVersion()), QSysInfo::prettyProductName());
 }
 
 void MainWindow::refreshUsbMonitorHome()
@@ -2755,6 +2995,9 @@ void MainWindow::logMessage(const QString& message, LogLevel level, const QStrin
         }
         stats.events = m_uiEvents.size();
         m_usbMonitorPage->setStats(stats);
+    }
+    if (m_alertsPage && isAlertUiEvent(ev)) {
+        refreshAlertsPage();
     }
 
     if (m_logList) {

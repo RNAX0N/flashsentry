@@ -39,7 +39,9 @@
 #include "DeviceHistoryPage.h"
 #include "SettingsPage.h"
 #include "AllowBlockListPage.h"
-#include "PlaceholderModulePage.h"
+#include "AlertsPage.h"
+#include "ReportsPage.h"
+#include "AboutPage.h"
 #include "UiEventTypes.h"
 #include "BadUsbBaselineStore.h"
 #include "HidDeviceMonitor.h"
@@ -283,6 +285,10 @@ private:
     void refreshUsbMonitorHome();
     void refreshDeviceHistoryPage();
     void refreshAllowBlockListPage();
+    void refreshAlertsPage();
+    void refreshReportsPage();
+    void refreshAboutPage();
+    QList<UiEventEntry> collectAlertEntries() const;
     void appendUiEvent(const UiEventEntry& entry);
     void persistTimelineEvent(const UiEventEntry& entry);
     QList<UiEventEntry> deviceHistoryEvents(const QString& deviceNode) const;
@@ -371,6 +377,9 @@ private:
     UsbMonitorPage* m_usbMonitorPage = nullptr;
     DeviceHistoryPage* m_deviceHistoryPage = nullptr;
     AllowBlockListPage* m_allowBlockListPage = nullptr;
+    AlertsPage* m_alertsPage = nullptr;
+    ReportsPage* m_reportsPage = nullptr;
+    AboutPage* m_aboutPage = nullptr;
     QWidget* m_isoVerifierPage = nullptr;
     QWidget* m_badUsbMonitorPage = nullptr;
     SettingsPage* m_settingsPage = nullptr;

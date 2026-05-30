@@ -77,6 +77,9 @@ set(SOURCES
     src/DeviceTimelineLog.cpp
     src/BlockedDriveStore.cpp
     src/AllowBlockListPage.cpp
+    src/AlertsPage.cpp
+    src/ReportsPage.cpp
+    src/AboutPage.cpp
     src/ContentPageShell.cpp
     src/SettingsPage.cpp
     src/PlaceholderModulePage.cpp
@@ -142,6 +145,9 @@ set(HEADERS
     include/DeviceTimelineLog.h
     include/BlockedDriveStore.h
     include/AllowBlockListPage.h
+    include/AlertsPage.h
+    include/ReportsPage.h
+    include/AboutPage.h
     include/ContentPageShell.h
     include/SettingsPage.h
     include/PlaceholderModulePage.h

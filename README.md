@@ -1,17 +1,16 @@
 # FlashSentry
 
-**Disclaimer: FlashSentry is a work in progress, and the result of a test between 3 LLM's asked to vibe-code a working application given certain prompts with very little intervention. Claude Code produced by far the best result, and this is it. It does work, only on Arch, but the functionality is limited and it needs some work to really be something worthwhile. I'll get around to it and it won't take long but I'm working on other things right now. Gemini produced an app that was technically what I asked for, but really the bare-minimum, and needed a bit of work just to get it functioning. The third LLM didn't produce anything functional without lots of intervention. Gemini I do think has value at this stage but needs very specific direction, which can be a good thing to ensure you are getting exactly what you want. But the results of the test are that CC will be much more efficient as you can trust it to follow specific directions while doing a lot more at once. If I had made it myself for my purposes, it would have been a CLI application, but I wanted to see how they could do with QT6 and CC surprised me..**
-
 <p align="center">
   <img src="resources/icons/flashsentry.svg" alt="FlashSentry Logo" width="128" height="128">
 </p>
 
 <p align="center">
-  <strong>🛡️ USB Flash Drive Security Monitor for Arch Linux</strong>
+  <strong>USB flash drive security monitor for Arch Linux</strong>
 </p>
 
 <p align="center">
   <a href="#features">Features</a> •
+  <a href="#application-ui">UI</a> •
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
   <a href="#configuration">Configuration</a> •
@@ -20,7 +19,9 @@
 
 ---
 
-FlashSentry monitors USB flash drives, maintains a cryptographic whitelist of trusted devices, and alerts you when a device has been modified. Built with a futuristic Qt6 interface, optimized for speed, and designed the "Arch way" — simple, modular, and well-documented.
+FlashSentry monitors USB storage, maintains a cryptographic whitelist of trusted devices, verifies Linux ISOs on mounted sticks, and alerts you when content changes. It is built with Qt6, targets Arch Linux (x86_64 and aarch64), and is designed to be modular: libudev for device events, UDisks2 for mounts, polkit for privileges, and OpenSSL for hashing.
+
+**Current version:** 1.4.2 (see [CHANGELOG.md](CHANGELOG.md))
 
 ## Features
 
@@ -28,34 +29,61 @@ FlashSentry monitors USB flash drives, maintains a cryptographic whitelist of tr
 
 | Feature | What it does |
 |--------|----------------|
-| **Automatic ISO verification** | Detects `.iso` files on mounted USB sticks (e.g. after Rufus), downloads official SHA-256 lists and signatures, verifies OpenPGP and signing-key fingerprints |
-| **Watch-folder verification** | You choose folders/files on a drive; FlashSentry builds a Merkle baseline and alerts when watched content changes — fast, no full-disk read |
-| **Dedicated ISO mode** | Switch the app to **Automatic ISO verification** for a focused workflow |
+| **Automatic ISO verification** | Finds `.iso` files on mounted USB volumes, downloads official checksums/signatures, verifies hashes and OpenPGP where configured |
+| **Watch-folder verification** | You choose paths on a drive; FlashSentry builds a Merkle baseline and alerts when watched files change — without reading every sector |
+| **Left-nav shell** | Dedicated pages for USB monitoring, device history, allow/block lists, alerts, reports, ISO verify, BadUSB, settings, and about |
 
-### USB monitoring (all modes)
+### USB monitoring
 
-| **Verify history** | Sidebar log of hash, manifest, and ISO results; click a device card to filter and open ISO verify |
-- **Real-time device monitoring** — libudev, no polling
-- **Whitelist & trust levels** — remember devices, prompt on unknown or modified content
-- **Secure mounting** — UDisks2 + polkit (`noexec`, `nosuid`, `nodev` by default)
-- **System tray** — background operation with notifications (optional libnotify)
-- **Smarter hashing** — partition or whole-disk target, quick sample vs full read, cancel + ETA, resume checkpoints
+- **Real-time detection** — libudev (no polling)
+- **Whitelist & trust levels** — remember devices; prompt on unknown or modified content
+- **Allow / block list** — block drives by key or device ID; list persists in the signed policy store
+- **Secure mounting** — UDisks2 + polkit; default options include `noexec`, `nosuid`, `nodev`
+- **System tray** — background operation with optional desktop notifications (`libnotify`)
+- **Smarter hashing** — partition vs whole-disk target, quick sample vs full read, cancel + ETA, resume checkpoints
 - **Themes** — Cyber Dark, Neon Purple, Matrix Green, Blade Runner, Ghost White
+
+### Security & reporting
+
+| Feature | What it does |
+|--------|----------------|
+| **Alerts page** | Security-relevant session events (warnings, mismatches, blocks) plus failed verifications from history |
+| **Reports page** | Verification history table, verification audit log (`audit.log`), policy mutation log (`policy-audit.log`) |
+| **Policy daemon** | `flashsentry-policyd` owns the signed trust/block store; the GUI talks to it over a local socket (in-process fallback if the daemon is unavailable) |
+| **BadUSB monitor** | HID baseline and anomaly detection (optional usbmon capture) |
 
 ### Advanced (optional)
 
 | Feature | What it does |
 |--------|----------------|
-| **Full partition hash** | Raw SHA-256/SHA-512/BLAKE2b over the entire block device — slow, byte-level tamper detection |
+| **Full partition hash** | Raw SHA-256 / SHA-512 / BLAKE2b over the block device — slow, byte-level tamper detection |
 | **Hybrid profile** | Watch folders first, then optional full partition hash |
+
+## Application UI
+
+The main window uses a **left navigation rail** and a **page stack**:
+
+| Page | Purpose |
+|------|---------|
+| **USB Monitor** | Connected devices, stats, recent events |
+| **Device History** | Per-device timeline (events + verification history) |
+| **Allow/Block List** | Manage trusted and blocked drives |
+| **Alerts** | Filtered security warnings and verification failures |
+| **Reports** | Verification history and audit log tails |
+| **ISO Verifier** | Manual and automatic ISO checks |
+| **BadUSB Monitor** | HID baselines and anomalies |
+| **Settings** | Full settings UI (live apply for many options) |
+| **About** | Version, policy store path, links |
+
+Legacy header tabs may still switch between USB-focused and ISO-focused layouts depending on settings; see [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
 
 ## Who is this for?
 
-- **Anyone who puts Linux/Windows images on USB** (`dd`, Rufus, `cp`, multiboot sticks, etc.) and wants a clear pass/fail report
-- **Users who care about specific folders** on a stick (documents, `EFI`, a project tree) without hashing every sector
-- **Power users** who still want full-disk fingerprints or custom hash algorithms
+- Anyone who puts Linux or Windows images on USB (`dd`, Rufus, copy, multiboot sticks) and wants a clear pass/fail report
+- Users who care about specific folders on a stick without hashing every sector
+- Power users who want full-disk fingerprints, custom hash algorithms, or BadUSB HID monitoring
 
-If you only need “is this entire stick bit-for-bit the same as last time?”, enable full-partition hashing in **Settings → Security**.
+If you only need “is every byte on this partition the same as last time?”, enable full-partition hashing in **Settings → Security**.
 
 ## Screenshots
 
@@ -63,9 +91,13 @@ If you only need “is this entire stick bit-for-bit the same as last time?”, 
 |:---:|:---:|
 | ![Main Window](docs/images/main-window.png) |
 
-After `sudo cmake --install build --prefix /usr`, open the installed guides under `/usr/share/doc/flashsentry/` for walkthroughs. More UI reference images: [`docs/images/`](docs/images/). See [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) for capture guidance.
+More UI reference images: [`docs/images/`](docs/images/). Capture guidance: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 
-### From AUR (Recommended)
+After install, user docs are under `/usr/share/doc/flashsentry/` (including [docs/USER_GUIDE.md](docs/USER_GUIDE.md)).
+
+## Installation
+
+### From AUR (recommended)
 
 ```bash
 yay -S flashsentry
@@ -73,214 +105,235 @@ yay -S flashsentry
 paru -S flashsentry
 ```
 
-### From Source
+### From source (Arch)
 
 ```bash
-# Clone the repository
-git clone https://github.com/flashsentry/flashsentry.git
+git clone https://github.com/RNAX0N/flashsentry.git
 cd flashsentry/packaging
 ./build-package.sh -si
 ```
 
-### Post-Installation Setup
+This builds and installs `flashsentry`, `flashsentry-policyd`, and `flashsentry-read-helper` via CMake.
+
+### Post-installation setup
 
 ```bash
-# Add your user to the storage group for raw device access
+# Raw partition hashing (recommended)
 sudo usermod -aG storage $USER
 
-# Enable autostart (optional)
+# Optional: autostart minimized to tray
 systemctl --user enable --now flashsentry.service
 
-# Disable your DE's auto-mount (recommended)
+# Recommended: disable the desktop environment's automount so FlashSentry controls mounts
 # GNOME:
 gsettings set org.gnome.desktop.media-handling automount false
-# KDE: System Settings > Removable Storage > Uncheck automount
+# KDE: System Settings → Removable Storage → disable automount
 ```
 
-**Important:** Log out and back in after adding yourself to the storage group.
+Log out and back in after adding yourself to the `storage` group.
 
 ## Usage
 
 ### Starting FlashSentry
 
 ```bash
-# Normal start
-flashsentry
-
-# Start minimized to tray
-flashsentry --minimized
-
-# With debug output
-flashsentry --debug
+flashsentry                  # normal start
+flashsentry --minimized      # start in the system tray
+flashsentry --debug          # verbose Qt logging
+flashsentry --no-tray        # disable tray icon
+flashsentry --help           # all options
 ```
 
-### Workflow
+The policy daemon is started automatically when needed. You can also run it manually:
 
-1. **Connect a USB device** — FlashSentry detects it automatically
-2. **New device?** — You'll be prompted to add it to the whitelist
-3. **Known device?** — Hash verification runs automatically
-4. **Hash matches** — Device is mounted normally
-5. **Hash mismatch** — ⚠️ Security alert! The device has been modified
-6. **Eject** — Re-hash before safe removal (optional)
+```bash
+flashsentry-policyd
+```
 
-### Keyboard Shortcuts
+For tests or development without the daemon:
+
+```bash
+export FLASHSENTRY_POLICY_IN_PROCESS=1
+flashsentry
+```
+
+### Typical USB workflow
+
+1. **Connect a USB device** — FlashSentry detects it via udev.
+2. **New device?** — You are prompted to trust it (whitelist / watch folders / hash).
+3. **Known device?** — Verification runs according to its profile (watch manifest, hash, or both).
+4. **Hash or manifest matches** — Mount proceeds (subject to your settings).
+5. **Mismatch** — Security alert; mounting can be blocked if configured.
+6. **Eject** — Optional re-hash before removal.
+
+### Keyboard shortcuts
 
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+R` | Refresh device list |
 | `Ctrl+,` | Open settings |
-| `Ctrl+Q` | Quit application |
-| `Escape` | Minimize to tray |
+| `Ctrl+Q` | Quit |
+| `Escape` | Minimize to tray (when tray is enabled) |
 
 ## Configuration
 
-Settings are stored in `~/.config/FlashSentry/FlashSentry.conf`
+### Application settings
 
-### Key Settings
+Primary settings file:
+
+`~/.config/FlashSentry/FlashSentry.conf`
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| Auto-hash on connect | ✅ | Verify devices automatically when plugged in |
-| Auto-hash on eject | ✅ | Re-calculate hash before ejecting |
-| Block modified devices | ❌ | Prevent mounting of modified devices |
+| Auto-hash on connect | off (preset-dependent) | Verify on plug-in |
+| Auto-hash on eject | varies | Re-hash before eject |
+| Block modified devices | off | Refuse mount on mismatch |
 | Hash algorithm | SHA256 | SHA256, SHA512, or BLAKE2b |
-| Buffer size | 1024 KB | Read buffer for hashing (64-16384 KB) |
-| Use memory mapping | ✅ | Use mmap for faster hashing |
+| Buffer size | 1024 KB | Read buffer (64–16384 KB) |
+| Use memory mapping | on | mmap for faster hashing |
+| Allowed-count mode | configurable | What counts as “allowed” in stats (trust / hash / either) |
+
+System-wide defaults (optional): `/etc/flashsentry/config.json` — see packaging `config.json.default`.
+
+### Data and audit files
+
+| Path | Purpose |
+|------|---------|
+| `~/.config/FlashSentry/policy.store` | Signed trust list and block list (authoritative) |
+| `~/.config/FlashSentry/policy.key` | HMAC key for `policy.store` (mode 600) |
+| `~/.config/FlashSentry/policy-audit.log` | Append-only policy mutations |
+| `~/.config/FlashSentry/verify-history.json` | Verification history (hash / manifest / ISO) |
+| `~/.config/FlashSentry/audit.log` | ISO and BadUSB audit events (JSON lines) |
+| `~/.config/FlashSentry/hash-checkpoints.json` | Resume data for long full-disk hashes |
+| `~/.config/FlashSentry/blocked-drives.json.migrated` | Legacy block list (after migration only) |
+| `~/.config/flashsentry/devices.json.migrated` | Legacy device JSON (after migration only) |
+
+JSON export/import in **Settings** is for backup and interchange only; the policy store is the source of truth.
 
 ### Themes
 
-FlashSentry includes 5 built-in themes:
+- **Cyber Dark** (default) — cyan on dark
+- **Neon Purple** — magenta / purple
+- **Matrix Green** — green terminal aesthetic
+- **Blade Runner** — warm amber
+- **Ghost White** — light theme
 
-- **Cyber Dark** — Cyan accents on dark background (default)
-- **Neon Purple** — Magenta/purple neon aesthetic
-- **Matrix Green** — Classic green-on-black terminal look
-- **Blade Runner** — Warm orange/amber tones
-- **Ghost White** — Light theme with blue accents
-
-## Building from Source
+## Building from source
 
 ### Dependencies
 
 ```bash
-# Arch Linux
 sudo pacman -S qt6-base qt6-tools cmake base-devel openssl pkgconf
-
-# The following are runtime dependencies (installed automatically via PKGBUILD)
-# udisks2, polkit, systemd-libs
+# Runtime (PKGBUILD): udisks2 polkit systemd-libs
+# Optional: libnotify gnupg (ISO OpenPGP)
 ```
 
-### Development Build
+### Development build
 
 ```bash
 mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Debug ..
-make -j$(nproc)
-
-# Run
-./FlashSentry
+cmake -DCMAKE_BUILD_TYPE=Debug -DFLASHSENTRY_BUILD_TESTS=ON ..
+cmake --build . -j"$(nproc)"
+./flashsentry
 ```
 
-### Release Build
+### Tests
 
 ```bash
-mkdir build && cd build
+ctest --test-dir build --output-on-failure
+```
+
+### Release install
+
+```bash
 cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
-
-# Install
+cmake --build . -j"$(nproc)"
 sudo cmake --install . --prefix /usr
 ```
 
-## Kernel Compatibility
+Installed binaries include `flashsentry`, `flashsentry-policyd`, and `flashsentry-read-helper` (privileged raw read helper).
 
-FlashSentry works with any Linux kernel that has udev and USB mass storage support:
+## Kernel compatibility
 
-- ✅ `linux` (standard Arch kernel)
-- ✅ `linux-lts`
-- ✅ `linux-zen`
-- ✅ `linux-hardened`
-- ✅ Custom kernels with standard block device support
+Works with standard Arch kernels that provide udev and USB mass storage:
+
+- `linux`, `linux-lts`, `linux-zen`, `linux-hardened`
+- Custom kernels with normal block-device support
 
 ## Troubleshooting
 
 ### Device not detected
 
 ```bash
-# Check if udev sees the device
 udevadm monitor --property --udev --subsystem-match=block
-
-# Verify udev rules are loaded
-udevadm control --reload-rules
-udevadm trigger
+udevadm control --reload-rules && udevadm trigger
 ```
 
 ### Permission denied when hashing
 
 ```bash
-# Verify group membership
 groups | grep storage
-
-# If not in storage group, add yourself
-sudo usermod -aG storage $USER
-# Then log out and back in
+sudo usermod -aG storage "$USER"
+# log out and back in
 ```
 
 ### Mount operations fail
 
 ```bash
-# Check UDisks2 service
 systemctl status udisks2.service
-
-# Ensure polkit agent is running
 pgrep -f polkit
+```
+
+### Policy / trust store errors
+
+```bash
+# Check daemon socket and logs
+ls -la "${XDG_RUNTIME_DIR:-/tmp}/flashsentry-policy.sock"
+tail -20 ~/.config/FlashSentry/policy-audit.log
 ```
 
 ### Hash speed is slow
 
-1. Enable memory mapping in settings
-2. Increase buffer size (try 4096 KB or 8192 KB)
-3. Use a USB 3.0 port if available
+1. Enable memory mapping in settings.
+2. Increase buffer size (e.g. 4096 KB).
+3. Prefer watch-folder verification over full-disk hash when possible.
+4. Use a USB 3 port.
 
 ## Security
 
-FlashSentry is designed with security in mind:
+- **No continuous root** — polkit escalates mount and helper operations.
+- **Signed policy store** — HMAC-protected `policy.store`; mutations logged.
+- **Split process** — `flashsentry-policyd` can hold policy state separately from the GUI.
+- **Secure mount defaults** — `noexec`, `nosuid`, `nodev` where supported.
+- **Tamper detection** — Cryptographic hashes and Merkle manifests on watched paths.
+- **User confirmation** — Prompts for unknown or modified devices (configurable).
 
-- **No root privileges** — Uses polkit for privilege escalation
-- **Secure mount options** — Default: `noexec,nosuid,nodev`
-- **Secure storage** — Database file has 600 permissions
-- **Tamper detection** — Cryptographic hashes detect any byte-level modification
-- **User confirmation** — Always prompts before mounting unknown devices
+**Practices:** enable “block modified devices” in sensitive environments; review the allow/block list; keep verification audit logs; use SHA-512 or BLAKE2b if you need stronger hashes.
 
-### Security Best Practices
+## Documentation
 
-1. Enable "Block modified devices" for sensitive environments
-2. Use SHA-512 or BLAKE2b for stronger verification
-3. Regularly review the device whitelist
-4. Keep FlashSentry running in the background via systemd
+| Document | Description |
+|----------|-------------|
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Day-to-day workflows |
+| [docs/VERIFICATION.md](docs/VERIFICATION.md) | Verification internals |
+| [CHANGELOG.md](CHANGELOG.md) | Release notes |
+| [CLAUDE.md](CLAUDE.md) | Developer / architecture notes |
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting a pull request.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and feature requests: [GitHub Issues](https://github.com/RNAX0N/flashsentry/issues).
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+MIT License — see [LICENSE](LICENSE).
 
 ## Acknowledgments
 
-- Qt Project for the excellent GUI framework
-- The Arch Linux community for the "keep it simple" philosophy
-- OpenSSL for robust cryptographic functions
-- freedesktop.org for UDisks2 and polkit standards
+- Qt Project, OpenSSL, freedesktop.org (UDisks2, polkit)
+- Arch Linux community
 
 ---
 
 <p align="center">
-  Made with ❤️ for the Arch Linux community
+  Made for the Arch Linux community
 </p>

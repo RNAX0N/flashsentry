@@ -29,6 +29,14 @@ bool UsbmonCapture::startCapture(const HidDeviceInfo& device,
                                  const BadUsbAnomalyResult& anomaly,
                                  const QString& commandTemplate)
 {
+#ifdef Q_OS_WIN
+    Q_UNUSED(device)
+    Q_UNUSED(anomaly)
+    Q_UNUSED(commandTemplate)
+    emit captureFailed(QStringLiteral(
+        "USB packet capture is not implemented on Windows yet. Use USBPcap/Wireshark manually."));
+    return false;
+#else
     if (isRunning()) {
         emit captureFailed(QStringLiteral("A usbmon capture is already running"));
         return false;
@@ -93,6 +101,7 @@ bool UsbmonCapture::startCapture(const HidDeviceInfo& device,
 
     emit captureStarted(m_outputPath);
     return true;
+#endif
 }
 
 void UsbmonCapture::stopCapture()

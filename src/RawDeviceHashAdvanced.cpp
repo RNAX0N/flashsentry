@@ -5,6 +5,71 @@
 #include <QByteArray>
 #include <QVector>
 
+#ifdef Q_OS_WIN
+
+namespace FlashSentry::RawDeviceHash {
+
+QString scanModeTag(ScanMode mode)
+{
+    return mode == ScanMode::QuickSample ? QStringLiteral("quick") : QStringLiteral("full");
+}
+
+QString combineBlockHashes(const QStringList& blockHex, Algorithm algo)
+{
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    if (!mdctx) {
+        return {};
+    }
+    const EVP_MD* md = nullptr;
+    switch (algo) {
+        case Algorithm::SHA512:
+            md = EVP_sha512();
+            break;
+        case Algorithm::BLAKE2b:
+            md = EVP_blake2b512();
+            break;
+        case Algorithm::SHA256:
+        default:
+            md = EVP_sha256();
+            break;
+    }
+    if (!md || EVP_DigestInit_ex(mdctx, md, nullptr) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        return {};
+    }
+    for (const QString& hex : blockHex) {
+        const QByteArray raw = QByteArray::fromHex(hex.toLatin1());
+        EVP_DigestUpdate(mdctx, raw.constData(), static_cast<size_t>(raw.size()));
+    }
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hashLen = 0;
+    QString out;
+    if (EVP_DigestFinal_ex(mdctx, hash, &hashLen) == 1) {
+        QByteArray hashHex;
+        hashHex.reserve(static_cast<int>(hashLen * 2));
+        for (unsigned int i = 0; i < hashLen; ++i) {
+            hashHex.append(QStringLiteral("%1").arg(hash[i], 2, 16, QChar('0')).toLatin1());
+        }
+        out = QString::fromLatin1(hashHex);
+    }
+    EVP_MD_CTX_free(mdctx);
+    return out;
+}
+
+HashResult hashAdvanced(int /*fd*/, const Options& options, uint64_t /*deviceSize*/)
+{
+    HashResult result;
+    result.deviceNode = options.deviceNode;
+    result.algorithm = algorithmName(options.algorithm);
+    result.errorMessage = QStringLiteral(
+        "Advanced raw-device hashing is not implemented in this Windows build");
+    return result;
+}
+
+} // namespace FlashSentry::RawDeviceHash
+
+#else
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <cerrno>
@@ -287,3 +352,5 @@ HashResult hashAdvanced(int fd, const Options& options, uint64_t deviceSize)
 }
 
 } // namespace FlashSentry::RawDeviceHash
+
+#endif

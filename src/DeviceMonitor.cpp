@@ -1,5 +1,190 @@
 #include "DeviceMonitor.h"
 
+#ifdef Q_OS_WIN
+
+#include <QMutexLocker>
+#include <QDir>
+#include <QStorageInfo>
+#include <qt_windows.h>
+
+namespace FlashSentry {
+
+namespace {
+
+bool isRemovableVolumeRoot(const QString& rootPath)
+{
+    QString nativeRoot = QDir::toNativeSeparators(rootPath);
+    if (!nativeRoot.endsWith(QLatin1Char('\\'))) {
+        nativeRoot += QLatin1Char('\\');
+    }
+    return GetDriveTypeW(reinterpret_cast<LPCWSTR>(nativeRoot.utf16())) == DRIVE_REMOVABLE;
+}
+
+} // namespace
+
+DeviceMonitor::DeviceMonitor(QObject* parent)
+    : QThread(parent)
+{
+}
+
+DeviceMonitor::~DeviceMonitor()
+{
+    stopMonitoring();
+}
+
+void DeviceMonitor::startMonitoring()
+{
+    if (m_running.load()) {
+        return;
+    }
+    m_running.store(true);
+    start(QThread::NormalPriority);
+}
+
+void DeviceMonitor::stopMonitoring()
+{
+    if (!m_running.load()) {
+        return;
+    }
+    m_running.store(false);
+    if (!wait(5000)) {
+        terminate();
+        wait();
+    }
+}
+
+QList<DeviceInfo> DeviceMonitor::connectedDevices() const
+{
+    QMutexLocker locker(&m_devicesMutex);
+    return m_devices.values();
+}
+
+std::optional<DeviceInfo> DeviceMonitor::getDevice(const QString& deviceNode) const
+{
+    QMutexLocker locker(&m_devicesMutex);
+    const auto it = m_devices.constFind(deviceNode);
+    if (it == m_devices.constEnd()) {
+        return std::nullopt;
+    }
+    return *it;
+}
+
+void DeviceMonitor::rescan()
+{
+    m_rescanRequested.store(true);
+}
+
+void DeviceMonitor::run()
+{
+    scanExistingDevices();
+    {
+        QMutexLocker locker(&m_devicesMutex);
+        emit initialScanComplete(m_devices.size());
+    }
+    while (m_running.load()) {
+        if (m_rescanRequested.exchange(false)) {
+            scanExistingDevices();
+        }
+        msleep(POLL_TIMEOUT_MS);
+        scanExistingDevices();
+    }
+}
+
+bool DeviceMonitor::initializeUdev()
+{
+    return true;
+}
+
+void DeviceMonitor::cleanupUdev()
+{
+}
+
+void DeviceMonitor::scanExistingDevices()
+{
+    QHash<QString, DeviceInfo> detected;
+    for (const QStorageInfo& storage : QStorageInfo::mountedVolumes()) {
+        if (!storage.isValid() || !storage.isReady() || !isRemovableVolumeRoot(storage.rootPath())) {
+            continue;
+        }
+        DeviceInfo info;
+        info.deviceNode = storage.rootPath();
+        info.parentDevice = storage.rootPath();
+        info.serial = QString::fromUtf8(storage.device());
+        info.label = storage.displayName();
+        info.model = storage.name();
+        info.vendor = QStringLiteral("Windows removable volume");
+        info.fsType = QString::fromUtf8(storage.fileSystemType());
+        info.mountPoint = storage.rootPath();
+        info.sizeBytes = static_cast<uint64_t>(storage.bytesTotal());
+        info.isRemovable = true;
+        info.isMounted = true;
+        detected.insert(info.deviceNode, info);
+    }
+
+    QList<DeviceInfo> connected;
+    QList<DeviceInfo> changed;
+    QStringList disconnected;
+    {
+        QMutexLocker locker(&m_devicesMutex);
+        for (auto it = detected.constBegin(); it != detected.constEnd(); ++it) {
+            if (!m_devices.contains(it.key())) {
+                connected.append(it.value());
+            } else if (m_devices.value(it.key()).mountPoint != it.value().mountPoint
+                       || m_devices.value(it.key()).label != it.value().label) {
+                changed.append(it.value());
+            }
+        }
+        for (auto it = m_devices.constBegin(); it != m_devices.constEnd(); ++it) {
+            if (!detected.contains(it.key())) {
+                disconnected.append(it.key());
+            }
+        }
+        m_devices = detected;
+    }
+    for (const DeviceInfo& info : connected) {
+        emit deviceConnected(info);
+    }
+    for (const DeviceInfo& info : changed) {
+        emit deviceChanged(info);
+    }
+    for (const QString& node : disconnected) {
+        emit deviceDisconnected(node);
+    }
+}
+
+void DeviceMonitor::processUdevEvent(struct udev_device* /*dev*/)
+{
+}
+
+DeviceInfo DeviceMonitor::extractDeviceInfo(struct udev_device* /*dev*/)
+{
+    return {};
+}
+
+bool DeviceMonitor::isUsbStoragePartition(struct udev_device* /*dev*/)
+{
+    return false;
+}
+
+struct udev_device* DeviceMonitor::getUsbParent(struct udev_device* /*dev*/)
+{
+    return nullptr;
+}
+
+QString DeviceMonitor::getProperty(struct udev_device* /*dev*/, const char* /*key*/)
+{
+    return {};
+}
+
+QString DeviceMonitor::getSysAttr(struct udev_device* /*dev*/, const char* /*key*/)
+{
+    return {};
+}
+
+} // namespace FlashSentry
+
+#else
+
 #include <libudev.h>
 #include <poll.h>
 #include <unistd.h>
@@ -412,3 +597,5 @@ QString DeviceMonitor::getSysAttr(struct udev_device* dev, const char* key)
 }
 
 } // namespace FlashSentry
+
+#endif

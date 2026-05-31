@@ -1,5 +1,107 @@
 #include "HidDeviceMonitor.h"
 
+#ifdef Q_OS_WIN
+
+#include <QMutexLocker>
+
+namespace FlashSentry {
+
+HidDeviceMonitor::HidDeviceMonitor(QObject* parent)
+    : QThread(parent)
+{
+}
+
+HidDeviceMonitor::~HidDeviceMonitor()
+{
+    stopMonitoring();
+}
+
+void HidDeviceMonitor::startMonitoring()
+{
+    if (m_running.load()) {
+        return;
+    }
+    m_running.store(true);
+    start(QThread::NormalPriority);
+}
+
+void HidDeviceMonitor::stopMonitoring()
+{
+    if (!m_running.load()) {
+        return;
+    }
+    m_running.store(false);
+    wait(3000);
+}
+
+void HidDeviceMonitor::rescan()
+{
+    emit initialScanComplete(0);
+}
+
+QList<HidDeviceInfo> HidDeviceMonitor::connectedDevices() const
+{
+    QMutexLocker locker(&m_devicesMutex);
+    return m_devices.values();
+}
+
+std::optional<HidDeviceInfo> HidDeviceMonitor::getDevice(const QString& stableId) const
+{
+    QMutexLocker locker(&m_devicesMutex);
+    const auto it = m_devices.constFind(stableId);
+    if (it == m_devices.constEnd()) {
+        return std::nullopt;
+    }
+    return *it;
+}
+
+void HidDeviceMonitor::run()
+{
+    emit initialScanComplete(0);
+    while (m_running.load()) {
+        msleep(POLL_TIMEOUT_MS);
+    }
+}
+
+bool HidDeviceMonitor::initializeUdev()
+{
+    return true;
+}
+void HidDeviceMonitor::cleanupUdev() {}
+void HidDeviceMonitor::scanExistingDevices()
+{
+    emit initialScanComplete(0);
+}
+void HidDeviceMonitor::processUdevEvent(struct udev_device* /*dev*/) {}
+bool HidDeviceMonitor::isUsbHidInput(struct udev_device* /*dev*/) const
+{
+    return false;
+}
+HidDeviceInfo HidDeviceMonitor::extractDeviceInfo(struct udev_device* /*dev*/) const
+{
+    return {};
+}
+struct udev_device* HidDeviceMonitor::getUsbDeviceParent(struct udev_device* /*dev*/) const
+{
+    return nullptr;
+}
+struct udev_device* HidDeviceMonitor::getUsbInterfaceParent(struct udev_device* /*dev*/) const
+{
+    return nullptr;
+}
+QString HidDeviceMonitor::getProperty(struct udev_device* /*dev*/, const char* /*key*/) const
+{
+    return {};
+}
+QString HidDeviceMonitor::getSysAttr(struct udev_device* /*dev*/, const char* /*key*/) const
+{
+    return {};
+}
+
+} // namespace FlashSentry
+
+#else
+
 #include <libudev.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -355,3 +457,5 @@ QString HidDeviceMonitor::getSysAttr(struct udev_device* dev, const char* key) c
 }
 
 } // namespace FlashSentry
+
+#endif

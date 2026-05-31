@@ -1,4 +1,5 @@
 #include "IsoVerifier.h"
+#include "GpgUtil.h"
 #include "IsoScanRules.h"
 #include "AuditLog.h"
 #include "IsoCatalog.h"
@@ -238,12 +239,22 @@ bool ensureGpgHome(QString* errorOut)
 QString runGpg(const QStringList& args, QString* outputOut, QString* errorOut, int timeoutMs = 120000)
 {
     QProcess proc;
-    proc.setProgram(QStringLiteral("gpg"));
-    QStringList fullArgs = {QStringLiteral("--homedir"), gpgHomedir()};
+    proc.setProgram(gpgProgram());
+    QStringList fullArgs = gpgBatchArgs();
+    fullArgs << QStringLiteral("--homedir") << QDir::toNativeSeparators(gpgHomedir());
     fullArgs.append(args);
     proc.setArguments(fullArgs);
     proc.setProcessChannelMode(QProcess::MergedChannels);
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.remove(QStringLiteral("GNUPGHOME"));
+    proc.setProcessEnvironment(env);
     proc.start();
+    if (!proc.waitForStarted(10000)) {
+        if (errorOut) {
+            *errorOut = QStringLiteral("Failed to start gpg: %1").arg(gpgProgram());
+        }
+        return {};
+    }
     if (!proc.waitForFinished(timeoutMs)) {
         if (errorOut) *errorOut = QStringLiteral("gpg timed out");
         return {};
@@ -310,7 +321,10 @@ GpgVerifyDetails gpgVerifyDetached(const QString& sigPath, const QString& dataPa
     GpgVerifyDetails d;
     QString output;
     QString err;
-    runGpg({QStringLiteral("--verify"), sigPath, dataPath}, &output, &err);
+    runGpg({QStringLiteral("--verify"),
+            QDir::toNativeSeparators(sigPath),
+            QDir::toNativeSeparators(dataPath)},
+           &output, &err);
     d.summary = output.isEmpty() ? err : output;
 
     static const QRegularExpression fpRe(

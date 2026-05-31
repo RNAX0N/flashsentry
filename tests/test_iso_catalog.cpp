@@ -1,5 +1,8 @@
 #include <QtTest>
+#include <QCoreApplication>
 #include <QDir>
+#include <QStandardPaths>
+#include "GpgTestUtil.h"
 #include "IsoCatalog.h"
 #include "IsoCatalogManifest.h"
 
@@ -41,9 +44,21 @@ private slots:
 
 void TestIsoCatalog::initTestCase()
 {
+    QCoreApplication::setOrganizationName(QStringLiteral("FlashSentry"));
+    QCoreApplication::setApplicationName(QStringLiteral("FlashSentryTest"));
+    QStandardPaths::setTestModeEnabled(true);
+
     const QByteArray gpgHome = qgetenv("GNUPGHOME");
     if (!gpgHome.isEmpty() && !QDir(QString::fromUtf8(gpgHome)).exists()) {
         qunsetenv("GNUPGHOME");
+    }
+    qunsetenv("GNUPGHOME");
+
+    if (qgetenv("FLASHSENTRY_GPG_PROGRAM").isEmpty() && FlashSentryTest::gpgAvailable()) {
+        qputenv("FLASHSENTRY_GPG_PROGRAM", FlashSentryTest::gpgProgram().toUtf8());
+    }
+    if (FlashSentryTest::gpgAvailable()) {
+        IsoCatalogManifest::reload();
     }
 }
 
@@ -272,10 +287,16 @@ void TestIsoCatalog::verifiableImageExtensions()
 
 void TestIsoCatalog::embeddedManifestIntegrity()
 {
+    if (!FlashSentryTest::gpgAvailable()) {
+        QSKIP("gpg not available");
+    }
     IsoCatalogManifest::reload();
-    QVERIFY(IsoCatalogManifest::lastEmbeddedSha256Ok());
-    QVERIFY(IsoCatalogManifest::lastEmbeddedGpgOk());
-    QVERIFY(IsoCatalogManifest::lastEmbeddedIntegrityOk());
+    QVERIFY2(IsoCatalogManifest::lastEmbeddedSha256Ok(),
+             qPrintable(IsoCatalogManifest::integrityStatusText()));
+    QVERIFY2(IsoCatalogManifest::lastEmbeddedGpgOk(),
+             qPrintable(IsoCatalogManifest::integrityStatusText()));
+    QVERIFY2(IsoCatalogManifest::lastEmbeddedIntegrityOk(),
+             qPrintable(IsoCatalogManifest::integrityStatusText()));
     QVERIFY(IsoCatalogManifest::entryCount() >= 4);
     QVERIFY(IsoCatalogManifest::integrityStatusText().contains(QStringLiteral("OK")));
     if (QFile::exists(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.asc"))) {

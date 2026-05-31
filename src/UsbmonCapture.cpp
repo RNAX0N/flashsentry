@@ -1,11 +1,11 @@
 #include "UsbmonCapture.h"
+#include "UsbPcapLocator.h"
 
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
 #include <QProcess>
 #include <QRegularExpression>
-#include <QFileInfo>
 #include <QStandardPaths>
 
 namespace FlashSentry {
@@ -67,13 +67,25 @@ bool UsbmonCapture::startCapture(const HidDeviceInfo& device,
         return false;
     }
     program = args.takeFirst();
-    const QString resolved = QStandardPaths::findExecutable(program);
-    if (!resolved.isEmpty()) {
-        program = resolved;
-    } else if (!QFileInfo::exists(program)) {
+    const QString baseName = QFileInfo(program).fileName();
+    if (baseName.compare(QStringLiteral("USBPcapCMD.exe"), Qt::CaseInsensitive) == 0
+        || baseName.compare(QStringLiteral("USBPcapCMD"), Qt::CaseInsensitive) == 0) {
+        const QString located = UsbPcapLocator::findUsbPcapCmdExecutable();
+        if (!located.isEmpty()) {
+            program = located;
+        }
+    }
+    if (!QFileInfo::exists(program)) {
+        const QString resolved = QStandardPaths::findExecutable(program);
+        if (!resolved.isEmpty()) {
+            program = resolved;
+        }
+    }
+    if (!QFileInfo::exists(program)) {
         emit captureFailed(QStringLiteral(
-            "USBPcapCMD.exe was not found. Install USBPcap (https://desowin.org/usbpcap/) and add it to PATH, "
-            "or set a custom capture command in settings."));
+            "USBPcapCMD.exe was not found. Re-run the FlashSentry installer and enable "
+            "\"Install USBPcap\", or install from https://desowin.org/usbpcap/ "
+            "(standard path: C:\\Program Files\\USBPcap\\USBPcapCMD.exe)."));
         return false;
     }
 

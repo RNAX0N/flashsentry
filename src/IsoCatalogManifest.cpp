@@ -1,4 +1,5 @@
 #include "IsoCatalogManifest.h"
+#include "GpgUtil.h"
 
 #include <QCryptographicHash>
 #include <QDateTime>
@@ -194,8 +195,9 @@ bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
 
     auto runGpgInHome = [&](const QStringList& args, QString* output) -> bool {
         QProcess p;
-        p.setProgram(QStringLiteral("gpg"));
-        QStringList fullArgs = {QStringLiteral("--homedir"), gpgHome};
+        p.setProgram(gpgProgram());
+        QStringList fullArgs = gpgBatchArgs();
+        fullArgs << QStringLiteral("--homedir") << QDir::toNativeSeparators(gpgHome);
         fullArgs.append(args);
         p.setArguments(fullArgs);
         p.setProcessChannelMode(QProcess::MergedChannels);
@@ -203,30 +205,30 @@ bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
         env.remove(QStringLiteral("GNUPGHOME"));
         p.setProcessEnvironment(env);
         p.start();
+        if (!p.waitForStarted(10000)) {
+            return false;
+        }
         if (!p.waitForFinished(30000)) {
             p.kill();
             return false;
         }
+        const QByteArray combined = p.readAll();
         if (output) {
-            *output = QString::fromUtf8(p.readAllStandardOutput());
+            *output = QString::fromUtf8(combined);
         }
         return p.exitCode() == 0;
     };
 
-    if (!runGpgInHome({QStringLiteral("--import"), pubPath}, nullptr)) {
+    if (!runGpgInHome({QStringLiteral("--import"),
+                       QDir::toNativeSeparators(pubPath)},
+                      nullptr)) {
         return false;
     }
 
-    QString output;
-    if (!runGpgInHome({QStringLiteral("--verify"),
-                       QStringLiteral("--status-fd"),
-                       QStringLiteral("1"),
-                       sigPath,
-                       manifestPath},
-                      &output)) {
-        return false;
-    }
-    return output.contains(QStringLiteral("VALIDSIG"), Qt::CaseInsensitive);
+    return runGpgInHome({QStringLiteral("--verify"),
+                         QDir::toNativeSeparators(sigPath),
+                         QDir::toNativeSeparators(manifestPath)},
+                        nullptr);
 }
 
 void loadFromFile(const QString& path, bool userTofu = false)

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+  <?include "Variables.wxi" ?>
+
+  <Bundle Name="$(var.ProductName) $(var.ProductVersion)"
+          Version="$(var.ProductVersion)"
+          Manufacturer="$(var.Manufacturer)"
+          UpgradeCode="$(var.BundleUpgradeCode)"
+          IconSourceFile="$(var.StageBinDir)\FlashSentry.exe"
+          AboutUrl="https://github.com/RNAX0N/flashsentry">
+
+    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
+      <bal:WixStandardBootstrapperApplication LicenseFile="$(var.LicenseRtf)"
+                                            SuppressOptionsUI="no"
+                                            ShowVersion="yes" />
+    </BootstrapperApplicationRef>
+
+    <Variable Name="InstallUsbPcap"
+              Type="numeric"
+              Value="1"
+              bal:Overridable="yes" />
+
+    <bal:Option Name="InstallUsbPcap"
+                Title="Install USBPcap (recommended)"
+                Description="Official USBPcap driver and USBPcapCMD for BadUSB USB packet capture. Requires administrator approval."
+                Default="yes" />
+
+    <util:FileSearch Id="UsbPcapCmdSearch"
+                     Path="[ProgramFiles64Folder]USBPcap"
+                     Name="USBPcapCMD.exe"
+                     Result="exists"
+                     Variable="UsbPcapAlreadyInstalled" />
+
+    <Chain>
+      <MsiPackage Id="FlashSentryMsi"
+                  SourceFile="$(var.FlashSentryMsi)"
+                  Vital="yes"
+                  DisplayInternalUI="no"
+                  EnableFeatureSelection="no">
+        <MsiProperty Name="INSTALLUSBPCAP" Value="0" />
+      </MsiPackage>
+
+      <ExePackage Id="UsbPcapSetup"
+                  SourceFile="$(var.UsbPcapInstaller)"
+                  InstallCondition="InstallUsbPcap AND NOT UsbPcapAlreadyInstalled"
+                  Vital="no"
+                  Permanent="yes"
+                  PerMachine="yes"
+                  Compressed="yes"
+                  DetectCondition="UsbPcapAlreadyInstalled"
+                  InstallCommand="/S"
+                  RepairCommand="/S"
+                  UninstallCommand="/S"
+                  Protocol="none">
+        <ExitCode Value="0" Behavior="success" />
+      </ExePackage>
+    </Chain>
+  </Bundle>
+</Wix>

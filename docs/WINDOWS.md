@@ -59,12 +59,25 @@ JSON result file that the app reads (same fields as Linux stdout JSON).
 
 ## USB packet capture
 
-Install [USBPcap](https://desowin.org/usbpcap/) and ensure `USBPcapCMD.exe` is on `PATH`, or set a
-custom capture command in settings (placeholders: `{bus}`, `{out}`, `{stable_id}`, `{rule_id}`).
+FlashSentry finds `USBPcapCMD.exe` under `C:\Program Files\USBPcap\` automatically (PATH not required).
+
+- **Installer:** set `-DFLASHSENTRY_USBPCAP_INSTALLER=...\USBPcapSetup.exe` when configuring CMake to
+  bundle USBPcap and prompt during NSIS setup (see `packaging/windows/INSTALLER.md`).
+- **Manual:** install from https://desowin.org/usbpcap/
+- **Override:** `FLASHSENTRY_USBPCAP_CMD` or a custom capture command in settings (`{bus}`, `{out}`, …)
+
+## Installers (.msi and .exe)
+
+Release builds can produce:
+
+- **`FlashSentry-x.y.z-x64.msi`** — Windows Installer with a feature-tree checkbox for USBPcap
+- **`FlashSentry-x.y.z-x64-setup.exe`** — WiX Burn bootstrapper with an **Install USBPcap** option (checked by default)
+
+See [packaging/windows/INSTALLER.md](../packaging/windows/INSTALLER.md) for build steps.
 
 ## Portable package
 
-The Windows CI job builds a portable ZIP with `windeployqt` and OpenSSL DLLs. See the root
+The Windows CI job also builds a portable ZIP with `windeployqt` and OpenSSL DLLs. See the root
 `README.md` Windows section for local packaging commands.
 
 ## Roadmap

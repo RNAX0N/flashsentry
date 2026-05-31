@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -16,6 +17,99 @@ MANIFEST = ROOT / "resources" / "iso-catalog" / "embedded-manifest.json"
 HASH_FILE = MANIFEST.with_suffix(MANIFEST.suffix + ".sha256")
 ASC_FILE = MANIFEST.with_suffix(MANIFEST.suffix + ".asc")
 PUB_FILE = ROOT / "resources" / "iso-catalog" / "catalog-signing.pub"
+
+
+def _is_msys_gpg(gpg_exe: str) -> bool:
+    lower = gpg_exe.replace("\\", "/").lower()
+    return "/git/" in lower or "/msys" in lower or lower.endswith("/usr/bin/gpg")
+
+
+def _to_gpg_path(gpg_exe: str, path: Path) -> str:
+    """Return a path string gpg can open (MSYS gpg needs Unix-style paths)."""
+    resolved = path.resolve()
+    if sys.platform == "win32" and _is_msys_gpg(gpg_exe):
+        try:
+            result = subprocess.run(
+                ["cygpath", "-u", str(resolved)],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10,
+            )
+            return result.stdout.strip()
+        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            text = str(resolved).replace("\\", "/")
+            if len(text) >= 2 and text[1] == ":":
+                return "/" + text[0].lower() + text[2:]
+    return str(resolved)
+
+
+def _resolve_gpg() -> str | None:
+    env = os.environ.get("FLASHSENTRY_GPG_PROGRAM", "").strip()
+    if env and Path(env).is_file():
+        return env
+    found = shutil.which("gpg")
+    if found:
+        return found
+    if sys.platform == "win32":
+        for candidate in (
+            Path(r"C:\Program Files\Git\usr\bin\gpg.exe"),
+            Path(r"C:\Program Files\Git\mingw64\bin\gpg.exe"),
+        ):
+            if candidate.is_file():
+                return str(candidate)
+    return None
+
+
+def _gpg_batch_args() -> list[str]:
+    args = ["--batch", "--no-tty"]
+    if sys.platform == "win32":
+        args.extend(["--pinentry-mode", "loopback"])
+    return args
+
+
+def _verify_openpgp() -> tuple[bool, str]:
+    gpg_exe = _resolve_gpg()
+    if gpg_exe is None:
+        return True, "GPG signature not checked (gpg not found)"
+
+    if not ASC_FILE.is_file() or not PUB_FILE.is_file():
+        return True, "GPG signature not checked"
+
+    env = os.environ.copy()
+    env.pop("GNUPGHOME", None)
+
+    with tempfile.TemporaryDirectory(prefix="flashsentry-gpg-", dir=ROOT) as gpg_home:
+        home = Path(gpg_home)
+        homedir_flag = _to_gpg_path(gpg_exe, home)
+        pub = _to_gpg_path(gpg_exe, PUB_FILE)
+        asc = _to_gpg_path(gpg_exe, ASC_FILE)
+        manifest = _to_gpg_path(gpg_exe, MANIFEST)
+
+        base = [gpg_exe, *_gpg_batch_args(), "--homedir", homedir_flag]
+        imp = subprocess.run(
+            [*base, "--import", pub],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+        )
+        if imp.returncode != 0:
+            print(imp.stderr or imp.stdout, file=sys.stderr)
+            return False, "GPG import failed"
+
+        verify = subprocess.run(
+            [*base, "--verify", asc, manifest],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+        )
+        if verify.returncode != 0:
+            print(verify.stderr or verify.stdout, file=sys.stderr)
+            return False, "GPG verify failed"
+
+    return True, "OpenPGP signature valid"
 
 
 def main() -> int:
@@ -78,31 +172,9 @@ def main() -> int:
             print(msg, file=sys.stderr)
         return 1
 
-    gpg_note = "GPG signature not checked"
-    if ASC_FILE.is_file() and PUB_FILE.is_file() and shutil.which("gpg"):
-        # Import into an isolated homedir: --keyring on a fresh ~/.gnupg fails on
-        # CI runners (invalid packet / no public key) with modern OpenPGP signatures.
-        with tempfile.TemporaryDirectory(prefix="flashsentry-gpg-") as gpg_home:
-            homedir = ["--homedir", gpg_home]
-            imp = subprocess.run(
-                ["gpg", *homedir, "--import", str(PUB_FILE)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if imp.returncode != 0:
-                print(imp.stderr or imp.stdout, file=sys.stderr)
-                return 1
-            verify = subprocess.run(
-                ["gpg", *homedir, "--verify", str(ASC_FILE), str(MANIFEST)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if verify.returncode != 0:
-                print(verify.stderr or verify.stdout, file=sys.stderr)
-                return 1
-        gpg_note = "OpenPGP signature valid"
+    gpg_ok, gpg_note = _verify_openpgp()
+    if not gpg_ok:
+        return 1
 
     print(
         f"OK: embedded-manifest.json v{version}, "

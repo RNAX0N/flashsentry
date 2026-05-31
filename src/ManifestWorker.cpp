@@ -139,7 +139,7 @@ QString ManifestWorker::startBuildBaseline(const QString& deviceNode, const QStr
 bool ManifestWorker::cancelJob(const QString& jobId)
 {
     QMutexLocker lock(&m_mutex);
-    return m_jobs.remove(jobId) > 0;
+    return m_jobs.remove(jobId);
 }
 
 void ManifestWorker::cancelAll()

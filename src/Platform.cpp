@@ -9,12 +9,12 @@ PlatformCapabilities Platform::capabilities()
     PlatformCapabilities caps;
 #if defined(Q_OS_WIN)
     caps.platformName = QStringLiteral("Windows");
-    caps.programmaticMount = false;
-    caps.rawPartitionHash = false;
-    caps.privilegedReadHelper = false;
+    caps.programmaticMount = true;
+    caps.rawPartitionHash = true;
+    caps.privilegedReadHelper = true;
     caps.udevMonitoring = false;
-    caps.badUsbMonitoring = false;
-    caps.usbmonCapture = false;
+    caps.badUsbMonitoring = true;
+    caps.usbmonCapture = true;
 #elif defined(Q_OS_LINUX)
     caps.platformName = QStringLiteral("Linux");
     caps.programmaticMount = true;

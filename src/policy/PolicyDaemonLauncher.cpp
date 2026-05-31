@@ -23,8 +23,13 @@ QString PolicyDaemonLauncher::daemonExecutablePath()
         return QString::fromUtf8(compiled);
     }
 
-    const QString sibling =
+    QString sibling =
         QCoreApplication::applicationDirPath() + QStringLiteral("/flashsentry-policyd");
+#if defined(Q_OS_WIN)
+    if (!QFile::exists(sibling)) {
+        sibling += QStringLiteral(".exe");
+    }
+#endif
     if (QFile::exists(sibling)) {
         return sibling;
     }

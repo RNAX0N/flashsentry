@@ -2,6 +2,8 @@
 
 #ifdef Q_OS_WIN
 
+#include "WinStorage.h"
+
 #include <QMutexLocker>
 #include <QDir>
 #include <QStorageInfo>
@@ -50,13 +52,15 @@ void MountManager::mount(const QString& deviceNode)
 
 void MountManager::mount(const QString& deviceNode, const MountOptions& /*options*/)
 {
+    refreshMountStatus();
+
     MountResult result;
     result.deviceNode = deviceNode;
     result.mountPoint = getMountPoint(deviceNode);
     result.success = !result.mountPoint.isEmpty();
     if (!result.success) {
         result.errorMessage = QStringLiteral(
-            "Windows handles removable-volume mounting automatically; reconnect or mount in File Explorer.");
+            "Volume is not mounted. Reconnect the drive or assign a letter in Disk Management.");
     }
     QTimer::singleShot(0, this, [this, result]() { emit mountCompleted(result); });
 }
@@ -66,21 +70,47 @@ void MountManager::unmount(const QString& deviceNode)
     unmount(deviceNode, UnmountOptions{});
 }
 
-void MountManager::unmount(const QString& deviceNode, const UnmountOptions& /*options*/)
+void MountManager::unmount(const QString& deviceNode, const UnmountOptions& options)
 {
     UnmountResult result;
     result.deviceNode = deviceNode;
-    result.success = false;
-    result.errorMessage =
-        QStringLiteral("Programmatic eject is not implemented in this Windows build");
+    result.forcedUnmount = options.force;
+
+    QString error;
+    const QString volumeRoot =
+        WinStorage::normalizeVolumeRoot(getMountPoint(deviceNode).isEmpty() ? deviceNode
+                                                                           : getMountPoint(deviceNode));
+    if (WinStorage::ejectVolumeRoot(volumeRoot, options.force, &error)) {
+        result.success = true;
+        {
+            QMutexLocker locker(&m_mutex);
+            m_mountPoints.remove(deviceNode);
+            if (volumeRoot != deviceNode) {
+                m_mountPoints.remove(volumeRoot);
+            }
+        }
+        emit mountStatusChanged(deviceNode, false, QString());
+    } else {
+        result.errorMessage = error.isEmpty()
+            ? QStringLiteral("Failed to eject removable volume")
+            : error;
+    }
+
     QTimer::singleShot(0, this, [this, result]() { emit unmountCompleted(result); });
 }
 
 void MountManager::powerOff(const QString& deviceNode)
 {
-    QTimer::singleShot(0, this, [this, deviceNode]() {
-        emit powerOffCompleted(deviceNode, false,
-                               QStringLiteral("Programmatic USB power-off is not implemented on Windows"));
+    QString error;
+    const QString volumeRoot =
+        WinStorage::normalizeVolumeRoot(getMountPoint(deviceNode).isEmpty() ? deviceNode
+                                                                           : getMountPoint(deviceNode));
+    const bool ok = WinStorage::ejectVolumeRoot(volumeRoot, false, &error);
+    QTimer::singleShot(0, this, [this, deviceNode, ok, error]() {
+        emit powerOffCompleted(deviceNode, ok,
+                               ok ? QString() : (error.isEmpty()
+                                                     ? QStringLiteral("Failed to eject device")
+                                                     : error));
     });
 }
 

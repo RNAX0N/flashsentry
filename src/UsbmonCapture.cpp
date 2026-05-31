@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QFileInfo>
 #include <QStandardPaths>
 
 namespace FlashSentry {
@@ -30,12 +31,81 @@ bool UsbmonCapture::startCapture(const HidDeviceInfo& device,
                                  const QString& commandTemplate)
 {
 #ifdef Q_OS_WIN
-    Q_UNUSED(device)
-    Q_UNUSED(anomaly)
-    Q_UNUSED(commandTemplate)
-    emit captureFailed(QStringLiteral(
-        "USB packet capture is not implemented on Windows yet. Use USBPcap/Wireshark manually."));
-    return false;
+    if (isRunning()) {
+        emit captureFailed(QStringLiteral("A USB capture is already running"));
+        return false;
+    }
+
+    QString bus = device.usbBus;
+    bus.remove(QRegularExpression(QStringLiteral("^0+")));
+    if (bus.isEmpty()) {
+        bus = QStringLiteral("1");
+    }
+
+    QDir().mkpath(outputDirectory());
+    const QString safeRule = anomaly.ruleId.isEmpty()
+        ? QStringLiteral("manual")
+        : QString(anomaly.ruleId).replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9_.-]")),
+                                          QStringLiteral("_"));
+    m_outputPath = outputDirectory() + QLatin1Char('/')
+                   + QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd-hhmmss"))
+                   + QLatin1Char('-') + safeRule + QStringLiteral(".pcap");
+
+    QString templ = commandTemplate.trimmed();
+    if (templ.isEmpty()) {
+        templ = QStringLiteral("USBPcapCMD.exe -d \\\\.\\USBPcap{bus} -o \"{out}\" -A");
+    }
+    templ.replace(QStringLiteral("{bus}"), bus);
+    templ.replace(QStringLiteral("{out}"), m_outputPath);
+    templ.replace(QStringLiteral("{stable_id}"), device.stableId());
+    templ.replace(QStringLiteral("{rule_id}"), safeRule);
+
+    QString program = templ.section(QLatin1Char(' '), 0, 0);
+    QStringList args = QProcess::splitCommand(templ);
+    if (args.isEmpty()) {
+        emit captureFailed(QStringLiteral("USB capture command is empty"));
+        return false;
+    }
+    program = args.takeFirst();
+    const QString resolved = QStandardPaths::findExecutable(program);
+    if (!resolved.isEmpty()) {
+        program = resolved;
+    } else if (!QFileInfo::exists(program)) {
+        emit captureFailed(QStringLiteral(
+            "USBPcapCMD.exe was not found. Install USBPcap (https://desowin.org/usbpcap/) and add it to PATH, "
+            "or set a custom capture command in settings."));
+        return false;
+    }
+
+    m_process = new QProcess(this);
+    m_process->setProgram(program);
+    m_process->setArguments(args);
+    m_process->setProcessChannelMode(QProcess::MergedChannels);
+    connect(m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
+        emit captureFailed(m_process ? m_process->errorString() : QStringLiteral("USBPcap failed"));
+    });
+    connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this](int exitCode, QProcess::ExitStatus) {
+                const QString path = m_outputPath;
+                QProcess* finished = m_process;
+                m_process = nullptr;
+                if (finished) {
+                    finished->deleteLater();
+                }
+                emit captureFinished(path, exitCode);
+            });
+
+    m_process->start();
+    if (!m_process->waitForStarted(5000)) {
+        const QString error = m_process->errorString();
+        m_process->deleteLater();
+        m_process = nullptr;
+        emit captureFailed(error);
+        return false;
+    }
+
+    emit captureStarted(m_outputPath);
+    return true;
 #else
     if (isRunning()) {
         emit captureFailed(QStringLiteral("A usbmon capture is already running"));

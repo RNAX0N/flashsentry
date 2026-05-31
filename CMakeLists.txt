@@ -119,7 +119,12 @@ set(SOURCES
     src/StyleManager.cpp
 )
 
+if(WIN32)
+    list(APPEND SOURCES src/WinStorage.cpp src/HidDeviceMonitor_win.cpp)
+endif()
+
 set(HEADERS
+    include/WinStorage.h
     include/Platform.h
     include/MainWindow.h
     include/DeviceMonitor.h
@@ -221,7 +226,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Concurrent Qt6::Network
     ${OPENSSL_LIBRARIES}
 )
-if(NOT WIN32)
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE setupapi cfgmgr32 hid shell32)
+else()
     target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::DBus ${LIBUDEV_LIBRARIES} pthread)
 endif()
 
@@ -235,54 +242,57 @@ include(GNUInstallDirs)
 set(FLASHSENTRY_HELPER_RELDIR "${CMAKE_INSTALL_LIBDIR}/flashsentry")
 set(FLASHSENTRY_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper")
 
-if(NOT WIN32)
-    add_executable(flashsentry-policyd
-        src/flashsentry-policyd.cpp
-        src/policy/PolicyPaths.cpp
-        src/policy/PolicyBlobCodec.cpp
-        src/policy/PolicyAudit.cpp
-        src/policy/PolicyStoreEngine.cpp
-    )
-    target_include_directories(flashsentry-policyd PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${OPENSSL_INCLUDE_DIRS}
-    )
-    target_link_libraries(flashsentry-policyd PRIVATE
-        Qt6::Core Qt6::Network
-        ${OPENSSL_LIBRARIES}
-    )
+add_executable(flashsentry-policyd
+    src/flashsentry-policyd.cpp
+    src/policy/PolicyPaths.cpp
+    src/policy/PolicyBlobCodec.cpp
+    src/policy/PolicyAudit.cpp
+    src/policy/PolicyStoreEngine.cpp
+)
+target_include_directories(flashsentry-policyd PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${OPENSSL_INCLUDE_DIRS}
+)
+target_link_libraries(flashsentry-policyd PRIVATE
+    Qt6::Core Qt6::Network
+    ${OPENSSL_LIBRARIES}
+)
 
+add_executable(flashsentry-read-helper
+    src/flashsentry-read-helper.cpp
+    src/RawDeviceHash.cpp
+    src/RawDeviceHashAdvanced.cpp
+)
+target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
+if(WIN32)
+    target_link_libraries(flashsentry-read-helper PRIVATE setupapi cfgmgr32 shell32)
+    set_target_properties(flashsentry-read-helper PROPERTIES OUTPUT_NAME "flashsentry-read-helper")
+endif()
+target_compile_definitions(flashsentry-read-helper PRIVATE
+    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+)
+
+if(NOT WIN32)
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/org.flashsentry.policy.in"
         "${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy"
         @ONLY
     )
-
-    add_executable(flashsentry-read-helper
-        src/flashsentry-read-helper.cpp
-        src/RawDeviceHash.cpp
-        src/RawDeviceHashAdvanced.cpp
-    )
-    target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
-    target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
-    target_compile_definitions(flashsentry-read-helper PRIVATE
-        FLASHSENTRY_VERSION="${PROJECT_VERSION}"
-    )
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    FLASHSENTRY_READ_HELPER_PATH="${FLASHSENTRY_READ_HELPER}"
+    FLASHSENTRY_READ_HELPER_PATH="$<TARGET_FILE:flashsentry-read-helper>"
     FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+    FLASHSENTRY_POLICYD_PATH="$<TARGET_FILE:flashsentry-policyd>"
 )
-if(NOT WIN32)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        FLASHSENTRY_POLICYD_PATH="$<TARGET_FILE:flashsentry-policyd>"
-    )
-endif()
+add_dependencies(${PROJECT_NAME} flashsentry-read-helper flashsentry-policyd)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-if(NOT WIN32)
+if(WIN32)
+    install(TARGETS flashsentry-policyd flashsentry-read-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+else()
     install(TARGETS flashsentry-policyd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(TARGETS flashsentry-read-helper RUNTIME DESTINATION ${FLASHSENTRY_HELPER_RELDIR})
     install(CODE "

@@ -1,33 +1,31 @@
 # Windows 10/11 support
 
-FlashSentry is being ported to Windows in stages. The initial Windows build keeps the Qt
-application, ISO verification, reports, audit logging, settings, tray support, and watch-manifest
-verification paths portable.
+FlashSentry ships a native Windows build with the same Qt shell, ISO verification, policy store,
+BadUSB monitoring, and removable-volume workflows as Linux—implemented with Windows APIs instead of
+udev, UDisks2, and polkit.
 
-## Initial Windows build
+## Supported on Windows
 
-Supported in the first porting milestone:
-
-- ISO verification for local files and removable-volume folders.
+- ISO verification for local files and removable-volume folders (`E:\`, etc.).
 - Embedded ISO catalog and user-trusted hash entries.
-- Watch-manifest verification on normal mounted paths such as `E:/`.
-- System tray notifications.
-- Login autostart through the current user's Windows `Run` registry key.
-- Removable volume polling through Qt storage APIs.
-
-Linux-only features that are intentionally stubbed in the initial Windows build:
-
-- UDisks2/polkit mount control. Windows normally auto-mounts removable volumes.
-- Full-partition raw hashing. A future build needs a native `CreateFileW("\\\\.\\PhysicalDriveN")`
-  reader and a UAC elevation story.
-- BadUSB HID monitoring. A future build needs SetupAPI/HID enumeration and device notifications.
-- usbmon packet capture. Windows users should use USBPcap/Wireshark manually until native
-  integration is added.
+- Watch-manifest verification on mounted paths.
+- Removable volume detection via `QStorageInfo` and `GetDriveType`.
+- **Programmatic safe eject** via `FSCTL_DISMOUNT_VOLUME` / `IOCTL_STORAGE_EJECT_MEDIA`.
+- **Full-disk raw hashing** via `\\.\PhysicalDriveN` with optional **UAC-elevated**
+  `flashsentry-read-helper.exe` (same JSON protocol as Linux's polkit helper).
+- **BadUSB HID monitoring** via SetupAPI / HID APIs (VID/PID, capabilities, connect/disconnect).
+- **USBPcap capture** when `USBPcapCMD.exe` is on `PATH` (default command template in settings).
+- **Policy store** via `flashsentry-policyd.exe` (QLocalServer) or in-process fallback
+  (`FLASHSENTRY_POLICY_IN_PROCESS=1`).
+- System tray and login autostart (`HKCU\...\Run`).
 
 ## Build notes
 
-Use a Qt 6 Windows toolchain and OpenSSL. CMake no longer requires libudev, Qt DBus, pthread, or
-the Linux read helper on Windows.
+Use a Qt 6 Windows toolchain and OpenSSL. The following are built and installed next to
+`FlashSentry.exe`:
+
+- `flashsentry-policyd.exe`
+- `flashsentry-read-helper.exe`
 
 Example:
 
@@ -41,50 +39,37 @@ cmake --build build-windows
 ctest --test-dir build-windows --output-on-failure
 ```
 
-If using vcpkg, prefer a normal CMake toolchain invocation with `qtbase` and `openssl` installed
-for the selected triplet.
+Override helper location:
+
+```powershell
+$env:FLASHSENTRY_READ_HELPER = "C:\path\to\flashsentry-read-helper.exe"
+```
+
+Force in-process policy (no daemon):
+
+```powershell
+$env:FLASHSENTRY_POLICY_IN_PROCESS = "1"
+```
+
+## Privileged hashing (UAC)
+
+If opening `\\.\PhysicalDriveN` returns access denied, FlashSentry launches
+`flashsentry-read-helper.exe` with the **runas** verb. Approve the UAC prompt; the helper writes a
+JSON result file that the app reads (same fields as Linux stdout JSON).
+
+## USB packet capture
+
+Install [USBPcap](https://desowin.org/usbpcap/) and ensure `USBPcapCMD.exe` is on `PATH`, or set a
+custom capture command in settings (placeholders: `{bus}`, `{out}`, `{stable_id}`, `{rule_id}`).
 
 ## Portable package
 
-The Windows CI job installs the app into a staging directory and uploads a portable ZIP artifact.
-This is the first distribution format because it avoids installer elevation and makes dependency
-issues visible early. CI also runs `windeployqt` and copies OpenSSL runtime DLLs into the staged
-application directory before zipping.
-
-For a local portable package:
-
-```powershell
-cmake --install build-windows --config Release --prefix .\stage
-$exe = Get-ChildItem -Path .\stage -Filter FlashSentry.exe -Recurse | Select-Object -First 1
-windeployqt --release --compiler-runtime --no-translations $exe.FullName
-Compress-Archive -Path .\stage\* -DestinationPath FlashSentry-windows-portable.zip
-```
-
-When `windeployqt` is available, the `deploy-windows-runtime` target can copy Qt runtime DLLs next
-to the executable before packaging:
-
-```powershell
-cmake --build build-windows --config Release --target deploy-windows-runtime
-```
-
-## Installer scaffold
-
-CMake configures CPack with ZIP and NSIS generators on Windows. After NSIS is installed, an
-experimental installer can be produced with:
-
-```powershell
-cmake --build build-windows --config Release
-cpack --config build-windows\CPackConfig.cmake -G NSIS
-```
-
-Treat the NSIS output as a developer preview until native Windows device features, upgrade behavior,
-icons, signing, and dependency bundling are verified.
+The Windows CI job builds a portable ZIP with `windeployqt` and OpenSSL DLLs. See the root
+`README.md` Windows section for local packaging commands.
 
 ## Roadmap
 
-1. Native removable-volume hotplug and richer device identity via Windows device notifications,
-   SetupAPI, and/or WMI.
-2. Native full-partition hashing using Windows storage APIs and a UAC-elevated helper.
-3. BadUSB HID monitoring using SetupAPI/HID APIs with baseline/anomaly rules shared with Linux.
-4. Optional USBPcap capture integration.
-5. Windows installer packaging, then MSI/WiX and code signing.
+1. `WM_DEVICECHANGE` hotplug (lower latency than polling).
+2. Richer USB serial/model identity (SetupAPI / WMI).
+3. WiX/MSI installer and Authenticode signing.
+4. Deeper USBPcap device matching (hub/port → USBPcap instance).

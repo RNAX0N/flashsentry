@@ -1,6 +1,7 @@
 #include "MainWindow.h"
 #include "AuditLog.h"
 #include "BadUsbAnalyzer.h"
+#include "Platform.h"
 
 #include <QDateTime>
 #include <QMessageBox>
@@ -9,8 +10,10 @@ namespace FlashSentry {
 
 void MainWindow::configureBadUsbMonitoring()
 {
+    const PlatformCapabilities caps = Platform::capabilities();
+    const bool badUsbActive = m_settings.badUsbEnabled && caps.badUsbMonitoring;
     if (m_badUsbWidget) {
-        m_badUsbWidget->setMonitoringEnabled(m_settings.badUsbEnabled);
+        m_badUsbWidget->setMonitoringEnabled(badUsbActive);
         if (m_badUsbBaselineStore) {
             m_badUsbWidget->setBaselineCount(m_badUsbBaselineStore->allDevices().size());
         }
@@ -18,9 +21,9 @@ void MainWindow::configureBadUsbMonitoring()
     if (!m_hidMonitor) {
         return;
     }
-    if (m_settings.badUsbEnabled && !m_hidMonitor->isMonitoring()) {
+    if (badUsbActive && !m_hidMonitor->isMonitoring()) {
         m_hidMonitor->startMonitoring();
-    } else if (!m_settings.badUsbEnabled && m_hidMonitor->isMonitoring()) {
+    } else if (!badUsbActive && m_hidMonitor->isMonitoring()) {
         m_hidMonitor->stopMonitoring();
     }
 }

@@ -1,5 +1,153 @@
 #include "MountManager.h"
 
+#ifdef Q_OS_WIN
+
+#include <QMutexLocker>
+#include <QDir>
+#include <QStorageInfo>
+#include <QTimer>
+#include <qt_windows.h>
+
+namespace FlashSentry {
+
+namespace {
+
+bool isRemovableVolumeRoot(const QString& rootPath)
+{
+    QString nativeRoot = QDir::toNativeSeparators(rootPath);
+    if (!nativeRoot.endsWith(QLatin1Char('\\'))) {
+        nativeRoot += QLatin1Char('\\');
+    }
+    return GetDriveTypeW(reinterpret_cast<LPCWSTR>(nativeRoot.utf16())) == DRIVE_REMOVABLE;
+}
+
+} // namespace
+
+MountManager::MountManager(QObject* parent)
+    : QObject(parent)
+{
+    qRegisterMetaType<MountResult>("MountResult");
+    qRegisterMetaType<UnmountResult>("UnmountResult");
+    refreshMountStatus();
+}
+
+MountManager::~MountManager() = default;
+
+bool MountManager::isAvailable() const
+{
+    return true;
+}
+
+QString MountManager::udisksVersion() const
+{
+    return QStringLiteral("Windows removable-volume APIs");
+}
+
+void MountManager::mount(const QString& deviceNode)
+{
+    mount(deviceNode, MountOptions{});
+}
+
+void MountManager::mount(const QString& deviceNode, const MountOptions& /*options*/)
+{
+    MountResult result;
+    result.deviceNode = deviceNode;
+    result.mountPoint = getMountPoint(deviceNode);
+    result.success = !result.mountPoint.isEmpty();
+    if (!result.success) {
+        result.errorMessage = QStringLiteral(
+            "Windows handles removable-volume mounting automatically; reconnect or mount in File Explorer.");
+    }
+    QTimer::singleShot(0, this, [this, result]() { emit mountCompleted(result); });
+}
+
+void MountManager::unmount(const QString& deviceNode)
+{
+    unmount(deviceNode, UnmountOptions{});
+}
+
+void MountManager::unmount(const QString& deviceNode, const UnmountOptions& /*options*/)
+{
+    UnmountResult result;
+    result.deviceNode = deviceNode;
+    result.success = false;
+    result.errorMessage =
+        QStringLiteral("Programmatic eject is not implemented in this Windows build");
+    QTimer::singleShot(0, this, [this, result]() { emit unmountCompleted(result); });
+}
+
+void MountManager::powerOff(const QString& deviceNode)
+{
+    QTimer::singleShot(0, this, [this, deviceNode]() {
+        emit powerOffCompleted(deviceNode, false,
+                               QStringLiteral("Programmatic USB power-off is not implemented on Windows"));
+    });
+}
+
+QString MountManager::getMountPoint(const QString& deviceNode) const
+{
+    QMutexLocker locker(&m_mutex);
+    return m_mountPoints.value(deviceNode);
+}
+
+bool MountManager::hasPendingOperations() const
+{
+    return false;
+}
+
+QStringList MountManager::mountedDevices() const
+{
+    QMutexLocker locker(&m_mutex);
+    return m_mountPoints.keys();
+}
+
+void MountManager::refreshMountStatus()
+{
+    QHash<QString, QString> newMountPoints;
+    for (const QStorageInfo& storage : QStorageInfo::mountedVolumes()) {
+        if (!storage.isValid() || !storage.isReady() || !isRemovableVolumeRoot(storage.rootPath())) {
+            continue;
+        }
+        const QString root = QDir::toNativeSeparators(storage.rootPath());
+        newMountPoints.insert(root, root);
+    }
+
+    QMutexLocker locker(&m_mutex);
+    for (auto it = m_mountPoints.constBegin(); it != m_mountPoints.constEnd(); ++it) {
+        if (!newMountPoints.contains(it.key())) {
+            const QString device = it.key();
+            locker.unlock();
+            emit mountStatusChanged(device, false, QString());
+            locker.relock();
+        }
+    }
+    for (auto it = newMountPoints.constBegin(); it != newMountPoints.constEnd(); ++it) {
+        if (!m_mountPoints.contains(it.key())) {
+            const QString device = it.key();
+            const QString mountPoint = it.value();
+            locker.unlock();
+            emit mountStatusChanged(device, true, mountPoint);
+            locker.relock();
+        }
+    }
+    m_mountPoints = newMountPoints;
+}
+
+QString MountManager::getFilesystemType(const QString& deviceNode) const
+{
+    const QStorageInfo storage(deviceNode);
+    return QString::fromUtf8(storage.fileSystemType());
+}
+
+bool MountManager::isLoopDevice(const QString& /*deviceNode*/) const
+{
+    return false;
+}
+
+} // namespace FlashSentry
+
+#else
+
 #include <QDBusConnection>
 #include <QDBusReply>
 #include <QDBusPendingReply>
@@ -558,3 +706,5 @@ QString MountManager::extractErrorMessage(const QDBusError& error) const
 }
 
 } // namespace FlashSentry
+
+#endif

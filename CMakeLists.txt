@@ -23,18 +23,34 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -Wpedantic")
+if(MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
+    set(CMAKE_CXX_FLAGS_DEBUG "/Zi /Od /W4")
+else()
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -Wpedantic")
+endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets DBus Concurrent Network)
+set(FLASHSENTRY_QT_COMPONENTS Core Gui Widgets Concurrent Network)
+if(NOT WIN32)
+    list(APPEND FLASHSENTRY_QT_COMPONENTS DBus)
+endif()
+find_package(Qt6 REQUIRED COMPONENTS ${FLASHSENTRY_QT_COMPONENTS})
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBUDEV REQUIRED libudev)
-pkg_check_modules(OPENSSL REQUIRED openssl)
-pkg_check_modules(LIBNOTIFY libnotify)
+if(WIN32)
+    find_package(OpenSSL REQUIRED)
+    set(OPENSSL_LIBRARIES OpenSSL::Crypto)
+    set(OPENSSL_INCLUDE_DIRS ${OPENSSL_INCLUDE_DIR})
+else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBUDEV REQUIRED libudev)
+    pkg_check_modules(OPENSSL REQUIRED openssl)
+    pkg_check_modules(LIBNOTIFY libnotify)
+endif()
 
 set(SOURCES
     src/main.cpp
+    src/Platform.cpp
     src/MainWindow.cpp
     src/MainWindow_verify_ext.cpp
     src/MainWindow_badusb_ext.cpp
@@ -104,6 +120,7 @@ set(SOURCES
 )
 
 set(HEADERS
+    include/Platform.h
     include/MainWindow.h
     include/DeviceMonitor.h
     include/HidDeviceMonitor.h
@@ -175,19 +192,38 @@ set(HEADERS
 )
 
 set(RESOURCES resources/resources.qrc)
+if(WIN32)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/FlashSentry.rc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/FlashSentry.rc"
+        @ONLY
+    )
+    list(APPEND RESOURCES "${CMAKE_CURRENT_BINARY_DIR}/FlashSentry.rc")
+endif()
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${RESOURCES})
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        WIN32_EXECUTABLE TRUE
+        OUTPUT_NAME "FlashSentry"
+    )
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${LIBUDEV_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIRS}
 )
+if(NOT WIN32)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${LIBUDEV_INCLUDE_DIRS})
+endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus Qt6::Concurrent Qt6::Network
-    ${LIBUDEV_LIBRARIES} ${OPENSSL_LIBRARIES} pthread
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Concurrent Qt6::Network
+    ${OPENSSL_LIBRARIES}
 )
+if(NOT WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::DBus ${LIBUDEV_LIBRARIES} pthread)
+endif()
 
 if(LIBNOTIFY_FOUND)
     target_compile_definitions(${PROJECT_NAME} PRIVATE HAS_LIBNOTIFY)
@@ -198,68 +234,77 @@ include(GNUInstallDirs)
 
 set(FLASHSENTRY_HELPER_RELDIR "${CMAKE_INSTALL_LIBDIR}/flashsentry")
 set(FLASHSENTRY_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper")
-add_executable(flashsentry-policyd
-    src/flashsentry-policyd.cpp
-    src/policy/PolicyPaths.cpp
-    src/policy/PolicyBlobCodec.cpp
-    src/policy/PolicyAudit.cpp
-    src/policy/PolicyStoreEngine.cpp
-)
-target_include_directories(flashsentry-policyd PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${OPENSSL_INCLUDE_DIRS}
-)
-target_link_libraries(flashsentry-policyd PRIVATE
-    Qt6::Core Qt6::Network
-    ${OPENSSL_LIBRARIES}
-)
+
+if(NOT WIN32)
+    add_executable(flashsentry-policyd
+        src/flashsentry-policyd.cpp
+        src/policy/PolicyPaths.cpp
+        src/policy/PolicyBlobCodec.cpp
+        src/policy/PolicyAudit.cpp
+        src/policy/PolicyStoreEngine.cpp
+    )
+    target_include_directories(flashsentry-policyd PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${OPENSSL_INCLUDE_DIRS}
+    )
+    target_link_libraries(flashsentry-policyd PRIVATE
+        Qt6::Core Qt6::Network
+        ${OPENSSL_LIBRARIES}
+    )
+
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/org.flashsentry.policy.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy"
+        @ONLY
+    )
+
+    add_executable(flashsentry-read-helper
+        src/flashsentry-read-helper.cpp
+        src/RawDeviceHash.cpp
+        src/RawDeviceHashAdvanced.cpp
+    )
+    target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
+    target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
+    target_compile_definitions(flashsentry-read-helper PRIVATE
+        FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+    )
+endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     FLASHSENTRY_READ_HELPER_PATH="${FLASHSENTRY_READ_HELPER}"
-    FLASHSENTRY_POLICYD_PATH="$<TARGET_FILE:flashsentry-policyd>"
     FLASHSENTRY_VERSION="${PROJECT_VERSION}"
 )
+if(NOT WIN32)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        FLASHSENTRY_POLICYD_PATH="$<TARGET_FILE:flashsentry-policyd>"
+    )
+endif()
 
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/packaging/org.flashsentry.policy.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy"
-    @ONLY
-)
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-add_executable(flashsentry-read-helper
-    src/flashsentry-read-helper.cpp
-    src/RawDeviceHash.cpp
-    src/RawDeviceHashAdvanced.cpp
-)
-target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
-target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
-target_compile_definitions(flashsentry-read-helper PRIVATE
-    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
-)
-
-install(TARGETS ${PROJECT_NAME} flashsentry-policyd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install(TARGETS flashsentry-read-helper RUNTIME DESTINATION ${FLASHSENTRY_HELPER_RELDIR})
-install(CODE "
-  set(_helper \"\${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper\")
-  set(_legacy \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/flashsentry\")
-  file(MAKE_DIRECTORY \"\$ENV{DESTDIR}\${_legacy}\")
-  execute_process(
-    COMMAND \${CMAKE_COMMAND} -E copy
-      \"\$ENV{DESTDIR}\${_helper}\"
-      \"\$ENV{DESTDIR}\${_legacy}/flashsentry-read-helper\"
-    RESULT_VARIABLE _copy_result
-  )
-  if(NOT _copy_result EQUAL 0)
-    message(WARNING \"Could not install libexec compatibility copy of flashsentry-read-helper\")
-  endif()
-")
-
-install(FILES packaging/flashsentry.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-install(FILES resources/icons/flashsentry.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
-install(FILES packaging/99-flashsentry.rules DESTINATION ${CMAKE_INSTALL_LIBDIR}/udev/rules.d)
-install(FILES packaging/flashsentry.service DESTINATION ${CMAKE_INSTALL_DATADIR}/systemd/user)
+if(NOT WIN32)
+    install(TARGETS flashsentry-policyd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS flashsentry-read-helper RUNTIME DESTINATION ${FLASHSENTRY_HELPER_RELDIR})
+    install(CODE "
+      set(_helper \"\${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper\")
+      set(_legacy \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/flashsentry\")
+      file(MAKE_DIRECTORY \"\$ENV{DESTDIR}\${_legacy}\")
+      execute_process(
+        COMMAND \${CMAKE_COMMAND} -E copy
+          \"\$ENV{DESTDIR}\${_helper}\"
+          \"\$ENV{DESTDIR}\${_legacy}/flashsentry-read-helper\"
+        RESULT_VARIABLE _copy_result
+      )
+      if(NOT _copy_result EQUAL 0)
+        message(WARNING \"Could not install libexec compatibility copy of flashsentry-read-helper\")
+      endif()
+    ")
+    install(FILES packaging/flashsentry.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    install(FILES resources/icons/flashsentry.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
+    install(FILES packaging/99-flashsentry.rules DESTINATION ${CMAKE_INSTALL_LIBDIR}/udev/rules.d)
+    install(FILES packaging/flashsentry.service DESTINATION ${CMAKE_INSTALL_DATADIR}/systemd/user)
+endif()
 
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/flashsentry)
 
@@ -269,6 +314,7 @@ install(
         CHANGELOG.md
         docs/USER_GUIDE.md
         docs/VERIFICATION.md
+        docs/WINDOWS.md
     DESTINATION ${CMAKE_INSTALL_DOCDIR}
 )
 install(FILES docs/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME docs-README.md)
@@ -302,4 +348,27 @@ message(STATUS "  Qt6 Version:   ${Qt6_VERSION}")
 message(STATUS "  libnotify:     ${LIBNOTIFY_FOUND}")
 message(STATUS "  Install to:    ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "  Read helper:   ${FLASHSENTRY_READ_HELPER}")
+message(STATUS "  Platform:      ${CMAKE_SYSTEM_NAME}")
 message(STATUS "")
+
+if(WIN32)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt
+        HINTS "${Qt6_DIR}/../../../bin" "$ENV{Qt6_DIR}/../../../bin")
+    if(WINDEPLOYQT_EXECUTABLE)
+        add_custom_target(deploy-windows-runtime
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                    --release
+                    --compiler-runtime
+                    --no-translations
+                    "$<TARGET_FILE:${PROJECT_NAME}>"
+            DEPENDS ${PROJECT_NAME}
+            COMMENT "Deploying Qt runtime with windeployqt")
+    endif()
+
+    set(CPACK_GENERATOR "ZIP")
+    set(CPACK_PACKAGE_NAME "FlashSentry")
+    set(CPACK_PACKAGE_VENDOR "FlashSentry")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "USB and ISO security monitor")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "FlashSentry")
+    include(CPack)
+endif()

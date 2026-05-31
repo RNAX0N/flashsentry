@@ -5,13 +5,14 @@
 </p>
 
 <p align="center">
-  <strong>USB flash drive security monitor for Arch Linux</strong>
+  <strong>USB flash drive security monitor for Linux and Windows</strong>
 </p>
 
 <p align="center">
   <a href="#features">Features</a> •
   <a href="#application-ui">UI</a> •
   <a href="#installation">Installation</a> •
+  <a href="#windows">Windows</a> •
   <a href="#usage">Usage</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#building">Building</a>
@@ -19,7 +20,10 @@
 
 ---
 
-FlashSentry monitors USB storage, maintains a cryptographic whitelist of trusted devices, verifies Linux ISOs on mounted sticks, and alerts you when content changes. It is built with Qt6, targets Arch Linux (x86_64 and aarch64), and is designed to be modular: libudev for device events, UDisks2 for mounts, polkit for privileges, and OpenSSL for hashing.
+FlashSentry monitors USB storage, maintains a cryptographic whitelist of trusted devices, verifies Linux ISOs on mounted sticks, and alerts you when content changes. It is built with Qt6 and OpenSSL.
+
+- **Linux (Arch, primary):** libudev device events, UDisks2 mounts, polkit, optional `flashsentry-policyd` and raw-disk hashing.
+- **Windows 10/11 (preview):** removable-volume polling via Qt, full GUI shell, ISO verify, watch manifests, signed policy store (in-process). See [docs/WINDOWS.md](docs/WINDOWS.md).
 
 **Current version:** 1.4.2 (see [CHANGELOG.md](CHANGELOG.md))
 
@@ -132,6 +136,28 @@ gsettings set org.gnome.desktop.media-handling automount false
 
 Log out and back in after adding yourself to the `storage` group.
 
+## Windows
+
+Windows builds are supported at the **preview** level: the app runs with the same navigation shell, policy store, ISO verifier, alerts/reports, and watch-folder verification on mounted drive letters (`E:\`, etc.).
+
+Not yet on Windows (stubs return clear errors):
+
+- Programmatic mount/eject (Explorer handles removable volumes)
+- Full-partition raw hashing (`\\.\PhysicalDriveN`)
+- BadUSB HID monitoring and usbmon capture
+- `flashsentry-policyd` / `flashsentry-read-helper` (policy runs in-process)
+
+**Build:** Qt 6, MSVC, OpenSSL — full steps in [docs/WINDOWS.md](docs/WINDOWS.md). CI produces a portable ZIP artifact on each push.
+
+```powershell
+cmake -B build -G "Visual Studio 17 2022" -A x64 `
+  -DCMAKE_BUILD_TYPE=Release `
+  -DFLASHSENTRY_BUILD_TESTS=ON `
+  -DOPENSSL_ROOT_DIR="C:\Program Files\OpenSSL-Win64"
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
+```
+
 ## Usage
 
 ### Starting FlashSentry
@@ -144,13 +170,9 @@ flashsentry --no-tray        # disable tray icon
 flashsentry --help           # all options
 ```
 
-The policy daemon is started automatically when needed. You can also run it manually:
+On Linux, the policy daemon is started automatically when needed (`flashsentry-policyd`). On Windows, policy always runs in-process.
 
-```bash
-flashsentry-policyd
-```
-
-For tests or development without the daemon:
+For tests or development without the daemon (Linux):
 
 ```bash
 export FLASHSENTRY_POLICY_IN_PROCESS=1
@@ -159,7 +181,7 @@ flashsentry
 
 ### Typical USB workflow
 
-1. **Connect a USB device** — FlashSentry detects it via udev.
+1. **Connect a USB device** — FlashSentry detects it (udev on Linux, volume polling on Windows).
 2. **New device?** — You are prompted to trust it (whitelist / watch folders / hash).
 3. **Known device?** — Verification runs according to its profile (watch manifest, hash, or both).
 4. **Hash or manifest matches** — Mount proceeds (subject to your settings).
@@ -220,22 +242,19 @@ JSON export/import in **Settings** is for backup and interchange only; the polic
 
 ## Building from source
 
-### Dependencies
+### Linux (Arch)
 
 ```bash
 sudo pacman -S qt6-base qt6-tools cmake base-devel openssl pkgconf
-# Runtime (PKGBUILD): udisks2 polkit systemd-libs
-# Optional: libnotify gnupg (ISO OpenPGP)
-```
-
-### Development build
-
-```bash
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Debug -DFLASHSENTRY_BUILD_TESTS=ON ..
 cmake --build . -j"$(nproc)"
 ./flashsentry
 ```
+
+### Windows
+
+See [docs/WINDOWS.md](docs/WINDOWS.md). Output executable: `FlashSentry.exe`.
 
 ### Tests
 
@@ -316,6 +335,7 @@ tail -20 ~/.config/FlashSentry/policy-audit.log
 |----------|-------------|
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Day-to-day workflows |
 | [docs/VERIFICATION.md](docs/VERIFICATION.md) | Verification internals |
+| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows build, limits, packaging |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 | [CLAUDE.md](CLAUDE.md) | Developer / architecture notes |
 

@@ -274,10 +274,11 @@ int main(int argc, char* argv[])
         qWarning() << "FlashSentry will run without tray icon.";
     }
     
-    // Setup signal handlers for graceful shutdown
+#if defined(Q_OS_UNIX)
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
     std::signal(SIGHUP, signalHandler);
+#endif
     
     // Register custom types
     qRegisterMetaType<DeviceInfo>("DeviceInfo");

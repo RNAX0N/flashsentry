@@ -19,12 +19,15 @@ std::unique_ptr<PolicyGateway> PolicyGateway::createDefault()
         return createInProcess(env.value(QStringLiteral("FLASHSENTRY_POLICY_STORE")));
     }
 
+#if defined(Q_OS_WIN)
+    return createInProcess();
+#else
     QString err;
     if (!PolicyDaemonLauncher::ensureRunning(&err)) {
-        // Fallback for dev without installed daemon
         return createInProcess();
     }
     return std::make_unique<PolicyDaemonClient>();
+#endif
 }
 
 } // namespace FlashSentry::Policy

@@ -4,6 +4,11 @@ All notable changes to FlashSentry are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Windows 10/11 preview build** — CMake cross-compile with MSVC; removable-volume monitoring via `QStorageInfo`; read-only mount status; registry autostart; in-process policy store; CI portable ZIP. See [docs/WINDOWS.md](docs/WINDOWS.md).
+- **Platform capabilities API** (`Platform.h`) — runtime feature flags per OS.
+
 ### Added (smarter hashing)
 
 - **Partition vs whole-disk** target when a USB stick has multiple partitions (hash options dialog + Settings defaults)

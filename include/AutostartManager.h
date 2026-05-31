@@ -8,12 +8,12 @@ namespace FlashSentry {
 /**
  * @brief Enables or disables FlashSentry at graphical login.
  *
- * Prefers the packaged systemd user unit (flashsentry.service). Falls back to
- * an XDG autostart desktop entry when systemd is unavailable (e.g. dev builds).
+ * Linux: prefers systemd user unit (flashsentry.service), falls back to XDG autostart.
+ * Windows: current-user Run registry key.
  */
 class AutostartManager {
 public:
-    enum class Backend { None, Systemd, Xdg };
+    enum class Backend { None, Systemd, Xdg, WindowsRegistry };
 
     static bool isAvailable();
     static Backend backend();

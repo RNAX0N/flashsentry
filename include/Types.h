@@ -26,9 +26,16 @@ struct DeviceInfo {
     bool isMounted = false;
 
     QString displayName() const {
-        if (!label.isEmpty()) return label;
-        if (!model.isEmpty()) return model;
-        return deviceNode.split('/').last();
+        if (!label.isEmpty()) {
+            return label;
+        }
+        if (!model.isEmpty()) {
+            return model;
+        }
+        if (deviceNode.contains(QLatin1Char(':'))) {
+            return deviceNode;
+        }
+        return deviceNode.section(QLatin1Char('/'), -1);
     }
 
     QString uniqueId() const {

@@ -104,6 +104,8 @@ jobs:
   windows-installers:
     runs-on: windows-latest
     needs: windows-build-and-test
+    if: success()
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 

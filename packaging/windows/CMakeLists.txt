@@ -93,6 +93,8 @@ file(WRITE "${_stage_script}" "@echo off\r\n")
 file(APPEND "${_stage_script}" "\"${CMAKE_COMMAND}\" -E rm -rf \"${FLASHSENTRY_STAGE_DIR}\"\r\n")
 file(APPEND "${_stage_script}"
     "\"${CMAKE_COMMAND}\" --install \"${CMAKE_BINARY_DIR}\" --config Release --prefix \"${FLASHSENTRY_STAGE_DIR}\"\r\n")
+file(APPEND "${_stage_script}"
+    "\"${CMAKE_COMMAND}\" -E make_directory \"${FLASHSENTRY_STAGE_DIR}/share\"\r\n")
 if(WINDEPLOYQT_EXECUTABLE)
     file(APPEND "${_stage_script}"
         "\"${WINDEPLOYQT_EXECUTABLE}\" --release --compiler-runtime --no-translations \"${FLASHSENTRY_STAGE_DIR}/bin/FlashSentry.exe\"\r\n")

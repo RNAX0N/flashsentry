@@ -2,6 +2,8 @@
 
 #ifdef Q_OS_WIN
 
+#include <qt_windows.h>
+
 #include <QDateTime>
 #include <QMutexLocker>
 #include <QRegularExpression>
@@ -198,9 +200,7 @@ void HidDeviceMonitor::scanExistingDevices()
     QHash<QString, HidDeviceInfo> detected;
 
     GUID hidGuid{};
-    if (!HidD_GetHidGuid(&hidGuid)) {
-        return;
-    }
+    HidD_GetHidGuid(&hidGuid);
 
     HDEVINFO deviceInfoSet = SetupDiGetClassDevsW(&hidGuid, nullptr, nullptr,
                                                   DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);

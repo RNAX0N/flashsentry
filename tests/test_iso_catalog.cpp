@@ -54,8 +54,10 @@ void TestIsoCatalog::initTestCase()
     }
     qunsetenv("GNUPGHOME");
 
-    if (FlashSentryTest::gpgAvailable()) {
+    if (qgetenv("FLASHSENTRY_GPG_PROGRAM").isEmpty() && FlashSentryTest::gpgAvailable()) {
         qputenv("FLASHSENTRY_GPG_PROGRAM", FlashSentryTest::gpgProgram().toUtf8());
+    }
+    if (FlashSentryTest::gpgAvailable()) {
         IsoCatalogManifest::reload();
     }
 }

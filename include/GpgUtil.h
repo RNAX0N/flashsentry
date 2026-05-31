@@ -8,21 +8,20 @@
 
 namespace FlashSentry {
 
-/** Resolved gpg(1) executable (cached). Honors FLASHSENTRY_GPG_PROGRAM. */
+/** Resolved gpg(1) executable. Honors FLASHSENTRY_GPG_PROGRAM on every call. */
 inline QString gpgProgram()
 {
-    static QString cached;
-    if (!cached.isEmpty()) {
-        return cached;
-    }
-
     const QByteArray env = qgetenv("FLASHSENTRY_GPG_PROGRAM");
     if (!env.isEmpty()) {
         const QString fromEnv = QString::fromUtf8(env);
         if (QFile::exists(fromEnv)) {
-            cached = fromEnv;
-            return cached;
+            return fromEnv;
         }
+    }
+
+    static QString cached;
+    if (!cached.isEmpty()) {
+        return cached;
     }
 
     QString gpg = QStandardPaths::findExecutable(QStringLiteral("gpg"));
@@ -50,7 +49,11 @@ inline QString gpgProgram()
 
 inline QStringList gpgBatchArgs()
 {
-    return {QStringLiteral("--batch"), QStringLiteral("--no-tty")};
+    QStringList args = {QStringLiteral("--batch"), QStringLiteral("--no-tty")};
+#ifdef Q_OS_WIN
+    args << QStringLiteral("--pinentry-mode") << QStringLiteral("loopback");
+#endif
+    return args;
 }
 
 } // namespace FlashSentry

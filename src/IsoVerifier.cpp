@@ -249,6 +249,12 @@ QString runGpg(const QStringList& args, QString* outputOut, QString* errorOut, i
     env.remove(QStringLiteral("GNUPGHOME"));
     proc.setProcessEnvironment(env);
     proc.start();
+    if (!proc.waitForStarted(10000)) {
+        if (errorOut) {
+            *errorOut = QStringLiteral("Failed to start gpg: %1").arg(gpgProgram());
+        }
+        return {};
+    }
     if (!proc.waitForFinished(timeoutMs)) {
         if (errorOut) *errorOut = QStringLiteral("gpg timed out");
         return {};

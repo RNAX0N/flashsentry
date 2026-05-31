@@ -205,12 +205,16 @@ bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
         env.remove(QStringLiteral("GNUPGHOME"));
         p.setProcessEnvironment(env);
         p.start();
+        if (!p.waitForStarted(10000)) {
+            return false;
+        }
         if (!p.waitForFinished(30000)) {
             p.kill();
             return false;
         }
+        const QByteArray combined = p.readAll();
         if (output) {
-            *output = QString::fromUtf8(p.readAllStandardOutput());
+            *output = QString::fromUtf8(combined);
         }
         return p.exitCode() == 0;
     };

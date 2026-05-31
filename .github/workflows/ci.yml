@@ -45,6 +45,9 @@ jobs:
         run: |
           git config --global core.autocrlf false
           git config --global core.eol lf
+          git add --renormalize resources/iso-catalog tests/fixtures
+          git checkout -- resources/iso-catalog tests/fixtures
+          python3 tools/validate-iso-manifest.py
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -123,6 +126,8 @@ jobs:
         run: |
           git config --global core.autocrlf false
           git config --global core.eol lf
+          git add --renormalize resources/iso-catalog tests/fixtures
+          git checkout -- resources/iso-catalog tests/fixtures
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4

@@ -53,11 +53,13 @@ void TestIsoVerifyPublisherMock::initTestCase()
     }
     qunsetenv("GNUPGHOME");
 
+    if (qgetenv("FLASHSENTRY_GPG_PROGRAM").isEmpty() && FlashSentryTest::gpgAvailable()) {
+        qputenv("FLASHSENTRY_GPG_PROGRAM", FlashSentryTest::gpgProgram().toUtf8());
+    }
     if (!FlashSentryTest::gpgAvailable()) {
         QSKIP("gpg not available");
     }
     const QString gpg = FlashSentryTest::gpgProgram();
-    qputenv("FLASHSENTRY_GPG_PROGRAM", gpg.toUtf8());
 
     const QString dropInDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
                               + QStringLiteral("/iso-catalog.d");

@@ -47,10 +47,17 @@ void TestIsoVerifyPublisherMock::initTestCase()
     QCoreApplication::setApplicationName(QStringLiteral("FlashSentryTest"));
     QStandardPaths::setTestModeEnabled(true);
 
+    const QByteArray gpgHomeEnv = qgetenv("GNUPGHOME");
+    if (!gpgHomeEnv.isEmpty() && !QDir(QString::fromUtf8(gpgHomeEnv)).exists()) {
+        qunsetenv("GNUPGHOME");
+    }
+    qunsetenv("GNUPGHOME");
+
     if (!FlashSentryTest::gpgAvailable()) {
         QSKIP("gpg not available");
     }
     const QString gpg = FlashSentryTest::gpgProgram();
+    qputenv("FLASHSENTRY_GPG_PROGRAM", gpg.toUtf8());
 
     const QString dropInDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
                               + QStringLiteral("/iso-catalog.d");
@@ -76,23 +83,25 @@ void TestIsoVerifyPublisherMock::initTestCase()
 
     QProcess importProc;
     importProc.setProgram(gpg);
-    importProc.setArguments({QStringLiteral("--homedir"),
-                             gpgHome,
-                             QStringLiteral("--batch"),
-                             QStringLiteral("--import"),
-                             pubKey});
+  importProc.setArguments(FlashSentry::gpgBatchArgs()
+                            << QStringLiteral("--homedir")
+                            << QDir::toNativeSeparators(gpgHome)
+                            << QStringLiteral("--import")
+                            << QDir::toNativeSeparators(pubKey));
     importProc.start();
     QVERIFY(importProc.waitForFinished(30000));
+    QVERIFY2(importProc.exitCode() == 0, qPrintable(importProc.readAllStandardError()));
 
     QProcess listProc;
     listProc.setProgram(gpg);
-    listProc.setArguments({QStringLiteral("--homedir"),
-                           gpgHome,
-                           QStringLiteral("--list-keys"),
-                           QStringLiteral("541DFAEB302C380671E666C7BBD811EF6FBA0EBC")});
+    listProc.setArguments(FlashSentry::gpgBatchArgs()
+                          << QStringLiteral("--homedir")
+                          << QDir::toNativeSeparators(gpgHome)
+                          << QStringLiteral("--list-keys")
+                          << QStringLiteral("541DFAEB302C380671E666C7BBD811EF6FBA0EBC"));
     listProc.start();
     QVERIFY(listProc.waitForFinished(10000));
-    QVERIFY2(listProc.exitCode() == 0, qPrintable(importProc.readAllStandardError()));
+    QVERIFY2(listProc.exitCode() == 0, qPrintable(listProc.readAllStandardError()));
 }
 
 void TestIsoVerifyPublisherMock::cleanupTestCase()

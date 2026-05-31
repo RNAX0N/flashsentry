@@ -1,4 +1,5 @@
 #include "IsoVerifier.h"
+#include "GpgUtil.h"
 #include "IsoScanRules.h"
 #include "AuditLog.h"
 #include "IsoCatalog.h"
@@ -238,11 +239,15 @@ bool ensureGpgHome(QString* errorOut)
 QString runGpg(const QStringList& args, QString* outputOut, QString* errorOut, int timeoutMs = 120000)
 {
     QProcess proc;
-    proc.setProgram(QStringLiteral("gpg"));
-    QStringList fullArgs = {QStringLiteral("--homedir"), gpgHomedir()};
+    proc.setProgram(gpgProgram());
+    QStringList fullArgs = gpgBatchArgs();
+    fullArgs << QStringLiteral("--homedir") << QDir::toNativeSeparators(gpgHomedir());
     fullArgs.append(args);
     proc.setArguments(fullArgs);
     proc.setProcessChannelMode(QProcess::MergedChannels);
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.remove(QStringLiteral("GNUPGHOME"));
+    proc.setProcessEnvironment(env);
     proc.start();
     if (!proc.waitForFinished(timeoutMs)) {
         if (errorOut) *errorOut = QStringLiteral("gpg timed out");

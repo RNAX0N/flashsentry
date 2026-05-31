@@ -8,10 +8,14 @@ function Add-GpgToPath {
     $dir = Split-Path -Parent $GpgExe
     Write-Host "Using gpg: $GpgExe"
     & $GpgExe --version
+    if ($env:GITHUB_ENV) {
+        Add-Content -Path $env:GITHUB_ENV -Value "FLASHSENTRY_GPG_PROGRAM=$GpgExe"
+    }
     if ($env:GITHUB_PATH) {
         Add-Content -Path $env:GITHUB_PATH -Value $dir
     } else {
         $env:PATH = "$dir;$env:PATH"
+        $env:FLASHSENTRY_GPG_PROGRAM = $GpgExe
     }
 }
 

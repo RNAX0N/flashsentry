@@ -52,6 +52,12 @@ void TestIsoCatalog::initTestCase()
     if (!gpgHome.isEmpty() && !QDir(QString::fromUtf8(gpgHome)).exists()) {
         qunsetenv("GNUPGHOME");
     }
+    qunsetenv("GNUPGHOME");
+
+    if (FlashSentryTest::gpgAvailable()) {
+        qputenv("FLASHSENTRY_GPG_PROGRAM", FlashSentryTest::gpgProgram().toUtf8());
+        IsoCatalogManifest::reload();
+    }
 }
 
 void TestIsoCatalog::archIsoMatches()

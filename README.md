@@ -206,7 +206,7 @@ System-wide defaults (optional): `/etc/flashsentry/config.json` — see packagin
 | `~/.config/FlashSentry/audit.log` | ISO and BadUSB audit events (JSON lines) |
 | `~/.config/FlashSentry/hash-checkpoints.json` | Resume data for long full-disk hashes |
 | `~/.config/FlashSentry/blocked-drives.json.migrated` | Legacy block list (after migration only) |
-| `~/.config/flashsentry/devices.json.migrated` | Legacy device JSON (after migration only) |
+| `~/.config/FlashSentry/flashsentry/devices.json.migrated` | Legacy device JSON (after migration only) |
 
 JSON export/import in **Settings** is for backup and interchange only; the policy store is the source of truth.
 

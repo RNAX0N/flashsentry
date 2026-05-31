@@ -1,73 +1,72 @@
-# Windows installer: optional USBPcap
+# Windows installers (.msi + .exe)
 
-FlashSentry BadUSB packet capture uses **USBPcap** (kernel driver + `USBPcapCMD.exe`). You cannot
-ship only the `.exe`; the official **USBPcapSetup** installer must run elevated.
+FlashSentry ships two Windows installer formats built with the **WiX Toolset v3**:
 
-## Recommended approach (checkbox, not silent-by-default)
+| Artifact | Format | Purpose |
+|----------|--------|---------|
+| `FlashSentry-x.y.z-x64.msi` | MSI | IT / GPO / `msiexec`; feature tree includes **USBPcap** checkbox |
+| `FlashSentry-x.y.z-x64-setup.exe` | Burn bundle | End-user bootstrapper; **Options** page checkbox for USBPcap |
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| **Optional NSIS component (recommended)** | User consent; works with driver signing; standard pattern | Requires admin once |
-| **WiX Burn bundle** | Good for `.msi` shops | More complex; same admin requirement |
-| **Auto-install without UI** | Hands-off | Driver install without explicit consent is risky; may fail SmartScreen/policy |
-| **Download on first run** | Small installer | Needs network; harder to audit; still needs admin |
+Both require the official **USBPcapSetup.exe** at build time (not committed to git).
 
-**Do not** rely on modifying `PATH` alone. USBPcap’s installer often leaves `USBPcapCMD.exe` at:
+## Prerequisites
 
-`C:\Program Files\USBPcap\USBPcapCMD.exe`
-
-FlashSentry resolves that path automatically (`UsbPcapLocator`). PATH is optional.
-
-## Legal / redistribution
-
-- Bundle the **official** `USBPcapSetup-x.y.z.exe` from https://desowin.org/usbpcap/ (do not repack the driver yourself).
-- USBPcap driver: **GPLv2**; USBPcapCMD: **BSD-2-Clause** — include USBPcap license text in your installer and third-party notices.
-- Run their installer as a **separate elevated step** (chain install), not by merging binaries into `FlashSentry.exe`.
-
-## NSIS: optional component (checked by default)
-
-1. Download `USBPcapSetup-1.5.4.0.exe` (or current version) into `packaging/windows/third-party/` (gitignored; CI downloads it).
-
-2. Configure CMake with the path:
+1. **WiX Toolset v3.14+** — https://wixtoolset.org/ or `choco install wixtoolset`
+2. **USBPcap** — download into `packaging/windows/third-party/`:
 
    ```powershell
-   cmake -B build -DFLASHSENTRY_USBPCAP_INSTALLER="C:/path/USBPcapSetup-1.5.4.0.exe"
+   pwsh packaging/windows/scripts/download-usbpcap.ps1
    ```
 
-3. Build the NSIS package:
+3. Built **Release** app (CMake + Qt + OpenSSL), same as portable ZIP.
 
-   ```powershell
-   cmake --build build --config Release --target package
-   ```
+## Build
 
-4. During FlashSentry setup, NSIS shows **Yes/No**: install USBPcap? (recommended). On **Yes**, it runs the bundled `USBPcapSetup.exe /S` (USBPcap’s own silent NSIS install; still requires admin, which the FlashSentry installer already requests).
+```powershell
+cmake -B build -G "Visual Studio 17 2022" -A x64 `
+  -DCMAKE_BUILD_TYPE=Release `
+  -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" `
+  -DFLASHSENTRY_BUILD_WINDOWS_INSTALLERS=ON `
+  -DFLASHSENTRY_USBPCAP_INSTALLER="$PWD/packaging/windows/third-party/USBPcapSetup-1.5.4.0.exe"
 
-For a true **checkbox on the components page**, use a custom `.nsi` (see `packaging/windows/custom-nsis-components.md` outline below) or WiX Burn.
+cmake --build build --config Release
+cmake --build build --config Release --target flashsentry-windows-installers
+```
 
-## MSI (WiX)
+Outputs (under `build/wix-out/`):
 
-Use **WiX Burn** (`<Bundle>`) with two packages:
+- `FlashSentry-1.4.2-x64.msi`
+- `FlashSentry-1.4.2-x64-setup.exe`
 
-1. FlashScap MSI (your app)
-2. USBPcap EXE as `ExePackage` with `InstallCondition` from a Burn checkbox property
+## USBPcap behavior
 
-Example condition property: `InstallUsbPcap = 1` when the checkbox is checked.
+| Installer | User control |
+|-----------|----------------|
+| **MSI** | Feature tree: **USBPcap (BadUSB packet capture)** — on by default, can uncheck |
+| **setup.exe** | Burn **Options**: **Install USBPcap (recommended)** — on by default |
 
-Chain command equivalent: `USBPcapSetup.exe /S` with `InstallScope="perMachine"` and elevated bundle.
+When selected, the official `USBPcapSetup.exe /S` runs elevated (driver + `USBPcapCMD.exe`).
 
-## CI: bundling USBPcap
+FlashSentry finds `C:\Program Files\USBPcap\USBPcapCMD.exe` without PATH (`UsbPcapLocator`).
 
-In GitHub Actions, download the installer to the build tree (verify SHA256), then pass
-`-DFLASHSENTRY_USBPCAP_INSTALLER=...` when building the NSIS target. Do not commit the binary to git.
+## Legal
 
-## Environment overrides (support / power users)
+- Bundle the **unmodified** USBPcap installer from https://desowin.org/usbpcap/
+- Include USBPcap license notices in your release docs (driver GPLv2, CMD BSD-2-Clause)
 
-| Variable | Purpose |
-|----------|---------|
-| `FLASHSENTRY_USBPCAP_CMD` | Full path to `USBPcapCMD.exe` |
-| Custom capture command in settings | Full template with `{bus}`, `{out}`, etc. |
+## CI
 
-## Driver signing note
+The Windows workflow installs WiX, downloads USBPcap, and builds both artifacts when possible.
 
-USBPcap ships a signed driver for normal Windows 10/11. Test-signing mode is only needed for
-custom/unsigned driver builds — not for the official release installer.
+## Portable ZIP
+
+Unchanged: `cmake --install` + `windeployqt` ZIP without USBPcap. Use installers when you want optional USBPcap.
+
+## Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| `candle` not found | Install WiX Toolset; reopen shell |
+| `heat` fails on `share/` | Run `cmake --install` first (`flashsentry-stage-windows`) |
+| Burn not built | Install full WiX (`lit.exe` missing) — MSI still builds |
+| USBPcap capture fails | Re-run installer with USBPcap enabled; reboot if driver requests it |

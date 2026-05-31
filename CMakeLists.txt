@@ -403,4 +403,6 @@ if(WIN32)
     endif()
 
     include(CPack)
+
+    add_subdirectory(packaging/windows)
 endif()

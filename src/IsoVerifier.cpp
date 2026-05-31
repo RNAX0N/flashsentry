@@ -223,6 +223,10 @@ QByteArray httpGet(const QString& url, QString* errorOut, int timeoutMs = 90000)
 
 QString gpgHomedir()
 {
+    const QString override = gpgHomedirOverride();
+    if (!override.isEmpty()) {
+        return override;
+    }
     return cacheDir() + QStringLiteral("/gnupg");
 }
 
@@ -541,6 +545,17 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
                                 && normalizeHash(r.computedSha256) == normalizeHash(r.expectedSha256);
                 r.source = IsoVerifySource::LocalSidecar;
             }
+        }
+    }
+
+    if (auto catalogMatch = IsoCatalog::matchIso(isoPath)) {
+        if (r.trustedFingerprints.isEmpty()) {
+            r.trustedFingerprints = catalogMatch->trustedFingerprints;
+        }
+        if (r.publisherId.isEmpty()) {
+            r.publisherId = catalogMatch->publisherId;
+            r.publisherName = catalogMatch->publisherName;
+            r.releaseLabel = catalogMatch->releaseLabel;
         }
     }
 

@@ -59,8 +59,14 @@ void TestIsoVerifyPublisherMock::initTestCase()
     if (!FlashSentryTest::gpgAvailable()) {
         QSKIP("gpg not available");
     }
-    const QString gpg = FlashSentryTest::gpgProgram();
-
+    const QByteArray sourceRoot = qgetenv("FLASHSENTRY_SOURCE_ROOT");
+    if (!sourceRoot.isEmpty()) {
+        const QString sharedGpgHome =
+            QDir::fromNativeSeparators(QString::fromUtf8(sourceRoot))
+            + QStringLiteral("/.flashsentry-test-gpg-home");
+        QDir().mkpath(sharedGpgHome);
+        qputenv("FLASHSENTRY_TEST_GPG_HOME", QFile::encodeName(sharedGpgHome));
+    }
     const QString dropInDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
                               + QStringLiteral("/iso-catalog.d");
     QDir().mkpath(dropInDir);
@@ -81,8 +87,11 @@ void TestIsoVerifyPublisherMock::initTestCase()
     const QString pubKey = fixturesRoot() + QStringLiteral("/catalog-signing/catalog-signing.pub");
     QVERIFY2(QFileInfo::exists(pubKey), qPrintable(pubKey));
 
-    const QString gpgHome =
-        QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + QStringLiteral("/iso-verify/gnupg");
+    QString gpgHome = FlashSentry::gpgHomedirOverride();
+    if (gpgHome.isEmpty()) {
+        gpgHome = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+                  + QStringLiteral("/iso-verify/gnupg");
+    }
     QVERIFY(QDir().mkpath(gpgHome));
     QFile::setPermissions(gpgHome, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
 

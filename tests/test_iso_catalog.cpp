@@ -57,6 +57,14 @@ void TestIsoCatalog::initTestCase()
     if (qgetenv("FLASHSENTRY_GPG_PROGRAM").isEmpty() && FlashSentryTest::gpgAvailable()) {
         qputenv("FLASHSENTRY_GPG_PROGRAM", FlashSentryTest::gpgProgram().toUtf8());
     }
+    const QByteArray sourceRoot = qgetenv("FLASHSENTRY_SOURCE_ROOT");
+    if (!sourceRoot.isEmpty()) {
+        const QString gpgHome =
+            QDir::fromNativeSeparators(QString::fromUtf8(sourceRoot))
+            + QStringLiteral("/.flashsentry-test-gpg-home");
+        QDir().mkpath(gpgHome);
+        qputenv("FLASHSENTRY_TEST_GPG_HOME", QFile::encodeName(gpgHome));
+    }
     if (FlashSentryTest::gpgAvailable()) {
         IsoCatalogManifest::reload();
     }

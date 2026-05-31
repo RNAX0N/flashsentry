@@ -105,6 +105,7 @@ jobs:
           foreach ($bin in @('C:\Program Files\Git\usr\bin', 'C:\Program Files\Git\mingw64\bin')) {
             if (Test-Path $bin) { $env:PATH = "$bin;$env:PATH" }
           }
+          $env:FLASHSENTRY_SOURCE_ROOT = "${{ github.workspace }}"
           ctest --test-dir build -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) {
             $tests = @(

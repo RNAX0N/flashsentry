@@ -159,49 +159,9 @@ bool verifyEmbeddedSha256(const QByteArray& manifestBytes)
     return false;
 }
 
-bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
+bool verifyEmbeddedGpgWithPaths(const QString& gpgHome, const QString& pubPath,
+                                const QString& sigPath, const QString& manifestPath)
 {
-    QFile sigFile(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.asc"));
-    QFile pubFile(QStringLiteral(":/iso-catalog/iso-catalog/catalog-signing.pub"));
-    if (!sigFile.exists() || !pubFile.exists()) {
-        return true;
-    }
-    if (!sigFile.open(QIODevice::ReadOnly) || !pubFile.open(QIODevice::ReadOnly)) {
-        return false;
-    }
-    const QByteArray sig = sigFile.readAll();
-    const QByteArray pub = pubFile.readAll();
-    if (sig.isEmpty() || pub.isEmpty()) {
-        return false;
-    }
-
-    QTemporaryDir temp;
-    if (!temp.isValid()) {
-        return false;
-    }
-    const QString manifestPath = temp.filePath(QStringLiteral("embedded-manifest.json"));
-    const QString sigPath = temp.filePath(QStringLiteral("embedded-manifest.json.asc"));
-    const QString pubPath = temp.filePath(QStringLiteral("catalog-signing.pub"));
-
-    QFile manifestOut(manifestPath);
-    QFile sigOut(sigPath);
-    QFile pubOut(pubPath);
-    if (!manifestOut.open(QIODevice::WriteOnly) || !sigOut.open(QIODevice::WriteOnly)
-        || !pubOut.open(QIODevice::WriteOnly)) {
-        return false;
-    }
-    manifestOut.write(manifestBytes);
-    sigOut.write(sig);
-    pubOut.write(pub);
-    manifestOut.close();
-    sigOut.close();
-    pubOut.close();
-
-    const QString gpgHome = temp.filePath(QStringLiteral("gnupg"));
-    if (!QDir().mkpath(gpgHome)) {
-        return false;
-    }
-
     auto runGpgInHome = [&](const QStringList& args, QString* output) -> bool {
         QProcess p;
         configureGpgProcess(p);
@@ -235,19 +195,84 @@ bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
     };
 
     g_embeddedGpgDetail.clear();
-    if (!runGpgInHome({QStringLiteral("--import"),
-                       QDir::toNativeSeparators(pubPath)},
-                      nullptr)) {
+    if (!runGpgInHome({QStringLiteral("--import"), QDir::toNativeSeparators(pubPath)}, nullptr)) {
+        return false;
+    }
+    return runGpgInHome({QStringLiteral("--verify"), QDir::toNativeSeparators(sigPath),
+                         QDir::toNativeSeparators(manifestPath)},
+                        nullptr);
+}
+
+bool verifyEmbeddedGpgOnDisk()
+{
+    const QString root = gpgScratchRoot();
+    const QString manifestPath =
+        root + QStringLiteral("/resources/iso-catalog/embedded-manifest.json");
+    const QString sigPath =
+        root + QStringLiteral("/resources/iso-catalog/embedded-manifest.json.asc");
+    const QString pubPath = root + QStringLiteral("/resources/iso-catalog/catalog-signing.pub");
+    if (!QFile::exists(manifestPath) || !QFile::exists(sigPath) || !QFile::exists(pubPath)) {
         return false;
     }
 
-    if (!runGpgInHome({QStringLiteral("--verify"),
-                       QDir::toNativeSeparators(sigPath),
-                       QDir::toNativeSeparators(manifestPath)},
-                      nullptr)) {
+    const QString gpgHome =
+        root + QStringLiteral("/.flashsentry-embedded-gpg-home");
+    if (!QDir().mkpath(gpgHome)) {
+        g_embeddedGpgDetail = QStringLiteral("cannot create gpg homedir");
         return false;
     }
-    return true;
+    return verifyEmbeddedGpgWithPaths(gpgHome, pubPath, sigPath, manifestPath);
+}
+
+bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
+{
+    if (verifyEmbeddedGpgOnDisk()) {
+        return true;
+    }
+
+    QFile sigFile(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.asc"));
+    QFile pubFile(QStringLiteral(":/iso-catalog/iso-catalog/catalog-signing.pub"));
+    if (!sigFile.exists() || !pubFile.exists()) {
+        return true;
+    }
+    if (!sigFile.open(QIODevice::ReadOnly) || !pubFile.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+    const QByteArray sig = sigFile.readAll();
+    const QByteArray pub = pubFile.readAll();
+    if (sig.isEmpty() || pub.isEmpty()) {
+        return false;
+    }
+
+    const QString scratchRoot = gpgScratchRoot() + QStringLiteral("/.flashsentry-gpg-scratch");
+    QDir().mkpath(scratchRoot);
+    QTemporaryDir temp(scratchRoot + QStringLiteral("/verify-XXXXXX"));
+    if (!temp.isValid()) {
+        return false;
+    }
+    const QString manifestPath = temp.filePath(QStringLiteral("embedded-manifest.json"));
+    const QString sigPath = temp.filePath(QStringLiteral("embedded-manifest.json.asc"));
+    const QString pubPath = temp.filePath(QStringLiteral("catalog-signing.pub"));
+
+    QFile manifestOut(manifestPath);
+    QFile sigOut(sigPath);
+    QFile pubOut(pubPath);
+    if (!manifestOut.open(QIODevice::WriteOnly) || !sigOut.open(QIODevice::WriteOnly)
+        || !pubOut.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    manifestOut.write(manifestBytes);
+    sigOut.write(sig);
+    pubOut.write(pub);
+    manifestOut.close();
+    sigOut.close();
+    pubOut.close();
+
+    const QString gpgHome = temp.filePath(QStringLiteral("gnupg"));
+    if (!QDir().mkpath(gpgHome)) {
+        return false;
+    }
+    return verifyEmbeddedGpgWithPaths(gpgHome, pubPath, sigPath, manifestPath);
 }
 
 void loadFromFile(const QString& path, bool userTofu = false)

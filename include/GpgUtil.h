@@ -60,6 +60,33 @@ inline QStringList gpgBatchArgs()
     return args;
 }
 
+/** Writable scratch directory (repo root on CI; avoids short Windows temp paths). */
+inline QString gpgScratchRoot()
+{
+    const QByteArray testHome = qgetenv("FLASHSENTRY_TEST_GPG_HOME");
+    if (!testHome.isEmpty()) {
+        return QFileInfo(QString::fromUtf8(testHome)).absolutePath();
+    }
+    const QByteArray workspace = qgetenv("GITHUB_WORKSPACE");
+    if (!workspace.isEmpty()) {
+        return QDir::fromNativeSeparators(QString::fromUtf8(workspace));
+    }
+    const QByteArray sourceRoot = qgetenv("FLASHSENTRY_SOURCE_ROOT");
+    if (!sourceRoot.isEmpty()) {
+        return QDir::fromNativeSeparators(QString::fromUtf8(sourceRoot));
+    }
+    return QDir::tempPath();
+}
+
+inline QString gpgHomedirOverride()
+{
+    const QByteArray testHome = qgetenv("FLASHSENTRY_TEST_GPG_HOME");
+    if (!testHome.isEmpty()) {
+        return QString::fromUtf8(testHome);
+    }
+    return {};
+}
+
 /** Ensure gpg can find its bundled DLLs when spawned from MSVC/Qt on Windows. */
 inline void configureGpgProcess(QProcess& proc)
 {

@@ -2,6 +2,8 @@
 
 #ifdef Q_OS_WIN
 
+#include "WinStorage.h"
+
 #include <QMutexLocker>
 #include <QDir>
 #include <QStorageInfo>
@@ -108,7 +110,7 @@ void DeviceMonitor::scanExistingDevices()
         }
         DeviceInfo info;
         info.deviceNode = storage.rootPath();
-        info.parentDevice = storage.rootPath();
+        info.parentDevice = WinStorage::physicalDrivePathForVolume(storage.rootPath());
         info.serial = QString::fromUtf8(storage.device());
         info.label = storage.displayName();
         info.model = storage.name();

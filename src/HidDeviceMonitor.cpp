@@ -34,11 +34,6 @@ void HidDeviceMonitor::stopMonitoring()
     wait(3000);
 }
 
-void HidDeviceMonitor::rescan()
-{
-    emit initialScanComplete(0);
-}
-
 QList<HidDeviceInfo> HidDeviceMonitor::connectedDevices() const
 {
     QMutexLocker locker(&m_devicesMutex);
@@ -53,49 +48,6 @@ std::optional<HidDeviceInfo> HidDeviceMonitor::getDevice(const QString& stableId
         return std::nullopt;
     }
     return *it;
-}
-
-void HidDeviceMonitor::run()
-{
-    emit initialScanComplete(0);
-    while (m_running.load()) {
-        msleep(POLL_TIMEOUT_MS);
-    }
-}
-
-bool HidDeviceMonitor::initializeUdev()
-{
-    return true;
-}
-void HidDeviceMonitor::cleanupUdev() {}
-void HidDeviceMonitor::scanExistingDevices()
-{
-    emit initialScanComplete(0);
-}
-void HidDeviceMonitor::processUdevEvent(struct udev_device* /*dev*/) {}
-bool HidDeviceMonitor::isUsbHidInput(struct udev_device* /*dev*/) const
-{
-    return false;
-}
-HidDeviceInfo HidDeviceMonitor::extractDeviceInfo(struct udev_device* /*dev*/) const
-{
-    return {};
-}
-struct udev_device* HidDeviceMonitor::getUsbDeviceParent(struct udev_device* /*dev*/) const
-{
-    return nullptr;
-}
-struct udev_device* HidDeviceMonitor::getUsbInterfaceParent(struct udev_device* /*dev*/) const
-{
-    return nullptr;
-}
-QString HidDeviceMonitor::getProperty(struct udev_device* /*dev*/, const char* /*key*/) const
-{
-    return {};
-}
-QString HidDeviceMonitor::getSysAttr(struct udev_device* /*dev*/, const char* /*key*/) const
-{
-    return {};
 }
 
 } // namespace FlashSentry

@@ -7,6 +7,7 @@
 #include "RawDeviceHash.h"
 
 #include <QCoreApplication>
+#include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTextStream>
@@ -42,9 +43,21 @@ int main(int argc, char* argv[])
     app.setApplicationName(QStringLiteral("flashsentry-read-helper"));
 
     const QStringList args = app.arguments();
-    if (args.size() != 6 || args[1] != QStringLiteral("hash")) {
+    QString outputPath;
+    QStringList positional;
+    for (int i = 1; i < args.size(); ++i) {
+        if (args.at(i) == QStringLiteral("--output") && i + 1 < args.size()) {
+            outputPath = args.at(i + 1);
+            ++i;
+            continue;
+        }
+        positional.append(args.at(i));
+    }
+
+    if (positional.size() != 5 || positional.at(0) != QStringLiteral("hash")) {
         QTextStream err(stderr);
-        err << "Usage: flashsentry-read-helper hash <device> <algorithm> <buffer_kb> <use_mmap 0|1>\n";
+        err << "Usage: flashsentry-read-helper hash <device> <algorithm> <buffer_kb> "
+               "<use_mmap 0|1> [--output path]\n";
         return 2;
     }
 
@@ -52,27 +65,27 @@ int main(int argc, char* argv[])
     timer.start();
 
     bool bufferSizeOk = false;
-    const int requestedBufferSizeKB = args[4].toInt(&bufferSizeOk);
+    const int requestedBufferSizeKB = positional.at(3).toInt(&bufferSizeOk);
     if (!bufferSizeOk) {
         HashResult fail;
-        fail.deviceNode = args[2];
+        fail.deviceNode = positional.at(1);
         fail.errorMessage = QStringLiteral("Invalid buffer size");
         printResult(fail, timer.elapsed());
         return 2;
     }
-    if (args[5] != QStringLiteral("0") && args[5] != QStringLiteral("1")) {
+    if (positional.at(4) != QStringLiteral("0") && positional.at(4) != QStringLiteral("1")) {
         HashResult fail;
-        fail.deviceNode = args[2];
+        fail.deviceNode = positional.at(1);
         fail.errorMessage = QStringLiteral("Invalid memory-mapping option");
         printResult(fail, timer.elapsed());
         return 2;
     }
 
     RawDeviceHash::Options options;
-    options.deviceNode = args[2];
-    options.algorithm = RawDeviceHash::algorithmFromName(args[3]);
+    options.deviceNode = positional.at(1);
+    options.algorithm = RawDeviceHash::algorithmFromName(positional.at(2));
     options.bufferSizeKB = RawDeviceHash::normalizedBufferSizeKB(requestedBufferSizeKB);
-    options.useMemoryMapping = args[5] != QStringLiteral("0");
+    options.useMemoryMapping = positional.at(4) != QStringLiteral("0");
 
     const int fd = RawDeviceHash::openDevice(options.deviceNode);
     if (fd < 0) {
@@ -87,6 +100,28 @@ int main(int argc, char* argv[])
     RawDeviceHash::closeDevice(fd);
     result.durationMs = static_cast<uint64_t>(timer.elapsed());
 
-    printResult(result, timer.elapsed());
+    if (!outputPath.isEmpty()) {
+        QFile outFile(outputPath);
+        if (!outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            QTextStream err(stderr);
+            err << "Failed to write result file\n";
+            return 1;
+        }
+        QJsonObject obj;
+        if (result.success) {
+            obj[QStringLiteral("success")] = true;
+            obj[QStringLiteral("hash")] = result.hash;
+            obj[QStringLiteral("algorithm")] = result.algorithm;
+            obj[QStringLiteral("bytes")] = static_cast<double>(result.bytesProcessed);
+            obj[QStringLiteral("duration_ms")] = static_cast<double>(timer.elapsed());
+        } else {
+            obj[QStringLiteral("success")] = false;
+            obj[QStringLiteral("error")] = result.errorMessage;
+        }
+        outFile.write(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+        outFile.close();
+    } else {
+        printResult(result, timer.elapsed());
+    }
     return result.success ? 0 : 1;
 }

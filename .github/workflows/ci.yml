@@ -47,9 +47,11 @@ jobs:
           arch: 'win64_msvc2019_64'
           cache: true
 
-      - name: Install OpenSSL
+      - name: Install OpenSSL and GnuPG
         shell: pwsh
-        run: choco install openssl -y --no-progress
+        run: |
+          choco install openssl gnupg -y --no-progress
+          gpg --version
 
       - name: Verify toolchain helpers
         shell: pwsh

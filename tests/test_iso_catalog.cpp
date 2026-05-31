@@ -1,5 +1,8 @@
 #include <QtTest>
+#include <QCoreApplication>
 #include <QDir>
+#include <QStandardPaths>
+#include "GpgTestUtil.h"
 #include "IsoCatalog.h"
 #include "IsoCatalogManifest.h"
 
@@ -41,6 +44,10 @@ private slots:
 
 void TestIsoCatalog::initTestCase()
 {
+    QCoreApplication::setOrganizationName(QStringLiteral("FlashSentry"));
+    QCoreApplication::setApplicationName(QStringLiteral("FlashSentryTest"));
+    QStandardPaths::setTestModeEnabled(true);
+
     const QByteArray gpgHome = qgetenv("GNUPGHOME");
     if (!gpgHome.isEmpty() && !QDir(QString::fromUtf8(gpgHome)).exists()) {
         qunsetenv("GNUPGHOME");
@@ -272,6 +279,9 @@ void TestIsoCatalog::verifiableImageExtensions()
 
 void TestIsoCatalog::embeddedManifestIntegrity()
 {
+    if (!FlashSentryTest::gpgAvailable()) {
+        QSKIP("gpg not available");
+    }
     IsoCatalogManifest::reload();
     QVERIFY(IsoCatalogManifest::lastEmbeddedSha256Ok());
     QVERIFY(IsoCatalogManifest::lastEmbeddedGpgOk());

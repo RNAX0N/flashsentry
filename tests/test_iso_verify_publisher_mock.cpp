@@ -5,6 +5,7 @@
 #include <QProcess>
 #include <QStandardPaths>
 
+#include "GpgTestUtil.h"
 #include "IsoCatalogManifest.h"
 #include "IsoVerifier.h"
 
@@ -43,7 +44,13 @@ void TestIsoVerifyPublisherMock::initTestCase()
     qputenv("XDG_CACHE_HOME", (m_configHome.path() + QStringLiteral("/cache")).toUtf8());
 
     QCoreApplication::setOrganizationName(QStringLiteral("FlashSentry"));
-    QCoreApplication::setApplicationName(QStringLiteral("FlashSentry"));
+    QCoreApplication::setApplicationName(QStringLiteral("FlashSentryTest"));
+    QStandardPaths::setTestModeEnabled(true);
+
+    if (!FlashSentryTest::gpgAvailable()) {
+        QSKIP("gpg not available");
+    }
+    const QString gpg = FlashSentryTest::gpgProgram();
 
     const QString dropInDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
                               + QStringLiteral("/iso-catalog.d");
@@ -68,7 +75,7 @@ void TestIsoVerifyPublisherMock::initTestCase()
     QFile::setPermissions(gpgHome, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
 
     QProcess importProc;
-    importProc.setProgram(QStringLiteral("gpg"));
+    importProc.setProgram(gpg);
     importProc.setArguments({QStringLiteral("--homedir"),
                              gpgHome,
                              QStringLiteral("--batch"),
@@ -78,7 +85,7 @@ void TestIsoVerifyPublisherMock::initTestCase()
     QVERIFY(importProc.waitForFinished(30000));
 
     QProcess listProc;
-    listProc.setProgram(QStringLiteral("gpg"));
+    listProc.setProgram(gpg);
     listProc.setArguments({QStringLiteral("--homedir"),
                            gpgHome,
                            QStringLiteral("--list-keys"),

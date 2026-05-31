@@ -82,11 +82,40 @@ jobs:
             -DFLASHSENTRY_BUILD_TESTS=ON `
             -DOPENSSL_ROOT_DIR="$env:OPENSSL_ROOT_DIR"
 
+      - name: Verify catalog byte order before build
+        shell: pwsh
+        run: |
+          $paths = @(
+            'resources/iso-catalog/embedded-manifest.json',
+            'resources/iso-catalog/embedded-manifest.json.sha256'
+          )
+          foreach ($path in $paths) {
+            $bytes = [System.IO.File]::ReadAllBytes($path)
+            if ($bytes -contains 13) {
+              throw "CRLF byte found in $path — manifest must be LF-only before RCC"
+            }
+          }
+
       - name: Build
         run: cmake --build build --config Release --parallel
 
       - name: Test
-        run: ctest --test-dir build -C Release --output-on-failure
+        shell: pwsh
+        run: |
+          foreach ($bin in @('C:\Program Files\Git\usr\bin', 'C:\Program Files\Git\mingw64\bin')) {
+            if (Test-Path $bin) { $env:PATH = "$bin;$env:PATH" }
+          }
+          ctest --test-dir build -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) {
+            $tests = @(
+              'build\tests\Release\test_iso_catalog.exe',
+              'build\tests\Release\test_iso_verify_publisher_mock.exe'
+            )
+            foreach ($exe in $tests) {
+              if (Test-Path $exe) { & $exe -v2 }
+            }
+            exit $LASTEXITCODE
+          }
 
       - name: Package portable ZIP
         shell: pwsh

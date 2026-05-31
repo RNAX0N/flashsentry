@@ -45,6 +45,8 @@ QString g_remoteUrl;
 bool g_loaded = false;
 bool g_embeddedShaOk = true;
 bool g_embeddedGpgOk = true;
+QString g_embeddedShaDetail;
+QString g_embeddedGpgDetail;
 
 QString manifestCachePath()
 {
@@ -147,7 +149,14 @@ bool verifyEmbeddedSha256(const QByteArray& manifestBytes)
     }
     const QByteArray digest =
         QCryptographicHash::hash(manifestBytes, QCryptographicHash::Sha256).toHex();
-    return QString::fromLatin1(digest) == expected;
+    const QString computed = QString::fromLatin1(digest);
+    if (computed == expected) {
+        g_embeddedShaDetail.clear();
+        return true;
+    }
+    g_embeddedShaDetail =
+        QStringLiteral("computed %1 expected %2").arg(computed, expected);
+    return false;
 }
 
 bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
@@ -195,40 +204,50 @@ bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
 
     auto runGpgInHome = [&](const QStringList& args, QString* output) -> bool {
         QProcess p;
-        p.setProgram(gpgProgram());
+        configureGpgProcess(p);
         QStringList fullArgs = gpgBatchArgs();
         fullArgs << QStringLiteral("--homedir") << QDir::toNativeSeparators(gpgHome);
         fullArgs.append(args);
         p.setArguments(fullArgs);
         p.setProcessChannelMode(QProcess::MergedChannels);
-        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-        env.remove(QStringLiteral("GNUPGHOME"));
-        p.setProcessEnvironment(env);
         p.start();
         if (!p.waitForStarted(10000)) {
+            g_embeddedGpgDetail = QStringLiteral("gpg failed to start (%1)").arg(gpgProgram());
             return false;
         }
         if (!p.waitForFinished(30000)) {
             p.kill();
+            g_embeddedGpgDetail = QStringLiteral("gpg timed out");
             return false;
         }
         const QByteArray combined = p.readAll();
         if (output) {
             *output = QString::fromUtf8(combined);
         }
-        return p.exitCode() == 0;
+        if (p.exitCode() != 0) {
+            g_embeddedGpgDetail = QString::fromUtf8(combined).trimmed();
+            if (g_embeddedGpgDetail.isEmpty()) {
+                g_embeddedGpgDetail = QStringLiteral("gpg exit code %1").arg(p.exitCode());
+            }
+            return false;
+        }
+        return true;
     };
 
+    g_embeddedGpgDetail.clear();
     if (!runGpgInHome({QStringLiteral("--import"),
                        QDir::toNativeSeparators(pubPath)},
                       nullptr)) {
         return false;
     }
 
-    return runGpgInHome({QStringLiteral("--verify"),
-                         QDir::toNativeSeparators(sigPath),
-                         QDir::toNativeSeparators(manifestPath)},
-                        nullptr);
+    if (!runGpgInHome({QStringLiteral("--verify"),
+                       QDir::toNativeSeparators(sigPath),
+                       QDir::toNativeSeparators(manifestPath)},
+                      nullptr)) {
+        return false;
+    }
+    return true;
 }
 
 void loadFromFile(const QString& path, bool userTofu = false)
@@ -261,6 +280,8 @@ void reloadAll()
     g_remoteUrl.clear();
     g_embeddedShaOk = true;
     g_embeddedGpgOk = true;
+    g_embeddedShaDetail.clear();
+    g_embeddedGpgDetail.clear();
 
     QFile embedded(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json"));
     if (embedded.open(QIODevice::ReadOnly)) {
@@ -344,10 +365,18 @@ QString IsoCatalogManifest::integrityStatusText()
     }
     QStringList issues;
     if (!g_embeddedShaOk) {
-        issues << QStringLiteral("SHA-256 digest mismatch");
+        if (g_embeddedShaDetail.isEmpty()) {
+            issues << QStringLiteral("SHA-256 digest mismatch");
+        } else {
+            issues << g_embeddedShaDetail;
+        }
     }
     if (!g_embeddedGpgOk) {
-        issues << QStringLiteral("OpenPGP signature check failed (missing gpg or invalid signature)");
+        if (g_embeddedGpgDetail.isEmpty()) {
+            issues << QStringLiteral("OpenPGP signature check failed (missing gpg or invalid signature)");
+        } else {
+            issues << g_embeddedGpgDetail;
+        }
     }
     return QStringLiteral("Embedded catalog integrity failed: %1")
         .arg(issues.join(QStringLiteral("; ")));

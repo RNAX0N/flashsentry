@@ -239,15 +239,12 @@ bool ensureGpgHome(QString* errorOut)
 QString runGpg(const QStringList& args, QString* outputOut, QString* errorOut, int timeoutMs = 120000)
 {
     QProcess proc;
-    proc.setProgram(gpgProgram());
+    configureGpgProcess(proc);
     QStringList fullArgs = gpgBatchArgs();
     fullArgs << QStringLiteral("--homedir") << QDir::toNativeSeparators(gpgHomedir());
     fullArgs.append(args);
     proc.setArguments(fullArgs);
     proc.setProcessChannelMode(QProcess::MergedChannels);
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.remove(QStringLiteral("GNUPGHOME"));
-    proc.setProcessEnvironment(env);
     proc.start();
     if (!proc.waitForStarted(10000)) {
         if (errorOut) {
@@ -259,7 +256,7 @@ QString runGpg(const QStringList& args, QString* outputOut, QString* errorOut, i
         if (errorOut) *errorOut = QStringLiteral("gpg timed out");
         return {};
     }
-    const QString out = QString::fromUtf8(proc.readAllStandardOutput());
+    const QString out = QString::fromUtf8(proc.readAll());
     if (outputOut) *outputOut = out.trimmed();
     if (proc.exitCode() != 0) {
         if (errorOut) *errorOut = out.trimmed();

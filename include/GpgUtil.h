@@ -1,7 +1,11 @@
 #pragma once
 
 #include <QByteArray>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QStandardPaths>
 #include <QString>
 #include <QStringList>
@@ -54,6 +58,30 @@ inline QStringList gpgBatchArgs()
     args << QStringLiteral("--pinentry-mode") << QStringLiteral("loopback");
 #endif
     return args;
+}
+
+/** Ensure gpg can find its bundled DLLs when spawned from MSVC/Qt on Windows. */
+inline void configureGpgProcess(QProcess& proc)
+{
+    const QString gpg = gpgProgram();
+    proc.setProgram(gpg);
+
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.remove(QStringLiteral("GNUPGHOME"));
+
+#ifdef Q_OS_WIN
+    const QFileInfo gpgInfo(gpg);
+    if (gpgInfo.exists()) {
+        const QString binDir = QDir::toNativeSeparators(gpgInfo.absolutePath());
+        proc.setWorkingDirectory(binDir);
+        const QString path = env.value(QStringLiteral("PATH"));
+        if (!path.contains(binDir, Qt::CaseInsensitive)) {
+            env.insert(QStringLiteral("PATH"), binDir + QLatin1Char(';') + path);
+        }
+    }
+#endif
+
+    proc.setProcessEnvironment(env);
 }
 
 } // namespace FlashSentry

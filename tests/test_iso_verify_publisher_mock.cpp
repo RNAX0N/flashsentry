@@ -87,7 +87,7 @@ void TestIsoVerifyPublisherMock::initTestCase()
     QFile::setPermissions(gpgHome, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
 
     QProcess importProc;
-    importProc.setProgram(gpg);
+    FlashSentry::configureGpgProcess(importProc);
     importProc.setArguments(FlashSentry::gpgBatchArgs()
                             << QStringLiteral("--homedir")
                             << QDir::toNativeSeparators(gpgHome)
@@ -98,7 +98,7 @@ void TestIsoVerifyPublisherMock::initTestCase()
     QVERIFY2(importProc.exitCode() == 0, qPrintable(importProc.readAllStandardError()));
 
     QProcess listProc;
-    listProc.setProgram(gpg);
+    FlashSentry::configureGpgProcess(listProc);
     listProc.setArguments(FlashSentry::gpgBatchArgs()
                           << QStringLiteral("--homedir")
                           << QDir::toNativeSeparators(gpgHome)

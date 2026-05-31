@@ -149,6 +149,7 @@ bool MountManager::isLoopDevice(const QString& /*deviceNode*/) const
 #else
 
 #include <QDBusConnection>
+#include <QDBusError>
 #include <QDBusReply>
 #include <QDBusPendingReply>
 #include <QDBusMetaType>

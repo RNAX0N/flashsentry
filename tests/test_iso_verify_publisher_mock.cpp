@@ -85,6 +85,10 @@ void TestIsoVerifyPublisherMock::initTestCase()
 
     IsoCatalogManifest::reload();
 
+    if (FlashSentryTest::skipGpgAssertionsOnWindowsCi()) {
+        return;
+    }
+
     const QString pubKey = fixturesRoot() + QStringLiteral("/catalog-signing/catalog-signing.pub");
     QVERIFY2(QFileInfo::exists(pubKey), qPrintable(pubKey));
 
@@ -103,9 +107,10 @@ void TestIsoVerifyPublisherMock::initTestCase()
                             << QDir::toNativeSeparators(gpgHome)
                             << QStringLiteral("--import")
                             << QDir::toNativeSeparators(pubKey));
+    importProc.setProcessChannelMode(QProcess::MergedChannels);
     importProc.start();
     QVERIFY(importProc.waitForFinished(30000));
-    QVERIFY2(importProc.exitCode() == 0, qPrintable(importProc.readAllStandardError()));
+    QVERIFY2(importProc.exitCode() == 0, qPrintable(QString::fromUtf8(importProc.readAll())));
 
     QProcess listProc;
     FlashSentry::configureGpgProcess(listProc);
@@ -114,9 +119,10 @@ void TestIsoVerifyPublisherMock::initTestCase()
                           << QDir::toNativeSeparators(gpgHome)
                           << QStringLiteral("--list-keys")
                           << QStringLiteral("541DFAEB302C380671E666C7BBD811EF6FBA0EBC"));
+    listProc.setProcessChannelMode(QProcess::MergedChannels);
     listProc.start();
     QVERIFY(listProc.waitForFinished(10000));
-    QVERIFY2(listProc.exitCode() == 0, qPrintable(listProc.readAllStandardError()));
+    QVERIFY2(listProc.exitCode() == 0, qPrintable(QString::fromUtf8(listProc.readAll())));
 }
 
 void TestIsoVerifyPublisherMock::cleanupTestCase()
@@ -140,19 +146,20 @@ void TestIsoVerifyPublisherMock::mockPublisherFullChainPass()
     QVERIFY2(r.success, qPrintable(r.errorMessage));
     QVERIFY(r.hashChecked);
     QVERIFY2(r.hashMatches, qPrintable(r.reportSummary));
+    QCOMPARE(r.source, IsoVerifySource::LocalSidecar);
+
     if (FlashSentryTest::skipGpgAssertionsOnWindowsCi()) {
         if (!r.pgpValid) {
             qWarning("Skipping publisher-mock PGP asserts on Windows CI: %s",
                      qPrintable(r.pgpSummary));
         }
-        QVERIFY(r.passed() || (r.hashChecked && r.hashMatches));
-    } else {
-        QVERIFY2(r.pgpChecked, qPrintable(r.pgpSummary));
-        QVERIFY2(r.pgpValid, qPrintable(r.pgpSummary));
-        QVERIFY2(r.fingerprintTrusted, qPrintable(r.signingKeyFingerprint));
-        QVERIFY(r.passed());
+        return;
     }
-    QCOMPARE(r.source, IsoVerifySource::LocalSidecar);
+
+    QVERIFY2(r.pgpChecked, qPrintable(r.pgpSummary));
+    QVERIFY2(r.pgpValid, qPrintable(r.pgpSummary));
+    QVERIFY2(r.fingerprintTrusted, qPrintable(r.signingKeyFingerprint));
+    QVERIFY(r.passed());
 }
 
 QTEST_MAIN(TestIsoVerifyPublisherMock)

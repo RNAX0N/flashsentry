@@ -47,11 +47,13 @@ jobs:
           arch: 'win64_msvc2019_64'
           cache: true
 
-      - name: Install OpenSSL and GnuPG
+      - name: Setup OpenSSL
         shell: pwsh
-        run: |
-          choco install openssl gnupg -y --no-progress
-          gpg --version
+        run: ./packaging/windows/scripts/ensure-ci-openssl.ps1
+
+      - name: Setup GnuPG for tests
+        shell: pwsh
+        run: ./packaging/windows/scripts/ensure-ci-gpg.ps1
 
       - name: Verify toolchain helpers
         shell: pwsh
@@ -60,14 +62,13 @@ jobs:
       - name: Configure
         shell: pwsh
         run: |
-          $opensslRoot = "C:/Program Files/OpenSSL"
-          if (-not (Test-Path $opensslRoot)) {
-            $opensslRoot = "C:/Program Files/OpenSSL-Win64"
+          if (-not $env:OPENSSL_ROOT_DIR) {
+            throw "OPENSSL_ROOT_DIR is not set (ensure-ci-openssl.ps1 should have set it)"
           }
           cmake -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
             -DFLASHSENTRY_BUILD_TESTS=ON `
-            -DOPENSSL_ROOT_DIR="$opensslRoot"
+            -DOPENSSL_ROOT_DIR="$env:OPENSSL_ROOT_DIR"
 
       - name: Build
         run: cmake --build build --config Release --parallel

@@ -11,6 +11,7 @@
 
 #include <hidsdi.h>
 #include <hidpi.h>
+#include <initguid.h>
 #include <setupapi.h>
 #include <cfgmgr32.h>
 #include <devpropdef.h>

@@ -9,12 +9,12 @@ function Test-GpgVerify {
     $dir = Split-Path -Parent $GpgExe
     $temp = Join-Path $env:RUNNER_TEMP "flashsentry-gpg-smoke"
     New-Item -ItemType Directory -Force -Path $temp | Out-Null
-    $home = Join-Path $temp "home"
-    New-Item -ItemType Directory -Force -Path $home | Out-Null
+    $gpgHomeDir = Join-Path $temp "home"
+    New-Item -ItemType Directory -Force -Path $gpgHomeDir | Out-Null
     $prevPath = $env:PATH
     $env:PATH = "$dir;$prevPath"
     try {
-        & $GpgExe --batch --no-tty --homedir $home --version | Out-Null
+        & $GpgExe --batch --no-tty --homedir $gpgHomeDir --version | Out-Null
         if ($LASTEXITCODE -ne 0) {
             return $false
         }

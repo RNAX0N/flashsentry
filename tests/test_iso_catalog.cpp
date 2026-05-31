@@ -289,9 +289,12 @@ void TestIsoCatalog::embeddedManifestIntegrity()
         QSKIP("gpg not available");
     }
     IsoCatalogManifest::reload();
-    QVERIFY(IsoCatalogManifest::lastEmbeddedSha256Ok());
-    QVERIFY(IsoCatalogManifest::lastEmbeddedGpgOk());
-    QVERIFY(IsoCatalogManifest::lastEmbeddedIntegrityOk());
+    QVERIFY2(IsoCatalogManifest::lastEmbeddedSha256Ok(),
+             qPrintable(IsoCatalogManifest::integrityStatusText()));
+    QVERIFY2(IsoCatalogManifest::lastEmbeddedGpgOk(),
+             qPrintable(IsoCatalogManifest::integrityStatusText()));
+    QVERIFY2(IsoCatalogManifest::lastEmbeddedIntegrityOk(),
+             qPrintable(IsoCatalogManifest::integrityStatusText()));
     QVERIFY(IsoCatalogManifest::entryCount() >= 4);
     QVERIFY(IsoCatalogManifest::integrityStatusText().contains(QStringLiteral("OK")));
     if (QFile::exists(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.asc"))) {

@@ -19,10 +19,20 @@ function Add-GpgToPath {
     }
 }
 
+if (Test-Path 'C:\msys64\usr\bin\bash.exe') {
+    if (-not (Test-Path 'C:\msys64\usr\bin\gpg.exe')) {
+        Write-Host 'Installing gnupg via MSYS2 pacman (usually faster than Chocolatey)...'
+        & 'C:\msys64\usr\bin\bash.exe' -lc 'pacman -Sy --noconfirm gnupg'
+    }
+    if (Test-Path 'C:\msys64\usr\bin\gpg.exe') {
+        Add-GpgToPath -GpgExe 'C:\msys64\usr\bin\gpg.exe'
+        exit 0
+    }
+}
+
 $candidates = @(
     'C:\Program Files\Git\usr\bin\gpg.exe',
-    'C:\Program Files\Git\mingw64\bin\gpg.exe',
-    'C:\msys64\usr\bin\gpg.exe'
+    'C:\Program Files\Git\mingw64\bin\gpg.exe'
 )
 
 foreach ($path in $candidates) {
@@ -36,15 +46,6 @@ $gpgOnPath = Get-Command gpg -ErrorAction SilentlyContinue
 if ($gpgOnPath) {
     Add-GpgToPath -GpgExe $gpgOnPath.Source
     exit 0
-}
-
-if (Test-Path 'C:\msys64\usr\bin\bash.exe') {
-    Write-Host 'Installing gnupg via MSYS2 pacman (usually faster than Chocolatey)...'
-    & 'C:\msys64\usr\bin\bash.exe' -lc 'pacman -Sy --noconfirm gnupg'
-    if (Test-Path 'C:\msys64\usr\bin\gpg.exe') {
-        Add-GpgToPath -GpgExe 'C:\msys64\usr\bin\gpg.exe'
-        exit 0
-    }
 }
 
 throw 'gpg not found on runner and MSYS2 install did not produce gpg.exe'

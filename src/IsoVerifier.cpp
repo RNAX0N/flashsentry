@@ -315,7 +315,10 @@ GpgVerifyDetails gpgVerifyDetached(const QString& sigPath, const QString& dataPa
     GpgVerifyDetails d;
     QString output;
     QString err;
-    runGpg({QStringLiteral("--verify"), sigPath, dataPath}, &output, &err);
+    runGpg({QStringLiteral("--verify"),
+            QDir::toNativeSeparators(sigPath),
+            QDir::toNativeSeparators(dataPath)},
+           &output, &err);
     d.summary = output.isEmpty() ? err : output;
 
     static const QRegularExpression fpRe(

@@ -221,16 +221,10 @@ bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
         return false;
     }
 
-    QString output;
-    if (!runGpgInHome({QStringLiteral("--verify"),
-                       QStringLiteral("--status-fd"),
-                       QStringLiteral("1"),
-                       QDir::toNativeSeparators(sigPath),
-                       QDir::toNativeSeparators(manifestPath)},
-                      &output)) {
-        return false;
-    }
-    return output.contains(QStringLiteral("VALIDSIG"), Qt::CaseInsensitive);
+    return runGpgInHome({QStringLiteral("--verify"),
+                         QDir::toNativeSeparators(sigPath),
+                         QDir::toNativeSeparators(manifestPath)},
+                        nullptr);
 }
 
 void loadFromFile(const QString& path, bool userTofu = false)

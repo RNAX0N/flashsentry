@@ -268,6 +268,7 @@ add_executable(flashsentry-read-helper
 target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
 target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
 if(WIN32)
+    target_sources(flashsentry-read-helper PRIVATE src/WinStorage.cpp)
     target_link_libraries(flashsentry-read-helper PRIVATE setupapi cfgmgr32 shell32)
     set_target_properties(flashsentry-read-helper PROPERTIES OUTPUT_NAME "flashsentry-read-helper")
 endif()

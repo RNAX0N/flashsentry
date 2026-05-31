@@ -137,13 +137,36 @@ void mergeManifestDocument(const QJsonDocument& doc, bool prependUserTofu = fals
     }
 }
 
+QByteArray loadEmbeddedManifestBytes()
+{
+    const QString diskPath =
+        gpgScratchRoot() + QStringLiteral("/resources/iso-catalog/embedded-manifest.json");
+    QFile diskFile(diskPath);
+    if (diskFile.open(QIODevice::ReadOnly)) {
+        return diskFile.readAll();
+    }
+    QFile embedded(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json"));
+    if (embedded.open(QIODevice::ReadOnly)) {
+        return embedded.readAll();
+    }
+    return {};
+}
+
 bool verifyEmbeddedSha256(const QByteArray& manifestBytes)
 {
-    QFile hashFile(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.sha256"));
-    if (!hashFile.open(QIODevice::ReadOnly)) {
-        return true;
+    QString expected;
+    const QString diskHashPath =
+        gpgScratchRoot() + QStringLiteral("/resources/iso-catalog/embedded-manifest.json.sha256");
+    QFile diskHashFile(diskHashPath);
+    if (diskHashFile.open(QIODevice::ReadOnly)) {
+        expected = QString::fromUtf8(diskHashFile.readAll()).trimmed().left(64).toLower();
+    } else {
+        QFile hashFile(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json.sha256"));
+        if (!hashFile.open(QIODevice::ReadOnly)) {
+            return true;
+        }
+        expected = QString::fromUtf8(hashFile.readAll()).trimmed().left(64).toLower();
     }
-    const QString expected = QString::fromUtf8(hashFile.readAll()).trimmed().left(64).toLower();
     if (expected.size() != 64) {
         return true;
     }
@@ -308,9 +331,8 @@ void reloadAll()
     g_embeddedShaDetail.clear();
     g_embeddedGpgDetail.clear();
 
-    QFile embedded(QStringLiteral(":/iso-catalog/iso-catalog/embedded-manifest.json"));
-    if (embedded.open(QIODevice::ReadOnly)) {
-        const QByteArray bytes = embedded.readAll();
+    const QByteArray bytes = loadEmbeddedManifestBytes();
+    if (!bytes.isEmpty()) {
         g_embeddedShaOk = verifyEmbeddedSha256(bytes);
         g_embeddedGpgOk = verifyEmbeddedGpgSignature(bytes);
         mergeManifestDocument(QJsonDocument::fromJson(bytes));

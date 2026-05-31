@@ -22,6 +22,7 @@ QString IsoChecksum::parseSha256Content(const QString& content, const QString& i
             QStringLiteral("^SHA256 \\((.+?)\\) = ([0-9a-fA-F]{64})$"),
             QRegularExpression::CaseInsensitiveOption);
         for (QString line : content.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+            line.remove(QLatin1Char('\r'));
             const QRegularExpressionMatch m = parenRe.match(line.trimmed());
             if (m.hasMatch() && m.captured(1) == isoBaseName) {
                 return normalizeHash(m.captured(2));
@@ -30,6 +31,7 @@ QString IsoChecksum::parseSha256Content(const QString& content, const QString& i
     }
 
     for (QString line : content.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+        line.remove(QLatin1Char('\r'));
         line = line.trimmed();
         if (line.startsWith(QLatin1Char('#'))) {
             continue;

@@ -281,6 +281,49 @@ bool publisherKeyAvailable(const QString& keyId)
     return listOut.contains(needle, Qt::CaseInsensitive);
 }
 
+bool importEmbeddedCatalogSigningKey(QString* logOut)
+{
+    if (!ensureGpgHome(logOut)) {
+        return false;
+    }
+    const QString diskPub =
+        gpgScratchRoot() + QStringLiteral("/resources/iso-catalog/catalog-signing.pub");
+    if (QFile::exists(diskPub)) {
+        QString err;
+        runGpg({QStringLiteral("--import"), QDir::toNativeSeparators(diskPub)}, nullptr, &err);
+        if (err.isEmpty()) {
+            return true;
+        }
+        if (logOut) {
+            *logOut = err;
+        }
+        return false;
+    }
+    QFile pub(QStringLiteral(":/iso-catalog/iso-catalog/catalog-signing.pub"));
+    if (!pub.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+    const QString scratchRoot = gpgScratchRoot() + QStringLiteral("/.flashsentry-gpg-scratch");
+    QDir().mkpath(scratchRoot);
+    QTemporaryDir temp(scratchRoot + QStringLiteral("/import-XXXXXX"));
+    if (!temp.isValid()) {
+        return false;
+    }
+    const QString pubPath = temp.filePath(QStringLiteral("catalog-signing.pub"));
+    QFile outFile(pubPath);
+    if (!outFile.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    outFile.write(pub.readAll());
+    outFile.close();
+    QString err;
+    runGpg({QStringLiteral("--import"), QDir::toNativeSeparators(pubPath)}, nullptr, &err);
+    if (logOut && !err.isEmpty()) {
+        *logOut = err;
+    }
+    return err.isEmpty();
+}
+
 bool importPublisherKeys(const QStringList& keyIds, const QString& keyserver, QString* logOut)
 {
     if (!ensureGpgHome(logOut)) {
@@ -677,6 +720,10 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
     const QString sigPath = IsoVerifier::findSignatureSidecar(isoPath);
     if (!sigPath.isEmpty() && !r.pgpChecked) {
         ensureGpgHome(nullptr);
+        if (!r.trustedFingerprints.isEmpty()
+            && qEnvironmentVariableIsSet("FLASHSENTRY_SKIP_KEYSERVER_IMPORT")) {
+            importEmbeddedCatalogSigningKey(nullptr);
+        }
         r.pgpChecked = true;
         QString signedDataPath = isoPath;
         const QFileInfo sigFi(sigPath);

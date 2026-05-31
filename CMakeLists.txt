@@ -77,6 +77,7 @@ set(SOURCES
     src/BadUsbAnalyzer.cpp
     src/BadUsbWidget.cpp
     src/UsbmonCapture.cpp
+    src/UsbPcapLocator.cpp
     src/VerifyCli.cpp
     src/IsoVerifySettingsLoader.cpp
     src/SettingsProfiles.cpp
@@ -150,6 +151,7 @@ set(HEADERS
     include/BadUsbAnalyzer.h
     include/BadUsbWidget.h
     include/UsbmonCapture.h
+    include/UsbPcapLocator.h
     include/VerifyCli.h
     include/IsoVerifySettingsLoader.h
     include/SettingsProfiles.h
@@ -380,5 +382,25 @@ if(WIN32)
     set(CPACK_PACKAGE_VENDOR "FlashSentry")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "USB and ISO security monitor")
     set(CPACK_PACKAGE_INSTALL_DIRECTORY "FlashSentry")
+
+    set(FLASHSENTRY_USBPCAP_INSTALLER "" CACHE FILEPATH
+        "Path to official USBPcapSetup.exe to offer during NSIS install (optional)")
+    if(FLASHSENTRY_USBPCAP_INSTALLER AND EXISTS "${FLASHSENTRY_USBPCAP_INSTALLER}")
+        file(TO_NATIVE_PATH "${FLASHSENTRY_USBPCAP_INSTALLER}" _flashsentry_usbpcap_installer)
+        get_filename_component(_flashsentry_usbpcap_name "${FLASHSENTRY_USBPCAP_INSTALLER}" NAME)
+        list(APPEND CPACK_GENERATOR "NSIS")
+        set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+        set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS
+            "MessageBox MB_YESNO|MB_ICONQUESTION \"Install USBPcap now? (Recommended for BadUSB USB packet capture. Requires a one-time driver install.)\" IDYES flashsentry_do_usbpcap"
+            "Goto flashsentry_skip_usbpcap"
+            "flashsentry_do_usbpcap:"
+            "SetOutPath \"$$PLUGINSDIR\""
+            "File /oname=${_flashsentry_usbpcap_name} \"${_flashsentry_usbpcap_installer}\""
+            "ExecWait '$$PLUGINSDIR\\${_flashsentry_usbpcap_name} /S' $$0"
+            "Delete \"$$PLUGINSDIR\\${_flashsentry_usbpcap_name}\""
+            "flashsentry_skip_usbpcap:")
+        message(STATUS "  NSIS+USBPcap:   ${_flashsentry_usbpcap_installer}")
+    endif()
+
     include(CPack)
 endif()

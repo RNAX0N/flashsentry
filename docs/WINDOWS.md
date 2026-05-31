@@ -59,8 +59,12 @@ JSON result file that the app reads (same fields as Linux stdout JSON).
 
 ## USB packet capture
 
-Install [USBPcap](https://desowin.org/usbpcap/) and ensure `USBPcapCMD.exe` is on `PATH`, or set a
-custom capture command in settings (placeholders: `{bus}`, `{out}`, `{stable_id}`, `{rule_id}`).
+FlashSentry finds `USBPcapCMD.exe` under `C:\Program Files\USBPcap\` automatically (PATH not required).
+
+- **Installer:** set `-DFLASHSENTRY_USBPCAP_INSTALLER=...\USBPcapSetup.exe` when configuring CMake to
+  bundle USBPcap and prompt during NSIS setup (see `packaging/windows/INSTALLER.md`).
+- **Manual:** install from https://desowin.org/usbpcap/
+- **Override:** `FLASHSENTRY_USBPCAP_CMD` or a custom capture command in settings (`{bus}`, `{out}`, …)
 
 ## Portable package
 

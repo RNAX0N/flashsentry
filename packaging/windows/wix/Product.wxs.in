@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?include "Variables.wxi" ?>
+
+  <Product Id="*"
+           Name="$(var.ProductName)"
+           Language="1033"
+           Version="$(var.ProductVersion)"
+           Manufacturer="$(var.Manufacturer)"
+           UpgradeCode="$(var.UpgradeCode)">
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Platform="x64"
+             Description="$(var.ProductName) USB and ISO security monitor" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+
+    <Feature Id="ProductFeature" Title="FlashSentry Application" Level="1" Display="expand" ConfigurableDirectory="INSTALLFOLDER">
+      <ComponentGroupRef Id="FlashSentryBinFiles" />
+      <ComponentGroupRef Id="FlashSentryShareFiles" />
+      <ComponentRef Id="FlashSentryStartMenuShortcut" />
+    </Feature>
+
+    <Feature Id="UsbPcapFeature"
+             Title="USBPcap (BadUSB packet capture)"
+             Description="Installs the official USBPcap driver and USBPcapCMD.exe (recommended). Requires administrator approval."
+             Level="1"
+             Absent="allow">
+      <ComponentRef Id="UsbPcapRedistComponent" />
+    </Feature>
+
+    <CustomAction Id="RunUsbPcapSetup"
+                  Directory="RedistFolder"
+                  Execute="deferred"
+                  Impersonate="no"
+                  ExeCommand="USBPcapSetup.exe /S"
+                  Return="check" />
+
+    <InstallExecuteSequence>
+      <Custom Action="RunUsbPcapSetup" After="InstallFiles">
+        NOT REMOVE AND (&amp;UsbPcapFeature = 3) AND NOT USBPCAPCMDEXISTS
+      </Custom>
+    </InstallExecuteSequence>
+
+    <Property Id="USBPCAPCMDEXISTS">
+      <DirectorySearch Id="UsbPcapDirSearch" Path="[ProgramFiles64Folder]USBPcap">
+        <FileSearch Id="SearchUsbPcapCmd" Name="USBPcapCMD.exe" />
+      </DirectorySearch>
+    </Property>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="FlashSentry">
+          <Directory Id="RedistFolder" Name="redist" />
+          <Directory Id="SHAREFOLDER" Name="share" />
+        </Directory>
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="FlashSentry" />
+      </Directory>
+    </Directory>
+
+    <Component Id="FlashSentryStartMenuShortcut" Guid="{C1D2E3F4-A5B6-7890-CDEF-123456789ABC}" Directory="ApplicationProgramsFolder">
+      <Shortcut Id="ApplicationStartMenuShortcut"
+                Name="FlashSentry"
+                Description="USB and ISO security monitor"
+                Target="[INSTALLFOLDER]FlashSentry.exe"
+                WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\FlashSentry" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <Component Id="UsbPcapRedistComponent" Guid="{D2E3F4A5-B6C7-8901-DEF0-23456789ABCD}" Directory="RedistFolder">
+      <File Id="UsbPcapSetupFile"
+            Name="USBPcapSetup.exe"
+            Source="$(var.UsbPcapInstaller)"
+            KeyPath="yes" />
+    </Component>
+
+    <UIRef Id="WixUI_FeatureTree" />
+    <UIRef Id="WixUI_Common" />
+  </Product>
+</Wix>

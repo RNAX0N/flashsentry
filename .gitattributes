@@ -1,0 +1,9 @@
+# ISO catalog and verification fixtures must stay LF on Windows (CI gpg + SHA-256 checks).
+resources/iso-catalog/*.json text eol=lf
+resources/iso-catalog/*.sha256 text eol=lf
+tests/fixtures/** text eol=lf
+
+# OpenPGP payloads are binary; never apply CRLF normalization.
+*.asc binary
+*.sig binary
+*.gpg binary

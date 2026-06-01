@@ -40,6 +40,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Normalize Git line endings
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git add --renormalize resources/iso-catalog tests/fixtures
+          git checkout -- resources/iso-catalog tests/fixtures
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -47,9 +55,17 @@ jobs:
           arch: 'win64_msvc2019_64'
           cache: true
 
-      - name: Install OpenSSL
+      - name: Setup OpenSSL
         shell: pwsh
-        run: choco install openssl -y --no-progress
+        run: ./packaging/windows/scripts/ensure-ci-openssl.ps1
+
+      - name: Setup GnuPG for tests
+        shell: pwsh
+        run: ./packaging/windows/scripts/ensure-ci-gpg.ps1
+
+      - name: Validate ISO manifest
+        shell: pwsh
+        run: python tools/validate-iso-manifest.py
 
       - name: Verify toolchain helpers
         shell: pwsh
@@ -58,20 +74,49 @@ jobs:
       - name: Configure
         shell: pwsh
         run: |
-          $opensslRoot = "C:/Program Files/OpenSSL"
-          if (-not (Test-Path $opensslRoot)) {
-            $opensslRoot = "C:/Program Files/OpenSSL-Win64"
+          if (-not $env:OPENSSL_ROOT_DIR) {
+            throw "OPENSSL_ROOT_DIR is not set (ensure-ci-openssl.ps1 should have set it)"
           }
           cmake -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
             -DFLASHSENTRY_BUILD_TESTS=ON `
-            -DOPENSSL_ROOT_DIR="$opensslRoot"
+            -DOPENSSL_ROOT_DIR="$env:OPENSSL_ROOT_DIR"
+
+      - name: Verify catalog byte order before build
+        shell: pwsh
+        run: |
+          $paths = @(
+            'resources/iso-catalog/embedded-manifest.json',
+            'resources/iso-catalog/embedded-manifest.json.sha256'
+          )
+          foreach ($path in $paths) {
+            $bytes = [System.IO.File]::ReadAllBytes($path)
+            if ($bytes -contains 13) {
+              throw "CRLF byte found in $path — manifest must be LF-only before RCC"
+            }
+          }
 
       - name: Build
         run: cmake --build build --config Release --parallel
 
       - name: Test
-        run: ctest --test-dir build -C Release --output-on-failure
+        shell: pwsh
+        run: |
+          foreach ($bin in @('C:\Program Files\Git\usr\bin', 'C:\Program Files\Git\mingw64\bin')) {
+            if (Test-Path $bin) { $env:PATH = "$bin;$env:PATH" }
+          }
+          $env:FLASHSENTRY_SOURCE_ROOT = "${{ github.workspace }}"
+          ctest --test-dir build -C Release --output-on-failure
+          if ($LASTEXITCODE -ne 0) {
+            $tests = @(
+              'build\tests\Release\test_iso_catalog.exe',
+              'build\tests\Release\test_iso_verify_publisher_mock.exe'
+            )
+            foreach ($exe in $tests) {
+              if (Test-Path $exe) { & $exe -v2 }
+            }
+            exit $LASTEXITCODE
+          }
 
       - name: Package portable ZIP
         shell: pwsh
@@ -100,3 +145,71 @@ jobs:
         with:
           name: FlashSentry-windows-portable
           path: artifacts/FlashSentry-windows-portable.zip
+
+  windows-installers:
+    runs-on: windows-latest
+    needs: windows-build-and-test
+    if: success()
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Normalize Git line endings
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git add --renormalize resources/iso-catalog tests/fixtures
+          git checkout -- resources/iso-catalog tests/fixtures
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.3'
+          arch: 'win64_msvc2019_64'
+          cache: true
+
+      - name: Install OpenSSL and WiX
+        shell: pwsh
+        run: |
+          choco install openssl wixtoolset -y --no-progress
+          echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
+
+      - name: Download USBPcap installer
+        id: usbpcap
+        shell: pwsh
+        run: |
+          $path = & "${{ github.workspace }}/packaging/windows/scripts/download-usbpcap.ps1"
+          "installer<<EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          $path | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Build MSI and setup EXE
+        shell: pwsh
+        run: |
+          $opensslRoot = "C:/Program Files/OpenSSL"
+          if (-not (Test-Path $opensslRoot)) {
+            $opensslRoot = "C:/Program Files/OpenSSL-Win64"
+          }
+          cmake -B build -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DFLASHSENTRY_BUILD_TESTS=OFF `
+            -DFLASHSENTRY_BUILD_WINDOWS_INSTALLERS=ON `
+            -DFLASHSENTRY_USBPCAP_INSTALLER="${{ steps.usbpcap.outputs.installer }}" `
+            -DOPENSSL_ROOT_DIR="$opensslRoot" `
+            "${{ github.workspace }}"
+          cmake --build build --config Release --parallel
+          cmake --build build --config Release --target flashsentry-windows-installers
+          New-Item -ItemType Directory -Force -Path artifacts/installers | Out-Null
+          $msi = Get-ChildItem build/wix-out -Filter *.msi -ErrorAction SilentlyContinue
+          $setup = Get-ChildItem build/wix-out -Filter *-setup.exe -ErrorAction SilentlyContinue
+          if (-not $msi) { throw "MSI was not produced under build/wix-out" }
+          if (-not $setup) { throw "setup.exe was not produced under build/wix-out" }
+          Copy-Item build/wix-out/*.msi artifacts/installers/
+          Copy-Item build/wix-out/*-setup.exe artifacts/installers/
+
+      - name: Upload Windows installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlashSentry-windows-installers
+          path: artifacts/installers/

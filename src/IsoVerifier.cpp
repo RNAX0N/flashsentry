@@ -1,4 +1,5 @@
 #include "IsoVerifier.h"
+#include "GpgUtil.h"
 #include "IsoScanRules.h"
 #include "AuditLog.h"
 #include "IsoCatalog.h"
@@ -222,6 +223,10 @@ QByteArray httpGet(const QString& url, QString* errorOut, int timeoutMs = 90000)
 
 QString gpgHomedir()
 {
+    const QString override = gpgHomedirOverride();
+    if (!override.isEmpty()) {
+        return override;
+    }
     return cacheDir() + QStringLiteral("/gnupg");
 }
 
@@ -238,17 +243,24 @@ bool ensureGpgHome(QString* errorOut)
 QString runGpg(const QStringList& args, QString* outputOut, QString* errorOut, int timeoutMs = 120000)
 {
     QProcess proc;
-    proc.setProgram(QStringLiteral("gpg"));
-    QStringList fullArgs = {QStringLiteral("--homedir"), gpgHomedir()};
+    configureGpgProcess(proc);
+    QStringList fullArgs = gpgBatchArgs();
+    fullArgs << QStringLiteral("--homedir") << QDir::toNativeSeparators(gpgHomedir());
     fullArgs.append(args);
     proc.setArguments(fullArgs);
     proc.setProcessChannelMode(QProcess::MergedChannels);
     proc.start();
+    if (!proc.waitForStarted(10000)) {
+        if (errorOut) {
+            *errorOut = QStringLiteral("Failed to start gpg: %1").arg(gpgProgram());
+        }
+        return {};
+    }
     if (!proc.waitForFinished(timeoutMs)) {
         if (errorOut) *errorOut = QStringLiteral("gpg timed out");
         return {};
     }
-    const QString out = QString::fromUtf8(proc.readAllStandardOutput());
+    const QString out = QString::fromUtf8(proc.readAll());
     if (outputOut) *outputOut = out.trimmed();
     if (proc.exitCode() != 0) {
         if (errorOut) *errorOut = out.trimmed();
@@ -267,6 +279,49 @@ bool publisherKeyAvailable(const QString& keyId)
         needle = needle.mid(2);
     }
     return listOut.contains(needle, Qt::CaseInsensitive);
+}
+
+bool importEmbeddedCatalogSigningKey(QString* logOut)
+{
+    if (!ensureGpgHome(logOut)) {
+        return false;
+    }
+    const QString diskPub =
+        gpgScratchRoot() + QStringLiteral("/resources/iso-catalog/catalog-signing.pub");
+    if (QFile::exists(diskPub)) {
+        QString err;
+        runGpg({QStringLiteral("--import"), QDir::toNativeSeparators(diskPub)}, nullptr, &err);
+        if (err.isEmpty()) {
+            return true;
+        }
+        if (logOut) {
+            *logOut = err;
+        }
+        return false;
+    }
+    QFile pub(QStringLiteral(":/iso-catalog/iso-catalog/catalog-signing.pub"));
+    if (!pub.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+    const QString scratchRoot = gpgScratchRoot() + QStringLiteral("/.flashsentry-gpg-scratch");
+    QDir().mkpath(scratchRoot);
+    QTemporaryDir temp(scratchRoot + QStringLiteral("/import-XXXXXX"));
+    if (!temp.isValid()) {
+        return false;
+    }
+    const QString pubPath = temp.filePath(QStringLiteral("catalog-signing.pub"));
+    QFile outFile(pubPath);
+    if (!outFile.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    outFile.write(pub.readAll());
+    outFile.close();
+    QString err;
+    runGpg({QStringLiteral("--import"), QDir::toNativeSeparators(pubPath)}, nullptr, &err);
+    if (logOut && !err.isEmpty()) {
+        *logOut = err;
+    }
+    return err.isEmpty();
 }
 
 bool importPublisherKeys(const QStringList& keyIds, const QString& keyserver, QString* logOut)
@@ -310,7 +365,10 @@ GpgVerifyDetails gpgVerifyDetached(const QString& sigPath, const QString& dataPa
     GpgVerifyDetails d;
     QString output;
     QString err;
-    runGpg({QStringLiteral("--verify"), sigPath, dataPath}, &output, &err);
+    runGpg({QStringLiteral("--verify"),
+            QDir::toNativeSeparators(sigPath),
+            QDir::toNativeSeparators(dataPath)},
+           &output, &err);
     d.summary = output.isEmpty() ? err : output;
 
     static const QRegularExpression fpRe(
@@ -533,6 +591,17 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
         }
     }
 
+    if (auto catalogMatch = IsoCatalog::matchIso(isoPath)) {
+        if (r.trustedFingerprints.isEmpty()) {
+            r.trustedFingerprints = catalogMatch->trustedFingerprints;
+        }
+        if (r.publisherId.isEmpty()) {
+            r.publisherId = catalogMatch->publisherId;
+            r.publisherName = catalogMatch->publisherName;
+            r.releaseLabel = catalogMatch->releaseLabel;
+        }
+    }
+
     // 1) Try publisher catalog (remote, embedded, or hint)
     if (r.expectedSha256.isEmpty()) {
     if (auto match = IsoCatalog::matchIso(isoPath)) {
@@ -651,6 +720,10 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
     const QString sigPath = IsoVerifier::findSignatureSidecar(isoPath);
     if (!sigPath.isEmpty() && !r.pgpChecked) {
         ensureGpgHome(nullptr);
+        if (!r.trustedFingerprints.isEmpty()
+            && qEnvironmentVariableIsSet("FLASHSENTRY_SKIP_KEYSERVER_IMPORT")) {
+            importEmbeddedCatalogSigningKey(nullptr);
+        }
         r.pgpChecked = true;
         QString signedDataPath = isoPath;
         const QFileInfo sigFi(sigPath);

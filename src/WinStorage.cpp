@@ -2,6 +2,8 @@
 
 #ifdef Q_OS_WIN
 
+#include <qt_windows.h>
+
 #include <QDir>
 #include <QRegularExpression>
 
@@ -100,7 +102,8 @@ QString physicalDrivePathForDeviceNode(const QString& deviceNode)
 bool isPhysicalDrivePath(const QString& path)
 {
     static const QRegularExpression re(
-        QStringLiteral(R"(^\\\\\.\\PhysicalDrive\d+$)", QRegularExpression::CaseInsensitiveOption));
+        QString(R"(^\\\\\.\\PhysicalDrive\d+$)"),
+        QRegularExpression::CaseInsensitiveOption);
     return re.match(QDir::toNativeSeparators(path.trimmed())).hasMatch();
 }
 
@@ -108,7 +111,8 @@ bool isVolumePath(const QString& path)
 {
     const QString native = QDir::toNativeSeparators(path.trimmed());
     static const QRegularExpression re(
-        QStringLiteral(R"(^\\\\\.\\[A-Za-z]:$)", QRegularExpression::CaseInsensitiveOption));
+        QString(R"(^\\\\\.\\[A-Za-z]:$)"),
+        QRegularExpression::CaseInsensitiveOption);
     if (re.match(native).hasMatch()) {
         return true;
     }

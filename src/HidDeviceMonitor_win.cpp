@@ -2,12 +2,16 @@
 
 #ifdef Q_OS_WIN
 
+#include <qt_windows.h>
+
 #include <QDateTime>
 #include <QMutexLocker>
 #include <QRegularExpression>
 #include <QSet>
 
 #include <hidsdi.h>
+#include <hidpi.h>
+#include <initguid.h>
 #include <setupapi.h>
 #include <cfgmgr32.h>
 #include <devpropdef.h>
@@ -62,10 +66,27 @@ bool appendHidUsageCapabilities(HANDLE hidHandle, QStringList& capabilities)
     return true;
 }
 
-QString hidString(HANDLE hidHandle, HANDLE (__stdcall* getter)(HANDLE, PVOID, ULONG))
+using HidStringFn = BOOLEAN(WINAPI*)(HANDLE, PVOID, ULONG);
+
+static BOOLEAN WINAPI hidManufacturer(HANDLE h, PVOID b, ULONG n)
+{
+    return HidD_GetManufacturerString(h, b, n);
+}
+
+static BOOLEAN WINAPI hidProduct(HANDLE h, PVOID b, ULONG n)
+{
+    return HidD_GetProductString(h, b, n);
+}
+
+static BOOLEAN WINAPI hidSerial(HANDLE h, PVOID b, ULONG n)
+{
+    return HidD_GetSerialNumberString(h, b, n);
+}
+
+QString hidString(HANDLE hidHandle, HidStringFn getter)
 {
     wchar_t buffer[256] = {};
-    if (!getter(hidHandle, buffer, sizeof(buffer))) {
+    if (!getter || !getter(hidHandle, buffer, static_cast<ULONG>(sizeof(buffer)))) {
         return {};
     }
     return QString::fromWCharArray(buffer).trimmed();
@@ -150,9 +171,9 @@ std::optional<HidDeviceInfo> readHidInterface(const QString& devicePath)
 
     info.vendorId = QStringLiteral("%1").arg(attrs.VendorID, 4, 16, QChar('0'));
     info.productId = QStringLiteral("%1").arg(attrs.ProductID, 4, 16, QChar('0'));
-    info.manufacturer = hidString(handle, HidD_GetManufacturerString);
-    info.product = hidString(handle, HidD_GetProductString);
-    info.serial = hidString(handle, HidD_GetSerialNumberString);
+    info.manufacturer = hidString(handle, hidManufacturer);
+    info.product = hidString(handle, hidProduct);
+    info.serial = hidString(handle, hidSerial);
 
     appendHidUsageCapabilities(handle, info.capabilities);
     CloseHandle(handle);
@@ -179,9 +200,11 @@ void HidDeviceMonitor::scanExistingDevices()
 {
     QHash<QString, HidDeviceInfo> detected;
 
-    HDEVINFO deviceInfoSet =
-        SetupDiGetClassDevsW(&GUID_DEVINTERFACE_HID, nullptr, nullptr,
-                             DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+    GUID hidGuid{};
+    HidD_GetHidGuid(&hidGuid);
+
+    HDEVINFO deviceInfoSet = SetupDiGetClassDevsW(&hidGuid, nullptr, nullptr,
+                                                  DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
     if (deviceInfoSet == INVALID_HANDLE_VALUE) {
         return;
     }
@@ -189,8 +212,7 @@ void HidDeviceMonitor::scanExistingDevices()
     SP_DEVICE_INTERFACE_DATA interfaceData{};
     interfaceData.cbSize = sizeof(interfaceData);
     for (DWORD index = 0;
-         SetupDiEnumDeviceInterfaces(deviceInfoSet, nullptr, &GUID_DEVINTERFACE_HID, index,
-                                     &interfaceData);
+         SetupDiEnumDeviceInterfaces(deviceInfoSet, nullptr, &hidGuid, index, &interfaceData);
          ++index) {
         DWORD required = 0;
         SetupDiGetDeviceInterfaceDetailW(deviceInfoSet, &interfaceData, nullptr, 0, &required,

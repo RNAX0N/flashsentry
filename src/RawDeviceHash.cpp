@@ -34,6 +34,7 @@
 #include <QCoreApplication>
 
 #include <shellapi.h>
+#include <qt_windows.h>
 
 #include <cerrno>
 #include <cstring>

@@ -91,7 +91,8 @@ int main(int argc, char* argv[])
     if (fd < 0) {
         HashResult fail;
         fail.deviceNode = options.deviceNode;
-        fail.errorMessage = QString("Failed to open device: %1").arg(strerror(errno));
+        fail.errorMessage = QStringLiteral("Failed to open device: %1")
+                                .arg(QString::fromLocal8Bit(strerror(errno)));
         printResult(fail, timer.elapsed());
         return 1;
     }

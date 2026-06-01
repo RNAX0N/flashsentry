@@ -145,7 +145,6 @@ add_custom_command(
 set(_candle_common
     -nologo
     -arch x64
-    -dProductVersion=${_flashsentry_version}
     -dStageBinDir=${_stage_bin_native}
     -dStageShareDir=${_stage_share_native}
     -dLicenseRtf=${_license_rtf_native}
@@ -171,7 +170,7 @@ add_custom_command(
 add_custom_command(
     OUTPUT "${_product_wixobj}"
     COMMAND "${WIX_CANDLE}" ${_candle_common}
-            ${WIX_UI_EXT} ${WIX_UTIL_EXT}
+            ${WIX_UI_EXT}
             -out "${_product_wixobj}"
             "${FLASHSENTRY_WIX_DIR}/Product.wxs"
     DEPENDS "${FLASHSENTRY_WIX_DIR}/Product.wxs" "${FLASHSENTRY_WIX_DIR}/Variables.wxi"
@@ -181,7 +180,7 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT "${_msi_output}"
-    COMMAND "${WIX_LIGHT}" -nologo -ext WixUIExtension -ext WixUtilExtension
+    COMMAND "${WIX_LIGHT}" -nologo -ext WixUIExtension
             -out "${_msi_output}"
             "${_product_wixobj}" "${_heat_bin_wixobj}" "${_heat_share_wixobj}"
     DEPENDS "${_product_wixobj}" "${_heat_bin_wixobj}" "${_heat_share_wixobj}"
@@ -196,7 +195,6 @@ if(WIX_LIT)
     add_custom_command(
         OUTPUT "${_bundle_wixobj}"
         COMMAND "${WIX_CANDLE}" -nologo ${WIX_BAL_EXT} ${WIX_UTIL_EXT}
-                -dProductVersion=${_flashsentry_version}
                 -dStageBinDir=${_stage_bin_native}
                 -dLicenseRtf=${_license_rtf_native}
                 -dUsbPcapInstaller=${_usbpcap_native}

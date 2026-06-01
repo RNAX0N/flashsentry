@@ -11,6 +11,7 @@ target_link_libraries(test_types PRIVATE Qt6::Test)
 add_test(NAME test_types COMMAND test_types)
 
 set(FLASHSPARTAN_POLICY_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/AppPaths.cpp
     ${CMAKE_SOURCE_DIR}/src/policy/PolicyPaths.cpp
     ${CMAKE_SOURCE_DIR}/src/policy/PolicyBlobCodec.cpp
     ${CMAKE_SOURCE_DIR}/src/policy/PolicyAudit.cpp

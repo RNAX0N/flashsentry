@@ -112,7 +112,7 @@ paru -S flashspartan
 ### From source (Arch)
 
 ```bash
-git clone https://github.com/RNAX0N/flashspartan.git
+git clone https://github.com/RNAX0N/flashsentry.git
 cd flashspartan/packaging
 ./build-package.sh -si
 ```
@@ -158,6 +158,8 @@ Official Windows builds are attached to **[GitHub Releases](https://github.com/R
 | `FlashSpartan-*-x64-portable.zip` | Unzip and run (no installer) |
 
 New releases are published when a version tag is pushed (for example `v1.5.0`). See [packaging/windows/INSTALLER.md](packaging/windows/INSTALLER.md).
+
+**Note:** Release **v1.5.0+** uses the **FlashSpartan** name and includes Windows `.msi` / `setup.exe` assets. Older GitHub releases (through **v1.1.4**) are the last **FlashSentry**-branded tags. Upgrading? See [docs/MIGRATION-FROM-FLASHSENTRY.md](docs/MIGRATION-FROM-FLASHSENTRY.md).
 
 **Build from source:** Qt 6, MSVC, OpenSSL — [docs/WINDOWS.md](docs/WINDOWS.md).
 
@@ -353,7 +355,7 @@ tail -20 ~/.config/FlashSpartan/policy-audit.log
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and feature requests: [GitHub Issues](https://github.com/RNAX0N/flashspartan/issues).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and feature requests: [GitHub Issues](https://github.com/RNAX0N/flashsentry/issues).
 
 ## License
 

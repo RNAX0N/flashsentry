@@ -840,7 +840,7 @@ QWidget* SettingsDialog::createAboutTab()
     QPushButton* githubBtn = new QPushButton("GitHub");
     githubBtn->setCursor(Qt::PointingHandCursor);
     connect(githubBtn, &QPushButton::clicked, []() {
-        QDesktopServices::openUrl(QUrl("https://github.com/flashspartan"));
+        QDesktopServices::openUrl(QUrl("https://github.com/RNAX0N/flashsentry"));
     });
     linksLayout->addWidget(githubBtn);
     

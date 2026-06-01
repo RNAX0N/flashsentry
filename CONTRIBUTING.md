@@ -13,7 +13,7 @@ Thank you for your interest in contributing.
 ```bash
 sudo pacman -S qt6-base qt6-tools cmake base-devel openssl pkgconf gnupg
 
-git clone https://github.com/RNAX0N/flashspartan.git
+git clone https://github.com/RNAX0N/flashsentry.git
 cd flashspartan
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Debug -DFLASHSPARTAN_BUILD_TESTS=ON ..
@@ -37,4 +37,4 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md#extending-publisher-support) and
 
 ## Questions
 
-Open a [GitHub issue](https://github.com/RNAX0N/flashspartan/issues) for bugs or feature discussion.
+Open a [GitHub issue](https://github.com/RNAX0N/flashsentry/issues) for bugs or feature discussion.

@@ -1,5 +1,7 @@
 #include "policy/PolicyPaths.h"
 
+#include "AppPaths.h"
+
 #include <QDir>
 #include <QProcessEnvironment>
 #include <QStandardPaths>
@@ -12,8 +14,7 @@ QString PolicyPaths::configDir()
     if (env.contains(QStringLiteral("FLASHSPARTAN_POLICY_CONFIG"))) {
         return env.value(QStringLiteral("FLASHSPARTAN_POLICY_CONFIG"));
     }
-    const QString base = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
-    return base + QStringLiteral("/FlashSpartan");
+    return AppPaths::configDir();
 }
 
 QString PolicyPaths::storeFilePath()

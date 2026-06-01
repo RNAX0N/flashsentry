@@ -385,11 +385,11 @@ void MainWindow::setupUi()
 
     m_aboutPage = new AboutPage;
     connect(m_aboutPage, &AboutPage::openRepositoryRequested, this, []() {
-        QDesktopServices::openUrl(QUrl(QStringLiteral("https://github.com/RNAX0N/flashspartan")));
+        QDesktopServices::openUrl(QUrl(QStringLiteral("https://github.com/RNAX0N/flashsentry")));
     });
     connect(m_aboutPage, &AboutPage::openUserGuideRequested, this, []() {
         QDesktopServices::openUrl(
-            QUrl(QStringLiteral("https://github.com/RNAX0N/flashspartan/blob/main/docs/USER_GUIDE.md")));
+            QUrl(QStringLiteral("https://github.com/RNAX0N/flashsentry/blob/main/docs/USER_GUIDE.md")));
     });
     m_pageStack->addWidget(m_aboutPage);
 

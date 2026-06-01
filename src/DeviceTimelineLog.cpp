@@ -1,5 +1,7 @@
 #include "DeviceTimelineLog.h"
 
+#include "AppPaths.h"
+
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -14,8 +16,7 @@ namespace {
 
 QString timelineFilePath()
 {
-    const QString dir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
-                        + QStringLiteral("/FlashSpartan");
+    const QString dir = AppPaths::configDir();
     return dir + QStringLiteral("/device-timeline.json");
 }
 

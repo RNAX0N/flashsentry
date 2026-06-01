@@ -1,5 +1,7 @@
 #include "VerifyHistory.h"
 
+#include "AppPaths.h"
+
 #include <QtGlobal>
 #include <QDir>
 #include <QFile>
@@ -14,8 +16,7 @@ namespace {
 
 QString historyFilePath()
 {
-    const QString dir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
-                        + QStringLiteral("/FlashSpartan");
+    const QString dir = AppPaths::configDir();
     return dir + QStringLiteral("/verify-history.json");
 }
 

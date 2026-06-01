@@ -14,7 +14,7 @@
 <policyconfig>
 
   <vendor>FlashSpartan</vendor>
-  <vendor_url>https://github.com/RNAX0N/flashspartan</vendor_url>
+  <vendor_url>https://github.com/RNAX0N/flashsentry</vendor_url>
   <icon_name>flashspartan</icon_name>
 
   <!-- Action for reading raw block devices (for hashing) -->

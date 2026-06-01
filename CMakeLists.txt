@@ -248,6 +248,7 @@ set(FLASHSPARTAN_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${FLASHSPARTAN_HELPER_RELD
 
 add_executable(flashspartan-policyd
     src/flashspartan-policyd.cpp
+    src/AppPaths.cpp
     src/policy/PolicyPaths.cpp
     src/policy/PolicyBlobCodec.cpp
     src/policy/PolicyAudit.cpp
@@ -330,6 +331,7 @@ install(
         docs/USER_GUIDE.md
         docs/VERIFICATION.md
         docs/WINDOWS.md
+        docs/MIGRATION-FROM-FLASHSENTRY.md
     DESTINATION ${CMAKE_INSTALL_DOCDIR}
 )
 install(FILES docs/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME docs-README.md)

@@ -11,7 +11,7 @@ pkgver=1.4.2
 pkgrel=7
 pkgdesc="USB and ISO security monitor - verify Linux ISOs, watch folders, optional full-disk hash"
 arch=('x86_64' 'aarch64')
-url="https://github.com/RNAX0N/flashspartan"
+url="https://github.com/RNAX0N/flashsentry"
 license=('MIT')
 depends=(
     'qt6-base'
@@ -33,7 +33,8 @@ optdepends=(
     'gnupg: Automatic ISO OpenPGP signature verification'
 )
 provides=('flashspartan')
-conflicts=('flashspartan-git')
+conflicts=('flashspartan-git' 'flashsentry' 'flashsentry-git')
+replaces=('flashsentry')
 backup=('etc/flashspartan/config.json')
 install=flashspartan.install
 
@@ -45,7 +46,7 @@ _staging_dir() {
 
 if [ "${FLASHSPARTAN_RELEASE:-0}" = 1 ]; then
     source=(
-        "${pkgname}-${pkgver}.tar.gz::https://github.com/RNAX0N/flashspartan/archive/refs/tags/v${pkgver}.tar.gz"
+        "${pkgname}-${pkgver}.tar.gz::https://github.com/RNAX0N/flashsentry/archive/refs/tags/v${pkgver}.tar.gz"
     )
     sha256sums=('SKIP')
 else

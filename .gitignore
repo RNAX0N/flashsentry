@@ -1,5 +1,9 @@
 /build/
 /scripts/
+.flashsentry-embedded-gpg-home/
+.flashsentry-test-gpg-home/
+.flashspartan-embedded-gpg-home/
+.flashspartan-test-gpg-home/
 tests/fixtures/catalog-signing/gnupg/
 *.user
 *.autosave

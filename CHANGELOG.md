@@ -4,6 +4,15 @@ All notable changes to FlashSpartan are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- GitHub links and ISO catalog `remote_url` point at the existing **RNAX0N/flashsentry** repository (product name is FlashSpartan).
+- Config paths consolidated via `AppPaths::configDir()` for policy, verify history, timeline, and hash checkpoints.
+
+### Added
+
+- [docs/MIGRATION-FROM-FLASHSENTRY.md](docs/MIGRATION-FROM-FLASHSENTRY.md) — upgrade guide from FlashSentry-branded releases.
+
 ## [1.5.0] - 2026-06-01
 
 ### Added
@@ -13,7 +22,7 @@ All notable changes to FlashSpartan are documented in this file.
 
 ### Changed
 
-- **Product rename: FlashSentry → FlashSpartan** — application name, config under `~/.config/FlashSpartan`, binaries (`flashspartan`, `FlashSpartan.exe`), packaging, and documentation. Existing FlashSentry settings and data are migrated on first launch when possible.
+- **Product rename: FlashSentry → FlashSpartan** — first release under the new name on GitHub (**v1.5.0**); **v1.1.4 and earlier** remain the last FlashSentry-branded release tags. Application config under `~/.config/FlashSpartan`, binaries (`flashspartan`, `FlashSpartan.exe`), packaging, and documentation. Existing FlashSentry settings and data are migrated on first launch when possible.
 
 ### Added (since 1.4.2)
 

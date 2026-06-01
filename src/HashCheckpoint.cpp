@@ -1,5 +1,7 @@
 #include "HashCheckpoint.h"
 
+#include "AppPaths.h"
+
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -18,8 +20,7 @@ HashCheckpointStore& HashCheckpointStore::instance()
 
 static QString checkpointPath()
 {
-    const QString dir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
-        + QStringLiteral("/FlashSpartan");
+    const QString dir = AppPaths::configDir();
     QDir().mkpath(dir);
     return dir + QStringLiteral("/hash-checkpoints.json");
 }

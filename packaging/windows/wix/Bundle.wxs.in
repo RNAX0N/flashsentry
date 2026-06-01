@@ -8,7 +8,7 @@
           Version="$(var.ProductVersion)"
           Manufacturer="$(var.Manufacturer)"
           UpgradeCode="$(var.BundleUpgradeCode)"
-          AboutUrl="https://github.com/RNAX0N/flashspartan">
+          AboutUrl="https://github.com/RNAX0N/flashsentry">
 
     <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
       <bal:WixStandardBootstrapperApplication LicenseFile="$(var.LicenseRtf)"

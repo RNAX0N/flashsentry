@@ -368,4 +368,4 @@ On the **ISO verify** tab: plug in a flash drive or choose a folder, pick a prof
 
 - Technical detail: [VERIFICATION.md](VERIFICATION.md)
 - Build / development: [CLAUDE.md](../CLAUDE.md) and [README.md](../README.md)
-- Issues: [GitHub Issues](https://github.com/RNAX0N/flashspartan/issues)
+- Issues: [GitHub Issues](https://github.com/RNAX0N/flashsentry/issues)

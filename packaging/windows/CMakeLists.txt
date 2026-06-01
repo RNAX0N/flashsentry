@@ -200,7 +200,6 @@ if(WIX_LIT)
     add_custom_command(
         OUTPUT "${_bundle_wixobj}"
         COMMAND "${WIX_CANDLE}" -nologo ${WIX_BAL_EXT} ${WIX_UTIL_EXT}
-                -dStageBinDir=${_stage_bin_native}
                 -dLicenseRtf=${_license_rtf_native}
                 -dUsbPcapInstaller=${_usbpcap_native}
                 -dFlashSentryMsi=${_msi_native}

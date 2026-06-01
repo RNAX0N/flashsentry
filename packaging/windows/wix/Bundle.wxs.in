@@ -17,19 +17,14 @@
                                             ShowVersion="yes" />
     </BootstrapperApplicationRef>
 
+    <!-- Override from setup.exe command line: /InstallUsbPcap=0 to skip driver install -->
     <Variable Name="InstallUsbPcap"
               Type="numeric"
               Value="1"
               bal:Overridable="yes" />
 
-    <bal:Option Name="InstallUsbPcap"
-                Title="Install USBPcap (recommended)"
-                Description="Official USBPcap driver and USBPcapCMD for BadUSB USB packet capture. Requires administrator approval."
-                Default="yes" />
-
     <util:FileSearch Id="UsbPcapCmdSearch"
-                     Path="[ProgramFiles64Folder]USBPcap"
-                     Name="USBPcapCMD.exe"
+                     Path="[ProgramFiles64Folder]USBPcap\USBPcapCMD.exe"
                      Result="exists"
                      Variable="UsbPcapAlreadyInstalled" />
 
@@ -44,12 +39,12 @@
 
       <ExePackage Id="UsbPcapSetup"
                   SourceFile="$(var.UsbPcapInstaller)"
-                  InstallCondition="InstallUsbPcap AND NOT UsbPcapAlreadyInstalled"
+                  InstallCondition="InstallUsbPcap AND UsbPcapAlreadyInstalled = 0"
                   Vital="no"
                   Permanent="yes"
                   PerMachine="yes"
                   Compressed="yes"
-                  DetectCondition="UsbPcapAlreadyInstalled"
+                  DetectCondition="UsbPcapAlreadyInstalled = 1"
                   InstallCommand="/S"
                   RepairCommand="/S"
                   UninstallCommand="/S"

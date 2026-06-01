@@ -72,6 +72,11 @@ configure_file(
     "${FLASHSENTRY_WIX_DIR}/Bundle.wxs"
     @ONLY
 )
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/wix/Variables.wxi.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/wix/Product.wxs.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/wix/Bundle.wxs.in"
+)
 
 file(TO_NATIVE_PATH "${FLASHSENTRY_USBPCAP_INSTALLER}" _usbpcap_native)
 file(TO_NATIVE_PATH "${FLASHSENTRY_STAGE_DIR}/bin" _stage_bin_native)

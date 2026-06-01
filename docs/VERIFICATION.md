@@ -1,6 +1,6 @@
 # Verification technical overview
 
-This document describes how FlashSentry verifies data. For step-by-step usage, see [USER_GUIDE.md](USER_GUIDE.md).
+This document describes how FlashSpartan verifies data. For step-by-step usage, see [USER_GUIDE.md](USER_GUIDE.md).
 
 ## Verification profiles (USB)
 
@@ -69,7 +69,7 @@ For each `.iso` file:
 3. **Download** checksum and signature URLs for that publisher/release.
 4. **Hash** local ISO with OpenSSL EVP SHA-256.
 5. **Parse** checksum file for the ISO basename (`IsoChecksum::parseSha256Content`).
-6. **Import** signing keys via `gpg --homedir ~/.cache/FlashSentry/iso-verify/gnupg --recv-keys`.
+6. **Import** signing keys via `gpg --homedir ~/.cache/FlashSpartan/iso-verify/gnupg --recv-keys`.
 7. **Verify** detached signature on the checksum file.
 8. **Extract** fingerprint from GPG output; compare to `trustedFingerprints` in catalog.
 9. Emit `IsoVerifyResult` with `reportSummary` for the UI.
@@ -102,7 +102,7 @@ Some publishers (e.g. **Manjaro**, **elementary OS**, **EndeavourOS**) ship `{is
 
 **Coexistence with multiboot tools** (Ventoy, Easy2Boot, GRUB ISO folders, etc.)
 
-| Concern | FlashSentry behavior |
+| Concern | FlashSpartan behavior |
 |---------|---------------------|
 | Vendor config trees (`ventoy/`, `EFI/`, `_ISO/`, …) | **Not scanned** — read-only checks target user images only |
 | Small boot-only partition | Auto-verify **skipped** when no image files are present |
@@ -161,31 +161,31 @@ Legacy records without partition suffix may still resolve via `legacyUniqueId()`
 Load order (later overrides earlier for matching filenames):
 
 1. Embedded `embedded-manifest.json` (SHA-256 checked against `.sha256` sidecar at build/CI time)
-2. Cached remote manifest (`~/.cache/FlashSentry/iso-catalog-manifest.json`)
-3. `/usr/share/flashsentry/iso-catalog.d/*.json`
-4. `~/.config/flashsentry/iso-catalog.d/*.json`
-5. User TOFU file `~/.config/flashsentry/user-iso-hashes.json`
+2. Cached remote manifest (`~/.cache/FlashSpartan/iso-catalog-manifest.json`)
+3. `/usr/share/flashspartan/iso-catalog.d/*.json`
+4. `~/.config/flashspartan/iso-catalog.d/*.json`
+5. User TOFU file `~/.config/flashspartan/user-iso-hashes.json`
 
 `IsoCatalogManifest::trustUserHash()` and CLI `--trust-hash file:hex` append to the user TOFU store.
 
 ## Audit log and reports
 
-- **Audit:** `~/.config/flashsentry/audit.log` — one JSON object per line after each verify
+- **Audit:** `~/.config/flashspartan/audit.log` — one JSON object per line after each verify
 - **Reports:** `IsoVerifyReport` — plain text, CSV, HTML, JSON; GUI export or CLI `--export-report`
-- **Tray:** **Open audit log** opens `~/.config/flashsentry/audit.log`
+- **Tray:** **Open audit log** opens `~/.config/flashspartan/audit.log`
 
 ## Command-line interface
 
 ```bash
-flashsentry --list-publishers
-flashsentry --list-publishers --json
-flashsentry --verify-iso /path/to/file.iso
-flashsentry --verify-dir ~/Downloads/isos --json
-flashsentry --verify-mount /run/media/$USER/USB --quiet
-flashsentry --update-catalog
-flashsentry --export-report /path --report-format json
-flashsentry --export-report /path --json
-flashsentry --trust-hash Win11.iso:41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54
+flashspartan --list-publishers
+flashspartan --list-publishers --json
+flashspartan --verify-iso /path/to/file.iso
+flashspartan --verify-dir ~/Downloads/isos --json
+flashspartan --verify-mount /run/media/$USER/USB --quiet
+flashspartan --update-catalog
+flashspartan --export-report /path --report-format json
+flashspartan --export-report /path --json
+flashspartan --trust-hash Win11.iso:41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54
 ```
 
 | Flag | Purpose |
@@ -194,7 +194,7 @@ flashsentry --trust-hash Win11.iso:41196290521b7e4f814aca30c2cc4c7fab1e307643941
 | `--quiet` | Summary line only (no per-file report body) |
 | `--report-format` | `text`, `csv`, `html`, or `json` for `--export-report` |
 
-Exit codes: `0` pass, `1` verify failure, `2` error. ISO options are read from `FlashSentry.conf` (`iso/verifyParallel`, etc.); use `-c /path/to/FlashSentry.conf` to override.
+Exit codes: `0` pass, `1` verify failure, `2` error. ISO options are read from `FlashSpartan.conf` (`iso/verifyParallel`, etc.); use `-c /path/to/FlashSpartan.conf` to override.
 
 Embedded catalog integrity (SHA-256 + OpenPGP) is shown in the status bar and ISO verification tab when checks fail.
 
@@ -259,7 +259,7 @@ Run `test_iso_catalog` after editing `IsoCatalog.cpp` or `embedded-manifest.json
 
 ### Integration tests (offline fixtures)
 
-`tests/fixtures/` provides a Ventoy-style tree, per-file `.sha256` sidecars, directory `SHA256SUMS`, and mismatch cases. `test_iso_verify_integration` runs without network when `FLASHSENTRY_SKIP_REMOTE_CATALOG=1` is set (automatic in CI).
+`tests/fixtures/` provides a Ventoy-style tree, per-file `.sha256` sidecars, directory `SHA256SUMS`, and mismatch cases. `test_iso_verify_integration` runs without network when `FLASHSPARTAN_SKIP_REMOTE_CATALOG=1` is set (automatic in CI).
 
 ```bash
 ctest --test-dir build -R test_iso_verify_integration --output-on-failure
@@ -267,10 +267,10 @@ ctest --test-dir build -R test_iso_verify_integration --output-on-failure
 
 ## Windows ISO verification
 
-Microsoft publishes SHA-256 values on their [Windows 11](https://www.microsoft.com/software-download/windows11) and [Windows 10](https://www.microsoft.com/software-download/windows10) download pages, but not at a stable per-file URL. FlashSentry uses:
+Microsoft publishes SHA-256 values on their [Windows 11](https://www.microsoft.com/software-download/windows11) and [Windows 10](https://www.microsoft.com/software-download/windows10) download pages, but not at a stable per-file URL. FlashSpartan uses:
 
-1. **Embedded manifest** — shipped at `:/iso-catalog/embedded-manifest.json` (also installed under `share/flashsentry/iso-catalog/`). Includes known hashes (e.g. `Win11_24H2_English_x64.iso`) and `hint_only` patterns for other `Win11_*` / `Win10_*` names. Integrity is checked with **SHA-256** (`embedded-manifest.json.sha256`) and **OpenPGP** (`embedded-manifest.json.asc` + `catalog-signing.pub`). Re-sign after edits: `tools/sign-embedded-manifest.sh`.
-2. **Remote refresh** — the manifest’s `remote_url` (GitHub raw) is cached weekly under `~/.cache/FlashSentry/iso-catalog-manifest.json` so hashes can be updated without rebuilding the app.
+1. **Embedded manifest** — shipped at `:/iso-catalog/embedded-manifest.json` (also installed under `share/flashspartan/iso-catalog/`). Includes known hashes (e.g. `Win11_24H2_English_x64.iso`) and `hint_only` patterns for other `Win11_*` / `Win10_*` names. Integrity is checked with **SHA-256** (`embedded-manifest.json.sha256`) and **OpenPGP** (`embedded-manifest.json.asc` + `catalog-signing.pub`). Re-sign after edits: `tools/sign-embedded-manifest.sh`.
+2. **Remote refresh** — the manifest’s `remote_url` (GitHub raw) is cached weekly under `~/.cache/FlashSpartan/iso-catalog-manifest.json` so hashes can be updated without rebuilding the app.
 3. **Local sidecar** — place `Win11_24H2_English_x64.iso.sha256` (single hex line or `hash  filename` format) next to the ISO on the USB stick.
 
 After downloading from Microsoft, copy the hash from the download page into a sidecar file if your exact filename is not in the manifest yet.

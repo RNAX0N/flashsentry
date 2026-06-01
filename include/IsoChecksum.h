@@ -2,7 +2,7 @@
 
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief Parses publisher and sidecar SHA-256 checksum list content.
@@ -14,4 +14,4 @@ public:
                                       QString* errorOut = nullptr);
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

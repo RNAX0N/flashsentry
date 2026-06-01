@@ -4,7 +4,7 @@
 
 ## Testing
 
-- [ ] `cmake -B build -DFLASHSENTRY_BUILD_TESTS=ON && cmake --build build && ctest --test-dir build --output-on-failure`
+- [ ] `cmake -B build -DFLASHSPARTAN_BUILD_TESTS=ON && cmake --build build && ctest --test-dir build --output-on-failure`
 - [ ] Manual check if UI or mount/ISO behavior changed
 
 ## Docs

@@ -11,7 +11,7 @@ class QTabWidget;
 class QTableWidget;
 class QLabel;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 struct AuditLogRow {
     QDateTime time;
@@ -59,4 +59,4 @@ private:
     QList<VerifyHistoryEntry> m_verifyRows;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

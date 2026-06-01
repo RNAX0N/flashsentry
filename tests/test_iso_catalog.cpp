@@ -7,7 +7,7 @@
 #include "IsoCatalog.h"
 #include "IsoCatalogManifest.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestIsoCatalog : public QObject {
     Q_OBJECT
@@ -45,8 +45,8 @@ private slots:
 
 void TestIsoCatalog::initTestCase()
 {
-    QCoreApplication::setOrganizationName(QStringLiteral("FlashSentry"));
-    QCoreApplication::setApplicationName(QStringLiteral("FlashSentryTest"));
+    QCoreApplication::setOrganizationName(QStringLiteral("FlashSpartan"));
+    QCoreApplication::setApplicationName(QStringLiteral("FlashSpartanTest"));
     QStandardPaths::setTestModeEnabled(true);
 
     const QByteArray gpgHome = qgetenv("GNUPGHOME");
@@ -55,18 +55,18 @@ void TestIsoCatalog::initTestCase()
     }
     qunsetenv("GNUPGHOME");
 
-    if (qgetenv("FLASHSENTRY_GPG_PROGRAM").isEmpty() && FlashSentryTest::gpgAvailable()) {
-        qputenv("FLASHSENTRY_GPG_PROGRAM", FlashSentryTest::gpgProgram().toUtf8());
+    if (qgetenv("FLASHSPARTAN_GPG_PROGRAM").isEmpty() && FlashSpartanTest::gpgAvailable()) {
+        qputenv("FLASHSPARTAN_GPG_PROGRAM", FlashSpartanTest::gpgProgram().toUtf8());
     }
-    const QByteArray sourceRoot = qgetenv("FLASHSENTRY_SOURCE_ROOT");
+    const QByteArray sourceRoot = qgetenv("FLASHSPARTAN_SOURCE_ROOT");
     if (!sourceRoot.isEmpty()) {
         const QString gpgHome =
             QDir::fromNativeSeparators(QString::fromUtf8(sourceRoot))
-            + QStringLiteral("/.flashsentry-test-gpg-home");
+            + QStringLiteral("/.flashspartan-test-gpg-home");
         QDir().mkpath(gpgHome);
-        qputenv("FLASHSENTRY_TEST_GPG_HOME", QFile::encodeName(gpgHome));
+        qputenv("FLASHSPARTAN_TEST_GPG_HOME", QFile::encodeName(gpgHome));
     }
-    if (FlashSentryTest::gpgAvailable()) {
+    if (FlashSpartanTest::gpgAvailable()) {
         IsoCatalogManifest::reload();
     }
 }
@@ -296,13 +296,13 @@ void TestIsoCatalog::verifiableImageExtensions()
 
 void TestIsoCatalog::embeddedManifestIntegrity()
 {
-    if (!FlashSentryTest::gpgAvailable()) {
+    if (!FlashSpartanTest::gpgAvailable()) {
         QSKIP("gpg not available");
     }
     IsoCatalogManifest::reload();
     QVERIFY2(IsoCatalogManifest::lastEmbeddedSha256Ok(),
              qPrintable(IsoCatalogManifest::integrityStatusText()));
-    if (FlashSentryTest::skipGpgAssertionsOnWindowsCi()) {
+    if (FlashSpartanTest::skipGpgAssertionsOnWindowsCi()) {
         if (!IsoCatalogManifest::lastEmbeddedGpgOk()) {
             qWarning("Skipping embedded OpenPGP assert on Windows CI (see validate-iso-manifest.py)");
         }
@@ -313,7 +313,7 @@ void TestIsoCatalog::embeddedManifestIntegrity()
                  qPrintable(IsoCatalogManifest::integrityStatusText()));
     }
     QVERIFY(IsoCatalogManifest::entryCount() >= 4);
-    if (FlashSentryTest::skipGpgAssertionsOnWindowsCi()) {
+    if (FlashSpartanTest::skipGpgAssertionsOnWindowsCi()) {
         QVERIFY(IsoCatalogManifest::lastEmbeddedSha256Ok());
     } else {
         QVERIFY(IsoCatalogManifest::integrityStatusText().contains(QStringLiteral("OK")));

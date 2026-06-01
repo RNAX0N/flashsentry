@@ -8,7 +8,7 @@ class QLabel;
 class QTableWidget;
 class QVBoxLayout;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class UsbMonitorPage : public QWidget {
     Q_OBJECT
@@ -52,4 +52,4 @@ private:
     bool m_blockDeviceTableSignals = false;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -4,16 +4,16 @@
 #include <QProcessEnvironment>
 #include <QStandardPaths>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 QString PolicyPaths::configDir()
 {
     const QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    if (env.contains(QStringLiteral("FLASHSENTRY_POLICY_CONFIG"))) {
-        return env.value(QStringLiteral("FLASHSENTRY_POLICY_CONFIG"));
+    if (env.contains(QStringLiteral("FLASHSPARTAN_POLICY_CONFIG"))) {
+        return env.value(QStringLiteral("FLASHSPARTAN_POLICY_CONFIG"));
     }
     const QString base = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
-    return base + QStringLiteral("/FlashSentry");
+    return base + QStringLiteral("/FlashSpartan");
 }
 
 QString PolicyPaths::storeFilePath()
@@ -33,12 +33,14 @@ QString PolicyPaths::auditLogPath()
 
 QString PolicyPaths::legacyDevicesJsonPath()
 {
-    return configDir() + QStringLiteral("/flashsentry/devices.json");
+    const QString base = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
+    return base + QStringLiteral("/FlashSentry/flashsentry/devices.json");
 }
 
 QString PolicyPaths::legacyBlockedJsonPath()
 {
-    return configDir() + QStringLiteral("/blocked-drives.json");
+    const QString base = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
+    return base + QStringLiteral("/FlashSentry/blocked-drives.json");
 }
 
 QString PolicyPaths::socketPath()
@@ -47,7 +49,7 @@ QString PolicyPaths::socketPath()
     if (runtime.isEmpty()) {
         runtime = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
     }
-    return runtime + QStringLiteral("/flashsentry-policy.sock");
+    return runtime + QStringLiteral("/flashspartan-policy.sock");
 }
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

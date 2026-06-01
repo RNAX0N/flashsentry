@@ -8,7 +8,7 @@
 #include "IsoCatalogManifest.h"
 #include "IsoVerifier.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestIsoVerifyIntegration : public QObject {
     Q_OBJECT
@@ -28,8 +28,8 @@ private slots:
 
 static QString fixturesRoot()
 {
-#ifdef FLASHSENTRY_TEST_FIXTURES_DIR
-    return QStringLiteral(FLASHSENTRY_TEST_FIXTURES_DIR);
+#ifdef FLASHSPARTAN_TEST_FIXTURES_DIR
+    return QStringLiteral(FLASHSPARTAN_TEST_FIXTURES_DIR);
 #else
     return QDir(QCoreApplication::applicationDirPath()).absoluteFilePath(QStringLiteral("../tests/fixtures"));
 #endif
@@ -38,12 +38,12 @@ static QString fixturesRoot()
 void TestIsoVerifyIntegration::initTestCase()
 {
     QVERIFY(m_configHome.isValid());
-    qputenv("FLASHSENTRY_SKIP_REMOTE_CATALOG", "1");
+    qputenv("FLASHSPARTAN_SKIP_REMOTE_CATALOG", "1");
     qputenv("XDG_CONFIG_HOME", m_configHome.path().toUtf8());
     qputenv("XDG_CACHE_HOME", (m_configHome.path() + QStringLiteral("/cache")).toUtf8());
 
-    QCoreApplication::setOrganizationName(QStringLiteral("FlashSentry"));
-    QCoreApplication::setApplicationName(QStringLiteral("FlashSentry"));
+    QCoreApplication::setOrganizationName(QStringLiteral("FlashSpartan"));
+    QCoreApplication::setApplicationName(QStringLiteral("FlashSpartan"));
 
     IsoVerifyOptions opt;
     opt.useHashCache = false;
@@ -55,7 +55,7 @@ void TestIsoVerifyIntegration::initTestCase()
 
 void TestIsoVerifyIntegration::cleanupTestCase()
 {
-    qunsetenv("FLASHSENTRY_SKIP_REMOTE_CATALOG");
+    qunsetenv("FLASHSPARTAN_SKIP_REMOTE_CATALOG");
 }
 
 void TestIsoVerifyIntegration::findIsoFilesVentoyLayout()
@@ -109,7 +109,7 @@ void TestIsoVerifyIntegration::userTofuHashPass()
     const QString isoPath = dir.filePath(QStringLiteral("my-custom-build.iso"));
     QFile iso(isoPath);
     QVERIFY(iso.open(QIODevice::WriteOnly));
-    iso.write("flashsentry-tofu");
+    iso.write("flashspartan-tofu");
     iso.close();
 
     const QString hash =

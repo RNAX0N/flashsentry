@@ -6,7 +6,7 @@
 #include <QList>
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /** Persistent per-device timeline (connect, verify, etc.). */
 class DeviceTimelineLog {
@@ -30,4 +30,4 @@ private:
     static constexpr int kMaxTotalEntries = 10000;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

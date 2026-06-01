@@ -4,7 +4,7 @@
 
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 namespace IsoCatalogInternal {
 
 QString normalizeFingerprint(const QString& fp);
@@ -42,4 +42,4 @@ IsoPublisherMatch makeNixos(const QString& fileName, const QString& channel, con
 IsoPublisherMatch makeEndeavourOs(const QString& fileName, const QString& dateVersion);
 
 } // namespace IsoCatalogInternal
-} // namespace FlashSentry
+} // namespace FlashSpartan

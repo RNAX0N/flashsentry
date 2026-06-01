@@ -1,4 +1,4 @@
-# FlashSentry post-install script for Arch Linux
+# FlashSpartan post-install script for Arch Linux
 # This file is sourced by pacman during package installation/upgrade/removal
 
 # Colors for output
@@ -31,7 +31,7 @@ pre_install() {
 
 ## Post-installation hook
 post_install() {
-    _info "FlashSentry installed successfully!"
+    _info "FlashSpartan installed successfully!"
     echo ""
 
     # Update icon cache
@@ -55,8 +55,8 @@ post_install() {
 
     # Inform about systemd user service
     echo ""
-    _info "To start FlashSentry automatically at login:"
-    echo "    systemctl --user enable --now flashsentry.service"
+    _info "To start FlashSpartan automatically at login:"
+    echo "    systemctl --user enable --now flashspartan.service"
     echo ""
 
     # Check for common issues
@@ -70,29 +70,29 @@ post_install() {
 
     # Check for udisks2
     if ! systemctl is-active --quiet udisks2.service 2>/dev/null; then
-        _warning "udisks2 service is not running. FlashSentry uses it for mounting."
+        _warning "udisks2 service is not running. FlashSpartan uses it for mounting."
         _warning "Start it with: sudo systemctl enable --now udisks2.service"
     fi
 
     # Check polkit read helper (hashing without storage group)
     _helper_ok=false
-    for _h in /usr/lib/flashsentry/flashsentry-read-helper /usr/libexec/flashsentry/flashsentry-read-helper; do
+    for _h in /usr/lib/flashspartan/flashspartan-read-helper /usr/libexec/flashspartan/flashspartan-read-helper; do
         if [ -x "$_h" ]; then
             _helper_ok=true
             break
         fi
     done
     if [ "$_helper_ok" = false ]; then
-        _warning "flashsentry-read-helper not found under /usr/lib/flashsentry or /usr/libexec/flashsentry"
+        _warning "flashspartan-read-helper not found under /usr/lib/flashspartan or /usr/libexec/flashspartan"
         _warning "Rehash may fail with 'permission denied' until the package is rebuilt/reinstalled."
     fi
 
     # Polkit exec.path must match the installed helper
-    if [ -f /usr/share/polkit-1/actions/org.flashsentry.policy ]; then
-        _policy_path=$(grep -oP '(?<=exec.path">)[^<]+' /usr/share/polkit-1/actions/org.flashsentry.policy 2>/dev/null | head -1)
+    if [ -f /usr/share/polkit-1/actions/org.flashspartan.policy ]; then
+        _policy_path=$(grep -oP '(?<=exec.path">)[^<]+' /usr/share/polkit-1/actions/org.flashspartan.policy 2>/dev/null | head -1)
         if [ -n "$_policy_path" ] && [ ! -x "$_policy_path" ]; then
             _warning "Polkit policy points to $_policy_path but that file is missing or not executable."
-            _warning "Run: sudo pacman -S flashsentry  (reinstall) after upgrading."
+            _warning "Run: sudo pacman -S flashspartan  (reinstall) after upgrading."
         fi
     fi
 
@@ -105,7 +105,7 @@ post_install() {
     # Desktop environment auto-mount warning
     echo ""
     _info "IMPORTANT: For best results, disable your desktop environment's"
-    _info "auto-mount feature to let FlashSentry handle USB device mounting."
+    _info "auto-mount feature to let FlashSpartan handle USB device mounting."
     echo ""
     _info "  GNOME:  gsettings set org.gnome.desktop.media-handling automount false"
     _info "  KDE:    System Settings > Removable Storage > uncheck automount"
@@ -114,7 +114,7 @@ post_install() {
 
     # Non-standard kernel notice
     _info "If using a non-standard kernel (linux-zen, linux-lts, etc.):"
-    _info "  FlashSentry should work with any kernel that has udev support."
+    _info "  FlashSpartan should work with any kernel that has udev support."
     _info "  Ensure your kernel has CONFIG_BLK_DEV_BSG enabled for raw access."
     echo ""
 
@@ -124,11 +124,11 @@ post_install() {
     fi
 
     echo ""
-    _info "Documentation: /usr/share/doc/flashsentry/ (USER_GUIDE.md, VERIFICATION.md)"
+    _info "Documentation: /usr/share/doc/flashspartan/ (USER_GUIDE.md, VERIFICATION.md)"
     _info "  ISO verify: enable in Settings > Verification (on by default on USB mount)"
     echo ""
 
-    _success "Run 'flashsentry' or find it in your application menu to get started!"
+    _success "Run 'flashspartan' or find it in your application menu to get started!"
 }
 
 ## Pre-upgrade hook
@@ -140,27 +140,27 @@ pre_upgrade() {
 post_upgrade() {
     post_install
 
-    _info "FlashSentry has been upgraded to version $1"
+    _info "FlashSpartan has been upgraded to version $1"
 
     # Restart service if running
-    if systemctl --user is-active --quiet flashsentry.service 2>/dev/null; then
-        _info "Restarting FlashSentry service..."
-        systemctl --user restart flashsentry.service 2>/dev/null || true
+    if systemctl --user is-active --quiet flashspartan.service 2>/dev/null; then
+        _info "Restarting FlashSpartan service..."
+        systemctl --user restart flashspartan.service 2>/dev/null || true
     fi
 }
 
 ## Pre-removal hook
 pre_remove() {
     # Stop the service if running
-    if systemctl --user is-active --quiet flashsentry.service 2>/dev/null; then
-        _info "Stopping FlashSentry service..."
-        systemctl --user stop flashsentry.service 2>/dev/null || true
+    if systemctl --user is-active --quiet flashspartan.service 2>/dev/null; then
+        _info "Stopping FlashSpartan service..."
+        systemctl --user stop flashspartan.service 2>/dev/null || true
     fi
 
     # Disable the service
-    if systemctl --user is-enabled --quiet flashsentry.service 2>/dev/null; then
-        _info "Disabling FlashSentry service..."
-        systemctl --user disable flashsentry.service 2>/dev/null || true
+    if systemctl --user is-enabled --quiet flashspartan.service 2>/dev/null; then
+        _info "Disabling FlashSpartan service..."
+        systemctl --user disable flashspartan.service 2>/dev/null || true
     fi
 }
 
@@ -181,8 +181,8 @@ post_remove() {
         udevadm control --reload-rules 2>/dev/null || true
     fi
 
-    _info "FlashSentry has been removed."
-    _info "Your device database at ~/.config/flashsentry/ has been preserved."
+    _info "FlashSpartan has been removed."
+    _info "Your device database at ~/.config/flashspartan/ has been preserved."
     _info "Remove it manually if you want to delete all data."
 }
 

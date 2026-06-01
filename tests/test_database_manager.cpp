@@ -7,14 +7,14 @@
 #include "policy/PolicyGateway.h"
 #include "policy/PolicyServiceLocator.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 namespace {
 
 void installIsolatedPolicy(const QString& configDir)
 {
-    qputenv("FLASHSENTRY_POLICY_IN_PROCESS", "1");
-    qputenv("FLASHSENTRY_POLICY_CONFIG", configDir.toUtf8());
+    qputenv("FLASHSPARTAN_POLICY_IN_PROCESS", "1");
+    qputenv("FLASHSPARTAN_POLICY_CONFIG", configDir.toUtf8());
     Policy::PolicyServiceLocator::install(Policy::PolicyGateway::createInProcess());
 }
 

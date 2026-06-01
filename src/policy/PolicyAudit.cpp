@@ -7,7 +7,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 void PolicyAudit::appendLine(const QString& jsonLine)
 {
@@ -36,4 +36,4 @@ void PolicyAudit::append(const QString& actor, const QString& action, const QStr
     appendLine(QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact)));
 }
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

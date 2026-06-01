@@ -6,7 +6,7 @@
 #include <QDateTime>
 #include <QMessageBox>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 void MainWindow::configureBadUsbMonitoring()
 {
@@ -163,4 +163,4 @@ void MainWindow::onBadUsbCaptureRequested(const QString& stableId)
     m_usbmonCapture->startCapture(*device, manual, m_settings.badUsbUsbmonCommand);
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

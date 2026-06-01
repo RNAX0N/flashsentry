@@ -1,10 +1,10 @@
-# FlashSentry - CLAUDE.md
+# FlashSpartan - CLAUDE.md
 
-Developer reference for the FlashSentry codebase. End-user documentation: [docs/USER_GUIDE.md](docs/USER_GUIDE.md), [docs/VERIFICATION.md](docs/VERIFICATION.md), [README.md](README.md).
+Developer reference for the FlashSpartan codebase. End-user documentation: [docs/USER_GUIDE.md](docs/USER_GUIDE.md), [docs/VERIFICATION.md](docs/VERIFICATION.md), [README.md](README.md).
 
 ## Project Overview
 
-FlashSentry is a Qt6 USB security application for Arch Linux. It:
+FlashSpartan is a Qt6 USB security application for Arch Linux. It:
 
 1. **Monitors** removable block devices (libudev)
 2. **Verifies** content via configurable profiles (recommended: **watch manifests** / **ISO**)
@@ -28,7 +28,7 @@ FlashSentry is a Qt6 USB security application for Arch Linux. It:
 ## Project Structure
 
 ```
-flashsentry/
+flashspartan/
 ├── CMakeLists.txt
 ├── src/
 │   ├── main.cpp
@@ -37,7 +37,7 @@ flashsentry/
 │   ├── DeviceMonitor.cpp
 │   ├── HashWorker.cpp              # Raw partition hash
 │   ├── RawDeviceHash.cpp           # Shared read/hash for helper
-│   ├── flashsentry-read-helper.cpp # polkit elevated reads
+│   ├── flashspartan-read-helper.cpp # polkit elevated reads
 │   ├── MerkleTree.cpp
 │   ├── ManifestService.cpp         # Build/verify watch groups
 │   ├── ManifestWorker.cpp          # Async manifest jobs
@@ -59,7 +59,7 @@ flashsentry/
 │   └── VERIFICATION.md
 ├── packaging/
 │   ├── PKGBUILD
-│   ├── org.flashsentry.policy.in
+│   ├── org.flashspartan.policy.in
 │   └── ...
 └── tests/
     ├── test_merkle.cpp
@@ -90,16 +90,16 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md) for algorithms.
 ### IsoVerifier / IsoCatalog / IsoChecksum
 - `IsoCatalog::matchIso()` → publisher URLs + trusted fingerprints
 - `IsoChecksum::parseSha256Content()` → SUMS file or 64-hex line parsing
-- HTTP fetch (Qt Network) + `gpg --homedir` in `~/.cache/FlashSentry/iso-verify/`
+- HTTP fetch (Qt Network) + `gpg --homedir` in `~/.cache/FlashSpartan/iso-verify/`
 - `verifyMountPoint()` for automation on USB mount (`triggerIsoVerificationOnMount`)
 
 ### HashWorker / RawDeviceHash
-- Full-device hashing; may use `flashsentry-read-helper` via polkit (`FLASHSENTRY_READ_HELPER_PATH`)
+- Full-device hashing; may use `flashspartan-read-helper` via polkit (`FLASHSPARTAN_READ_HELPER_PATH`)
 
 ### DatabaseManager
 - `canonicalUniqueId()` → `DeviceInfo::partitionUniqueId()`
 - `updateWatchManifest()`, `setVerificationProfile()`
-- JSON at `~/.config/flashsentry/devices.json`, atomic write, mode 600
+- JSON at `~/.config/flashspartan/devices.json`, atomic write, mode 600
 
 ### MainWindow
 - `m_appModeStack`: USB splitter vs `IsoVerifierWidget`
@@ -137,7 +137,7 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md) for algorithms.
 
 ## Configuration (QSettings)
 
-File: `~/.config/FlashSentry/FlashSentry.conf`
+File: `~/.config/FlashSpartan/FlashSpartan.conf`
 
 | Key | Default | Notes |
 |-----|---------|-------|
@@ -178,7 +178,7 @@ cmake --build . -j$(nproc)
 Runtime: `gpg` recommended for ISO; network for publisher fetch.
 
 ```bash
-cmake -DFLASHSENTRY_BUILD_TESTS=ON ..
+cmake -DFLASHSPARTAN_BUILD_TESTS=ON ..
 ctest --output-on-failure
 ```
 
@@ -191,7 +191,7 @@ cd packaging && makepkg -si
 ## Command Line
 
 ```
-flashsentry [--minimized] [--debug] [--no-tray] [--force] [--config PATH]
+flashspartan [--minimized] [--debug] [--no-tray] [--force] [--config PATH]
 ```
 
 ## Threading

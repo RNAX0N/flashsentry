@@ -1,4 +1,4 @@
-# FlashSentry documentation
+# FlashSpartan documentation
 
 | Document | Audience | Description |
 |----------|----------|-------------|

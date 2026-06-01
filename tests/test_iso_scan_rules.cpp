@@ -6,7 +6,7 @@
 #include "IsoVerifier.h"
 #include "SettingsProfiles.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestIsoScanRules : public QObject {
     Q_OBJECT
@@ -31,8 +31,8 @@ void TestIsoScanRules::reservedDirectories()
 
 void TestIsoScanRules::multibootLayoutDetection()
 {
-#ifdef FLASHSENTRY_TEST_FIXTURES_DIR
-    const QString root = QStringLiteral(FLASHSENTRY_TEST_FIXTURES_DIR) + QStringLiteral("/ventoy-scan");
+#ifdef FLASHSPARTAN_TEST_FIXTURES_DIR
+    const QString root = QStringLiteral(FLASHSPARTAN_TEST_FIXTURES_DIR) + QStringLiteral("/ventoy-scan");
 #else
     QSKIP("fixtures path not defined");
 #endif

@@ -9,7 +9,7 @@
 #include <QGridLayout>
 #include <QDebug>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 DeviceCard::DeviceCard(QWidget* parent)
     : QFrame(parent)
@@ -719,4 +719,4 @@ void DeviceCard::onWatchListClicked()
     emit watchListRequested(deviceNode());
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -1,7 +1,7 @@
 #include <QtTest>
 #include "MerkleTree.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestMerkle : public QObject {
     Q_OBJECT

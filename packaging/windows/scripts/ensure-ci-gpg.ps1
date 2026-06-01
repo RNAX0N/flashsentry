@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 function Test-GpgVerify {
     param([string]$GpgExe)
     $dir = Split-Path -Parent $GpgExe
-    $temp = Join-Path $env:RUNNER_TEMP "flashsentry-gpg-smoke"
+    $temp = Join-Path $env:RUNNER_TEMP "flashspartan-gpg-smoke"
     New-Item -ItemType Directory -Force -Path $temp | Out-Null
     $gpgHomeDir = Join-Path $temp "home"
     New-Item -ItemType Directory -Force -Path $gpgHomeDir | Out-Null
@@ -34,13 +34,13 @@ function Add-GpgToPath {
     Write-Host "Using gpg: $GpgExe"
     & $GpgExe --version
     if ($env:GITHUB_ENV) {
-        Add-Content -Path $env:GITHUB_ENV -Value "FLASHSENTRY_GPG_PROGRAM=$GpgExe"
+        Add-Content -Path $env:GITHUB_ENV -Value "FLASHSPARTAN_GPG_PROGRAM=$GpgExe"
     }
     if ($env:GITHUB_PATH) {
         Add-Content -Path $env:GITHUB_PATH -Value $dir
     } else {
         $env:PATH = "$dir;$env:PATH"
-        $env:FLASHSENTRY_GPG_PROGRAM = $GpgExe
+        $env:FLASHSPARTAN_GPG_PROGRAM = $GpgExe
     }
     return $true
 }

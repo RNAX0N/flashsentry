@@ -47,10 +47,10 @@
 #include "HidDeviceMonitor.h"
 #include "UsbmonCapture.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
- * @brief MainWindow - Main application window for FlashSentry
+ * @brief MainWindow - Main application window for FlashSpartan
  * 
  * Integrates all components:
  * - Device monitoring and display
@@ -472,4 +472,4 @@ private:
     static constexpr int STATUS_UPDATE_INTERVAL_MS = 1000;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -4,7 +4,7 @@
 #include <QJsonObject>
 #include "IsoVerifyReport.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestVerifyReport : public QObject {
     Q_OBJECT

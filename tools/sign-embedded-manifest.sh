@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MANIFEST="$ROOT/resources/iso-catalog/embedded-manifest.json"
 HASH_FILE="${MANIFEST}.sha256"
 ASC_FILE="${MANIFEST}.asc"
-KEY_ID="${FLASHSENTRY_CATALOG_KEY_ID:-catalog@flashsentry.test}"
+KEY_ID="${FLASHSPARTAN_CATALOG_KEY_ID:-catalog@flashspartan.test}"
 
 sha256sum "$MANIFEST" | awk '{print $1}' > "$HASH_FILE"
 gpg --batch --pinentry-mode loopback --local-user "$KEY_ID" \

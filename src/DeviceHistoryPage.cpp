@@ -12,7 +12,7 @@
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -178,4 +178,4 @@ void DeviceHistoryPage::onEventDetailsClicked()
     }
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

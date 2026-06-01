@@ -9,7 +9,7 @@ class QRadioButton;
 class QCheckBox;
 class QLabel;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * Lets the user pick partition vs whole-disk target and full vs quick vs watch-only scan.
@@ -47,4 +47,4 @@ private:
     QLabel* m_hintLabel = nullptr;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

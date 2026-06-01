@@ -9,7 +9,7 @@ class QLineEdit;
 class QPushButton;
 class QComboBox;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief Edit watch groups (paths) and build Merkle baselines for a mounted device.
@@ -56,4 +56,4 @@ private:
     QPushButton* m_buildBtn = nullptr;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

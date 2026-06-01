@@ -5,7 +5,7 @@
 #include <QByteArray>
 #include <QVector>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief Binary Merkle tree over sorted leaf digests (hex SHA-256).
@@ -36,4 +36,4 @@ private:
     QString m_rootHex;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

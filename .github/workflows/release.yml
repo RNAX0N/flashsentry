@@ -1,0 +1,131 @@
+# Build Windows installers and publish a GitHub Release when a version tag is pushed.
+# Example: git tag v1.5.0 && git push origin v1.5.0
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          if (-not $v) { throw "VERSION file is empty" }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Release version: $v"
+
+      - name: Normalize Git line endings
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git add --renormalize resources/iso-catalog tests/fixtures
+          git checkout -- resources/iso-catalog tests/fixtures
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.3'
+          arch: 'win64_msvc2019_64'
+          cache: true
+
+      - name: Install OpenSSL and WiX
+        shell: pwsh
+        run: |
+          choco install openssl wixtoolset -y --no-progress
+          echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
+
+      - name: Download USBPcap installer
+        id: usbpcap
+        shell: pwsh
+        run: |
+          $path = & "${{ github.workspace }}/packaging/windows/scripts/download-usbpcap.ps1"
+          "installer<<EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          $path | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "EOF" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Build application and installers
+        shell: pwsh
+        run: |
+          $opensslRoot = "C:/Program Files/OpenSSL"
+          if (-not (Test-Path $opensslRoot)) {
+            $opensslRoot = "C:/Program Files/OpenSSL-Win64"
+          }
+          cmake -B build -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DFLASHSPARTAN_BUILD_TESTS=OFF `
+            -DFLASHSPARTAN_BUILD_WINDOWS_INSTALLERS=ON `
+            -DFLASHSPARTAN_USBPCAP_INSTALLER="${{ steps.usbpcap.outputs.installer }}" `
+            -DOPENSSL_ROOT_DIR="$opensslRoot" `
+            "${{ github.workspace }}"
+          cmake --build build --config Release --parallel
+          cmake --build build --config Release --target flashspartan-windows-installers
+
+      - name: Package portable ZIP
+        shell: pwsh
+        run: |
+          cmake --install build --config Release --prefix "$pwd/stage"
+          $exe = Get-ChildItem -Path "$pwd/stage" -Filter FlashSpartan.exe -Recurse | Select-Object -First 1
+          if (-not $exe) { throw "FlashSpartan.exe not found in stage" }
+          windeployqt --release --compiler-runtime --no-translations "$($exe.FullName)"
+          foreach ($bin in @("C:/Program Files/OpenSSL/bin", "C:/Program Files/OpenSSL-Win64/bin")) {
+            if (Test-Path $bin) {
+              Get-ChildItem $bin -Filter "libcrypto*.dll" | Copy-Item -Destination $exe.DirectoryName -Force
+              Get-ChildItem $bin -Filter "libssl*.dll" | Copy-Item -Destination $exe.DirectoryName -Force
+            }
+          }
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+          $ver = "${{ steps.version.outputs.version }}"
+          Compress-Archive -Path stage/* -DestinationPath "release-assets/FlashSpartan-${ver}-x64-portable.zip" -Force
+
+      - name: Collect installer assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+          Copy-Item build/wix-out/*.msi release-assets/
+          Copy-Item build/wix-out/*-setup.exe release-assets/
+          $msi = Get-ChildItem release-assets -Filter *.msi
+          $setup = Get-ChildItem release-assets -Filter *-setup.exe
+          if (-not $msi -or -not $setup) {
+            throw "Missing MSI or setup.exe in release-assets"
+          }
+          Get-ChildItem release-assets | Format-Table Name, Length
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.version.outputs.version) }}
+          target_commitish: ${{ github.sha }}
+          name: FlashSpartan ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## Windows installation
+
+            | File | Use when |
+            |------|----------|
+            | **FlashSpartan-${{ steps.version.outputs.version }}-x64-setup.exe** | Recommended for most users (graphical installer, optional USBPcap) |
+            | **FlashSpartan-${{ steps.version.outputs.version }}-x64.msi** | IT / GPO / `msiexec` deployments |
+            | **FlashSpartan-${{ steps.version.outputs.version }}-x64-portable.zip** | Portable app folder (no installer; USBPcap not bundled) |
+
+            See [docs/WINDOWS.md](https://github.com/${{ github.repository }}/blob/main/docs/WINDOWS.md) and [packaging/windows/INSTALLER.md](https://github.com/${{ github.repository }}/blob/main/packaging/windows/INSTALLER.md).
+
+            **Upgrading from FlashSentry:** settings under `%AppData%` / `~/.config/FlashSentry` are migrated on first launch when possible.
+          files: |
+            release-assets/*.msi
+            release-assets/*-setup.exe
+            release-assets/*.zip

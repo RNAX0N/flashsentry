@@ -8,14 +8,14 @@
 #include <QStandardPaths>
 #include <QUuid>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
 QString timelineFilePath()
 {
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
-                        + QStringLiteral("/FlashSentry");
+                        + QStringLiteral("/FlashSpartan");
     return dir + QStringLiteral("/device-timeline.json");
 }
 
@@ -146,4 +146,4 @@ QStringList DeviceTimelineLog::knownDeviceNodes() const
     return nodes;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

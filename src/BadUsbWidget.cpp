@@ -11,7 +11,7 @@
 #include <QHBoxLayout>
 #include <QUrl>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 BadUsbWidget::BadUsbWidget(QWidget* parent)
     : QWidget(parent)
@@ -204,4 +204,4 @@ int BadUsbWidget::rowForStableId(const QString& stableId) const
     return -1;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

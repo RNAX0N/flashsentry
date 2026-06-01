@@ -1,17 +1,17 @@
-# Maintainer: FlashSentry Team <team@flashsentry.io>
+# Maintainer: FlashSpartan Team <team@flashspartan.io>
 #
 # Install from a git checkout (recommended):
 #   cd packaging && ./build-package.sh -si
 #
 # Install from a release tag (requires v${pkgver} on GitHub):
-#   cd packaging && FLASHSENTRY_RELEASE=1 makepkg -si
+#   cd packaging && FLASHSPARTAN_RELEASE=1 makepkg -si
 #
-pkgname=flashsentry
+pkgname=flashspartan
 pkgver=1.4.2
 pkgrel=7
 pkgdesc="USB and ISO security monitor - verify Linux ISOs, watch folders, optional full-disk hash"
 arch=('x86_64' 'aarch64')
-url="https://github.com/RNAX0N/flashsentry"
+url="https://github.com/RNAX0N/flashspartan"
 license=('MIT')
 depends=(
     'qt6-base'
@@ -32,10 +32,10 @@ optdepends=(
     'qt6-wayland: Wayland support'
     'gnupg: Automatic ISO OpenPGP signature verification'
 )
-provides=('flashsentry')
-conflicts=('flashsentry-git')
-backup=('etc/flashsentry/config.json')
-install=flashsentry.install
+provides=('flashspartan')
+conflicts=('flashspartan-git')
+backup=('etc/flashspartan/config.json')
+install=flashspartan.install
 
 _repo_root="$(cd -- "${startdir}/.." && pwd)"
 
@@ -43,9 +43,9 @@ _staging_dir() {
   printf '%s/%s-%s' "${srcdir}" "${pkgname}" "${pkgver}"
 }
 
-if [ "${FLASHSENTRY_RELEASE:-0}" = 1 ]; then
+if [ "${FLASHSPARTAN_RELEASE:-0}" = 1 ]; then
     source=(
-        "${pkgname}-${pkgver}.tar.gz::https://github.com/RNAX0N/flashsentry/archive/refs/tags/v${pkgver}.tar.gz"
+        "${pkgname}-${pkgver}.tar.gz::https://github.com/RNAX0N/flashspartan/archive/refs/tags/v${pkgver}.tar.gz"
     )
     sha256sums=('SKIP')
 else
@@ -54,7 +54,7 @@ else
 fi
 
 prepare() {
-  if [ "${FLASHSENTRY_RELEASE:-0}" != 1 ]; then
+  if [ "${FLASHSPARTAN_RELEASE:-0}" != 1 ]; then
     local staging="$(_staging_dir)"
     rm -rf "${staging}"
     mkdir -p "${staging}"
@@ -76,7 +76,7 @@ build() {
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr \
     -DCMAKE_INSTALL_LIBDIR=lib \
-    -DFLASHSENTRY_BUILD_TESTS=ON \
+    -DFLASHSPARTAN_BUILD_TESTS=ON \
     -Wno-dev
   cmake --build . --parallel
 }
@@ -94,29 +94,29 @@ package() {
   DESTDIR="${pkgdir}" cmake --install .
 
   install -Dm644 "${root}/packaging/config.json.default" \
-    "${pkgdir}/etc/flashsentry/config.json" 2>/dev/null || true
+    "${pkgdir}/etc/flashspartan/config.json" 2>/dev/null || true
 
   for size in 16 32 48 64 128 256; do
-    if [ -f "${root}/resources/icons/flashsentry-${size}.png" ]; then
-      install -Dm644 "${root}/resources/icons/flashsentry-${size}.png" \
-        "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/flashsentry.png"
+    if [ -f "${root}/resources/icons/flashspartan-${size}.png" ]; then
+      install -Dm644 "${root}/resources/icons/flashspartan-${size}.png" \
+        "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/flashspartan.png"
     fi
   done
 
-  install -Dm644 "${root}/resources/icons/flashsentry.svg" \
-    "${pkgdir}/usr/share/icons/hicolor/scalable/apps/flashsentry.svg"
+  install -Dm644 "${root}/resources/icons/flashspartan.svg" \
+    "${pkgdir}/usr/share/icons/hicolor/scalable/apps/flashspartan.svg"
 
-  install -Dm644 "${root}/packaging/flashsentry.service" \
-    "${pkgdir}/usr/lib/systemd/user/flashsentry.service"
+  install -Dm644 "${root}/packaging/flashspartan.service" \
+    "${pkgdir}/usr/lib/systemd/user/flashspartan.service"
 
-  if [ -f "${root}/packaging/flashsentry.bash" ]; then
-    install -Dm644 "${root}/packaging/flashsentry.bash" \
-      "${pkgdir}/usr/share/bash-completion/completions/flashsentry"
+  if [ -f "${root}/packaging/flashspartan.bash" ]; then
+    install -Dm644 "${root}/packaging/flashspartan.bash" \
+      "${pkgdir}/usr/share/bash-completion/completions/flashspartan"
   fi
 
-  if [ -f "${root}/packaging/flashsentry.zsh" ]; then
-    install -Dm644 "${root}/packaging/flashsentry.zsh" \
-      "${pkgdir}/usr/share/zsh/site-functions/_flashsentry"
+  if [ -f "${root}/packaging/flashspartan.zsh" ]; then
+    install -Dm644 "${root}/packaging/flashspartan.zsh" \
+      "${pkgdir}/usr/share/zsh/site-functions/_flashspartan"
   fi
 }
 

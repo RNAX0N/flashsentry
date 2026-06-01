@@ -2,7 +2,7 @@
 
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 struct PlatformCapabilities {
     bool udevMonitoring = false;
@@ -22,4 +22,4 @@ public:
     static bool isLinux();
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

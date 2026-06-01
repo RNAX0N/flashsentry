@@ -4,7 +4,7 @@
 #include <QMutex>
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -50,4 +50,4 @@ void IsoVerifyCache::clear()
     g_cache.clear();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

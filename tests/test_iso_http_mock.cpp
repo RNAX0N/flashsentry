@@ -3,7 +3,7 @@
 
 #include "IsoHttpClient.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestIsoHttpMock : public QObject {
     Q_OBJECT
@@ -16,7 +16,7 @@ void TestIsoHttpMock::mockHandlerReturnsFixtureBytes()
 {
     const QString payload = QStringLiteral("mock-http-payload");
     IsoHttpClient::setHandler([&payload](const QString& url, QString* errorOut, int) -> QByteArray {
-        if (url == QStringLiteral("https://mock.flashsentry.test/data.txt")) {
+        if (url == QStringLiteral("https://mock.flashspartan.test/data.txt")) {
             return payload.toUtf8();
         }
         if (errorOut) {
@@ -27,7 +27,7 @@ void TestIsoHttpMock::mockHandlerReturnsFixtureBytes()
 
     QString err;
     const QByteArray data =
-        IsoHttpClient::get(QStringLiteral("https://mock.flashsentry.test/data.txt"), &err);
+        IsoHttpClient::get(QStringLiteral("https://mock.flashspartan.test/data.txt"), &err);
     QCOMPARE(data, payload.toUtf8());
     QVERIFY(err.isEmpty());
 

@@ -1,18 +1,18 @@
-# Installing FlashSentry on Arch Linux
+# Installing FlashSpartan on Arch Linux
 
-## The `CMakeLists.txt` / `flashsentry-1.4.2.rNN.gHASH` error
+## The `CMakeLists.txt` / `flashspartan-1.4.2.rNN.gHASH` error
 
 If CMake says the source directory is something like:
 
-`packaging/src/flashsentry-1.4.2.r74.g9aebc47`
+`packaging/src/flashspartan-1.4.2.r74.g9aebc47`
 
 and that folder has **no** `CMakeLists.txt`, you are on an **old PKGBUILD** (before PR #31) or have **stale `packaging/src`** from that era.
 
 What happened:
 
 1. `pkgver()` computed `1.4.2.r<commits>.g<hash>` (your commit hash appears in the path).
-2. `prepare()` copied sources into `src/flashsentry-1.4.2`.
-3. makepkg **renamed** that directory to `src/flashsentry-1.4.2.rNN.gHASH` **before** or **without** moving the rsynced files, so CMake ran in an **empty** tree.
+2. `prepare()` copied sources into `src/flashspartan-1.4.2`.
+3. makepkg **renamed** that directory to `src/flashspartan-1.4.2.rNN.gHASH` **before** or **without** moving the rsynced files, so CMake ran in an **empty** tree.
 
 **Fix (pacman package):**
 
@@ -27,7 +27,7 @@ rm -rf pkg src
 ./build-package.sh -si
 ```
 
-Success looks like: CMake uses `.../src/flashsentry-1.4.2` (no `.rNN.gHASH` in the path).
+Success looks like: CMake uses `.../src/flashspartan-1.4.2` (no `.rNN.gHASH` in the path).
 
 **Fix (no makepkg):**
 
@@ -43,7 +43,7 @@ cd packaging
 ./build-package.sh -si
 ```
 
-This rsyncs the repository into `src/flashsentry-1.4.2` and builds there. Package version stays **`1.4.2`** (no git hash in the pacman `pkgver`).
+This rsyncs the repository into `src/flashspartan-1.4.2` and builds there. Package version stays **`1.4.2`** (no git hash in the pacman `pkgver`).
 
 ## Release tarball install (maintainers)
 
@@ -51,7 +51,7 @@ After pushing tag `v1.4.2` (or whatever `VERSION` contains):
 
 ```bash
 cd packaging
-FLASHSENTRY_RELEASE=1 makepkg -si
+FLASHSPARTAN_RELEASE=1 makepkg -si
 ```
 
 ## Version alignment
@@ -59,7 +59,7 @@ FLASHSENTRY_RELEASE=1 makepkg -si
 | File | Role |
 |------|------|
 | `VERSION` | Release number (e.g. `1.4.2`) |
-| `CMakeLists.txt` | Reads `VERSION` for `flashsentry --version` |
+| `CMakeLists.txt` | Reads `VERSION` for `flashspartan --version` |
 | `packaging/PKGBUILD` | `pkgver=1.4.2` for local builds (static; no `pkgver()` suffix) |
 | `CHANGELOG.md` | Release notes |
 
@@ -68,8 +68,8 @@ FLASHSENTRY_RELEASE=1 makepkg -si
 ```bash
 sudo usermod -aG storage "$USER"
 # log out and back in
-systemctl --user enable --now flashsentry.service
-flashsentry --version
+systemctl --user enable --now flashspartan.service
+flashspartan --version
 ```
 
 **Note:** Do not use `rsync --exclude src` in the PKGBUILD — that excludes the project `src/` directory, not only makepkg's `packaging/src` folder.

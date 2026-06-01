@@ -1,6 +1,6 @@
 [Unit]
-Description=FlashSentry - USB Flash Drive Security Monitor
-Documentation=https://github.com/RNAX0N/flashsentry
+Description=FlashSpartan - USB Flash Drive Security Monitor
+Documentation=https://github.com/RNAX0N/flashspartan
 After=graphical-session.target
 Wants=graphical-session.target
 PartOf=graphical-session.target
@@ -11,7 +11,7 @@ After=dbus.socket
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/flashsentry --minimized
+ExecStart=/usr/bin/flashspartan --minimized
 ExecStop=/bin/kill -TERM $MAINPID
 
 # Restart policy
@@ -34,7 +34,7 @@ CPUQuota=50%
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=flashsentry
+SyslogIdentifier=flashspartan
 
 [Install]
 WantedBy=graphical-session.target

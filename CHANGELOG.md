@@ -1,10 +1,21 @@
 # Changelog
 
-All notable changes to FlashSentry are documented in this file.
+All notable changes to FlashSpartan are documented in this file.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-06-01
+
 ### Added
+
+- **GitHub Releases for Windows** — each `v*` tag publishes `FlashSpartan-x.y.z-x64-setup.exe`, `.msi`, and portable `.zip` on the [Releases](https://github.com/RNAX0N/flashsentry/releases) page.
+- **Windows WiX installers** — MSI + Burn setup.exe with optional USBPcap; see [packaging/windows/INSTALLER.md](packaging/windows/INSTALLER.md).
+
+### Changed
+
+- **Product rename: FlashSentry → FlashSpartan** — application name, config under `~/.config/FlashSpartan`, binaries (`flashspartan`, `FlashSpartan.exe`), packaging, and documentation. Existing FlashSentry settings and data are migrated on first launch when possible.
+
+### Added (since 1.4.2)
 
 - **Windows 10/11 preview build** — CMake cross-compile with MSVC; removable-volume monitoring via `QStorageInfo`; read-only mount status; registry autostart; in-process policy store; CI portable ZIP. See [docs/WINDOWS.md](docs/WINDOWS.md).
 - **Platform capabilities API** (`Platform.h`) — runtime feature flags per OS.
@@ -14,7 +25,7 @@ All notable changes to FlashSentry are documented in this file.
 - **Partition vs whole-disk** target when a USB stick has multiple partitions (hash options dialog + Settings defaults)
 - **Scan modes**: full read, quick sample (spaced 1 MiB chunks), or watch-folders-only (Merkle manifest)
 - **Cancel** on device cards during hashing; **ETA** and GiB progress on card and status bar
-- **Resume checkpoints** for full scans (`~/.config/FlashSentry/hash-checkpoints.json`, 64 MiB blocks)
+- **Resume checkpoints** for full scans (`~/.config/FlashSpartan/hash-checkpoints.json`, 64 MiB blocks)
 
 ### Added
 
@@ -101,7 +112,7 @@ All notable changes to FlashSentry are documented in this file.
 
 - CLI: `--json` and `--quiet` for verify, export, catalog update, list-publishers, and trust-hash
 - `IsoVerifyReport::buildJson()` for machine-readable verification output
-- Tray menu: **Open audit log** (opens `~/.config/FlashSentry/audit.log`)
+- Tray menu: **Open audit log** (opens `~/.config/FlashSpartan/audit.log`)
 - GUI warning when embedded ISO catalog integrity (SHA-256 / OpenPGP) fails at startup
 - Determinate progress bar during multi-file ISO verification
 
@@ -132,16 +143,16 @@ All notable changes to FlashSentry are documented in this file.
 
 ### Changed
 
-- `FLASHSENTRY_SKIP_REMOTE_CATALOG` env skips network manifest refresh (used in tests)
+- `FLASHSPARTAN_SKIP_REMOTE_CATALOG` env skips network manifest refresh (used in tests)
 
 ## [1.2.1] - 2026-05-21
 
 ### Added
 
 - CLI: `--list-publishers`, `--trust-hash file:hex`, `--report-format` for `--export-report`
-- `IsoVerifySettingsLoader` — CLI reads `iso/*` settings from FlashSentry.conf (respects `-c`)
+- `IsoVerifySettingsLoader` — CLI reads `iso/*` settings from FlashSpartan.conf (respects `-c`)
 - `IsoCatalog::isVerifiableImageFileName()` for shared extension checks
-- Packaged `iso-catalog.d` README and example fragment under `/usr/share/flashsentry/`
+- Packaged `iso-catalog.d` README and example fragment under `/usr/share/flashspartan/`
 
 ### Changed
 
@@ -241,7 +252,7 @@ All notable changes to FlashSentry are documented in this file.
 
 ### Changed
 
-- CMake installs `flashsentry.service` to `share/systemd/user`
+- CMake installs `flashspartan.service` to `share/systemd/user`
 
 ## [1.1.0] - 2026-05-24
 
@@ -252,7 +263,7 @@ All notable changes to FlashSentry are documented in this file.
 - **Watch-folder verification** — Merkle-backed manifest for selected paths on a volume
 - **Verification profiles** — watch manifest (default), full partition, hybrid
 - **Watch list editor** per device with baseline build
-- Publisher catalog (`IsoCatalog`) and isolated GPG cache under `~/.cache/FlashSentry/iso-verify/`
+- Publisher catalog (`IsoCatalog`) and isolated GPG cache under `~/.cache/FlashSpartan/iso-verify/`
 - Documentation: [docs/USER_GUIDE.md](docs/USER_GUIDE.md), [docs/VERIFICATION.md](docs/VERIFICATION.md)
 
 ### Changed
@@ -267,7 +278,7 @@ All notable changes to FlashSentry are documented in this file.
 - Qt6 Network for HTTPS checksum fetch
 - `ManifestWorker`, `IsoVerifierWorker`, `MainWindow_verify_ext.cpp`
 - Partition-aware device IDs in database
-- `flashsentry-read-helper` for privileged raw reads (polkit)
+- `flashspartan-read-helper` for privileged raw reads (polkit)
 
 ## [1.0.0] - Initial release
 

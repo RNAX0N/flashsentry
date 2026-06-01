@@ -13,7 +13,7 @@
 #include <QJsonObject>
 #include <iostream>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 static QString s_configFilePath;
 static bool s_jsonOutput = false;
@@ -213,4 +213,4 @@ int VerifyCli::runTrustHash(const QString& fileName, const QString& sha256Hex)
     return ok ? ExitOk : ExitError;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

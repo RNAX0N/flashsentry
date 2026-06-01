@@ -13,7 +13,7 @@
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -274,4 +274,4 @@ int AlertsPage::rowIndexForButton(QObject* sender) const
     return btn->property("alertRow").toInt();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

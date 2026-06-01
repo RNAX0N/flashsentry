@@ -10,7 +10,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 AboutPage::AboutPage(QWidget* parent)
     : QWidget(parent)
@@ -32,11 +32,11 @@ void AboutPage::setupUi()
     layout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
 
     auto* logo = new QLabel;
-    UiIcons::setLabelPixmap(logo, ":/branding/flashsentry-logo.png", 96);
+    UiIcons::setLabelPixmap(logo, ":/branding/flashspartan-logo.png", 96);
     logo->setAlignment(Qt::AlignCenter);
     layout->addWidget(logo, 0, Qt::AlignHCenter);
 
-    auto* name = new QLabel(QStringLiteral("FlashSentry"));
+    auto* name = new QLabel(QStringLiteral("FlashSpartan"));
     name->setFont(FSFont(Heading1));
     name->setAlignment(Qt::AlignCenter);
     name->setStyleSheet(QString("color: %1;")
@@ -115,4 +115,4 @@ void AboutPage::setRuntimeInfo(const QString& qtVersion, const QString& osName)
     m_runtimeLabel->setText(QStringLiteral("Qt %1 · %2 · C++20").arg(qtVersion, osName));
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

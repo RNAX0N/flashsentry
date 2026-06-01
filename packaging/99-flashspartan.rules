@@ -1,16 +1,16 @@
-# FlashSentry udev rules
+# FlashSpartan udev rules
 # Provides user-space access to USB storage devices for hash verification
 #
-# Install to: /usr/lib/udev/rules.d/99-flashsentry.rules
+# Install to: /usr/lib/udev/rules.d/99-flashspartan.rules
 # Reload with: sudo udevadm control --reload-rules && sudo udevadm trigger
 
 # =============================================================================
 # USB Mass Storage Device Rules
 # =============================================================================
 
-# Tag all USB storage devices for FlashSentry monitoring
+# Tag all USB storage devices for FlashSpartan monitoring
 # This allows the application to receive udev events
-SUBSYSTEM=="block", ENV{ID_BUS}=="usb", TAG+="flashsentry"
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", TAG+="flashspartan"
 
 # Allow members of the 'storage' group to access USB block devices
 # This enables hash calculation without root privileges
@@ -29,32 +29,32 @@ SUBSYSTEM=="block", ENV{ID_BUS}=="usb", MODE="0660", GROUP="storage"
 # =============================================================================
 
 # Tag USB partitions specifically
-SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", TAG+="flashsentry-partition"
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", TAG+="flashspartan-partition"
 
 # Set environment variable to help identify USB storage
-SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", ENV{FLASHSENTRY_MANAGED}="1"
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", ENV{FLASHSPARTAN_MANAGED}="1"
 
 # =============================================================================
 # USB Drive (Whole Disk) Rules
 # =============================================================================
 
 # Tag whole USB drives
-SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", TAG+="flashsentry-disk"
+SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", TAG+="flashspartan-disk"
 
 # =============================================================================
 # Symlink Rules for Easier Device Identification
 # =============================================================================
 
-# Create persistent symlinks in /dev/flashsentry/ for managed devices
-# Format: /dev/flashsentry/<serial>-<partition>
+# Create persistent symlinks in /dev/flashspartan/ for managed devices
+# Format: /dev/flashspartan/<serial>-<partition>
 SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", \
     ENV{ID_SERIAL_SHORT}!="", \
-    SYMLINK+="flashsentry/$env{ID_SERIAL_SHORT}-part%n"
+    SYMLINK+="flashspartan/$env{ID_SERIAL_SHORT}-part%n"
 
 # Symlink for whole disks
 SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", \
     ENV{ID_SERIAL_SHORT}!="", \
-    SYMLINK+="flashsentry/$env{ID_SERIAL_SHORT}"
+    SYMLINK+="flashspartan/$env{ID_SERIAL_SHORT}"
 
 # =============================================================================
 # Power Management Rules
@@ -80,7 +80,7 @@ SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{UDISKS_MOUNT_OPTIONS_DEFAULTS}="noex
 # Notify systemd when USB storage is connected/disconnected
 # This can trigger user services if configured
 SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", \
-    ACTION=="add", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}="flashsentry-device@%k.target"
+    ACTION=="add", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}="flashspartan-device@%k.target"
 
 SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="partition", \
     ACTION=="remove", TAG+="systemd"
@@ -98,7 +98,7 @@ ACTION=="add", SUBSYSTEM=="scsi", ATTR{timeout}="180"
 # =============================================================================
 
 # Uncomment to log all USB storage events for debugging
-#SUBSYSTEM=="block", ENV{ID_BUS}=="usb", RUN+="/usr/bin/logger -t flashsentry 'Device event: %k action=%E{ACTION} serial=%E{ID_SERIAL_SHORT}'"
+#SUBSYSTEM=="block", ENV{ID_BUS}=="usb", RUN+="/usr/bin/logger -t flashspartan 'Device event: %k action=%E{ACTION} serial=%E{ID_SERIAL_SHORT}'"
 
 # =============================================================================
 # Notes

@@ -7,7 +7,7 @@
 #include <QTimer>
 #include <QUrl>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -17,11 +17,11 @@ QByteArray networkFetch(const QString& url, QString* errorOut, int timeoutMs)
     QNetworkRequest req{QUrl(url)};
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
-#ifdef FLASHSENTRY_VERSION
+#ifdef FLASHSPARTAN_VERSION
     req.setHeader(QNetworkRequest::UserAgentHeader,
-                  QStringLiteral("FlashSentry/" FLASHSENTRY_VERSION));
+                  QStringLiteral("FlashSpartan/" FLASHSPARTAN_VERSION));
 #else
-    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("FlashSentry"));
+    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("FlashSpartan"));
 #endif
 
     QNetworkReply* reply = nam.get(req);
@@ -89,4 +89,4 @@ void IsoHttpClient::reset()
     handlerRef() = nullptr;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

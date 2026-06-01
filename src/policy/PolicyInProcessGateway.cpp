@@ -5,7 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 PolicyInProcessGateway::PolicyInProcessGateway(QString storePath)
     : m_engine(std::move(storePath))
@@ -119,4 +119,4 @@ int PolicyInProcessGateway::importJson(const QString& path, bool merge, const QS
     return count;
 }
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

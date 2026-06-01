@@ -5,7 +5,7 @@
 #include <QString>
 #include <QStringList>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief Build and verify Merkle-backed watch manifests on mounted volumes.
@@ -44,4 +44,4 @@ public:
   static WatchManifest rebuildManifestRoots(const QString& mountPoint, const WatchManifest& spec);
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

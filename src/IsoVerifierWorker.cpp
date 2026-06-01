@@ -3,7 +3,7 @@
 
 #include <QtConcurrent>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 IsoVerifierWorker::IsoVerifierWorker(QObject* parent)
     : QObject(parent)
@@ -72,4 +72,4 @@ void IsoVerifierWorker::verifyDirectory(const QString& directory, const QString&
     });
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

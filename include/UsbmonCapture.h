@@ -5,7 +5,7 @@
 #include <QObject>
 #include <QProcess>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class UsbmonCapture : public QObject {
     Q_OBJECT
@@ -30,4 +30,4 @@ private:
     QString m_outputPath;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

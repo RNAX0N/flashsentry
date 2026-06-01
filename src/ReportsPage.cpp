@@ -16,7 +16,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -283,4 +283,4 @@ void ReportsPage::onVerifyFilterChanged()
     setVerificationRows(m_verifyRows);
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

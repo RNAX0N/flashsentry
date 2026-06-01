@@ -2,7 +2,7 @@
 
 #include <QString>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 /** Paths for the gated policy store (not exposed to UI code). */
 class PolicyPaths {
@@ -16,4 +16,4 @@ public:
     static QString socketPath();
 };
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

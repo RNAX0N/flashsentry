@@ -27,7 +27,7 @@
 #include <QtConcurrent>
 #include <QThreadPool>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -303,7 +303,7 @@ bool importEmbeddedCatalogSigningKey(QString* logOut)
     if (!pub.open(QIODevice::ReadOnly)) {
         return false;
     }
-    const QString scratchRoot = gpgScratchRoot() + QStringLiteral("/.flashsentry-gpg-scratch");
+    const QString scratchRoot = gpgScratchRoot() + QStringLiteral("/.flashspartan-gpg-scratch");
     QDir().mkpath(scratchRoot);
     QTemporaryDir temp(scratchRoot + QStringLiteral("/import-XXXXXX"));
     if (!temp.isValid()) {
@@ -333,7 +333,7 @@ bool importPublisherKeys(const QStringList& keyIds, const QString& keyserver, QS
         if (publisherKeyAvailable(keyId)) {
             continue;
         }
-        if (qEnvironmentVariableIsSet("FLASHSENTRY_SKIP_KEYSERVER_IMPORT")) {
+        if (qEnvironmentVariableIsSet("FLASHSPARTAN_SKIP_KEYSERVER_IMPORT")) {
             if (logOut) {
                 *logOut = QStringLiteral("Signing key not in local GPG homedir: %1").arg(keyId);
             }
@@ -721,7 +721,7 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
     if (!sigPath.isEmpty() && !r.pgpChecked) {
         ensureGpgHome(nullptr);
         if (!r.trustedFingerprints.isEmpty()
-            && qEnvironmentVariableIsSet("FLASHSENTRY_SKIP_KEYSERVER_IMPORT")) {
+            && qEnvironmentVariableIsSet("FLASHSPARTAN_SKIP_KEYSERVER_IMPORT")) {
             importEmbeddedCatalogSigningKey(nullptr);
         }
         r.pgpChecked = true;
@@ -864,4 +864,4 @@ QList<IsoVerifyResult> IsoVerifier::verifyMountPoint(const QString& mountPoint, 
     return results;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

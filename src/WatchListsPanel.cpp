@@ -11,7 +11,7 @@
 #include <QListWidget>
 #include <QPushButton>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 WatchListsPanel::WatchListsPanel(QWidget* parent)
     : QWidget(parent)
@@ -101,4 +101,4 @@ void WatchListsPanel::onSelectionChanged()
     m_editBtn->setEnabled(ok);
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

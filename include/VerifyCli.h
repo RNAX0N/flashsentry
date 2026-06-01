@@ -2,7 +2,7 @@
 
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /** Headless verification and catalog maintenance (exit codes for scripts). */
 class VerifyCli {
@@ -19,7 +19,7 @@ public:
     static int runListPublishers();
     static int runTrustHash(const QString& fileName, const QString& sha256Hex);
 
-    /** Optional FlashSentry.conf path for subsequent CLI verify commands. */
+    /** Optional FlashSpartan.conf path for subsequent CLI verify commands. */
     static void setConfigFilePath(const QString& path);
 
     /** Machine-readable stdout for verify/export commands. */
@@ -35,4 +35,4 @@ public:
     static void applyUserSettings();
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

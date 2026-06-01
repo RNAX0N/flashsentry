@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
-    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" _flashsentry_version_raw)
-    string(STRIP "${_flashsentry_version_raw}" FLASHSENTRY_PROJECT_VERSION)
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" _flashspartan_version_raw)
+    string(STRIP "${_flashspartan_version_raw}" FLASHSPARTAN_PROJECT_VERSION)
 else()
-    set(FLASHSENTRY_PROJECT_VERSION "1.4.2")
+    set(FLASHSPARTAN_PROJECT_VERSION "1.4.2")
 endif()
-project(flashsentry
-    VERSION ${FLASHSENTRY_PROJECT_VERSION}
+project(flashspartan
+    VERSION ${FLASHSPARTAN_PROJECT_VERSION}
     DESCRIPTION "USB Flash Drive Security Monitor"
     LANGUAGES CXX
 )
@@ -31,11 +31,11 @@ else()
     set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -Wpedantic")
 endif()
 
-set(FLASHSENTRY_QT_COMPONENTS Core Gui Widgets Concurrent Network)
+set(FLASHSPARTAN_QT_COMPONENTS Core Gui Widgets Concurrent Network)
 if(NOT WIN32)
-    list(APPEND FLASHSENTRY_QT_COMPONENTS DBus)
+    list(APPEND FLASHSPARTAN_QT_COMPONENTS DBus)
 endif()
-find_package(Qt6 REQUIRED COMPONENTS ${FLASHSENTRY_QT_COMPONENTS})
+find_package(Qt6 REQUIRED COMPONENTS ${FLASHSPARTAN_QT_COMPONENTS})
 
 if(WIN32)
     find_package(OpenSSL REQUIRED)
@@ -50,6 +50,7 @@ endif()
 
 set(SOURCES
     src/main.cpp
+    src/AppPaths.cpp
     src/Platform.cpp
     src/MainWindow.cpp
     src/MainWindow_verify_ext.cpp
@@ -126,6 +127,7 @@ endif()
 
 set(HEADERS
     include/WinStorage.h
+    include/AppPaths.h
     include/Platform.h
     include/MainWindow.h
     include/DeviceMonitor.h
@@ -201,18 +203,18 @@ set(HEADERS
 set(RESOURCES resources/resources.qrc)
 if(WIN32)
     configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/FlashSentry.rc.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/FlashSentry.rc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/FlashSpartan.rc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/FlashSpartan.rc"
         @ONLY
     )
-    list(APPEND RESOURCES "${CMAKE_CURRENT_BINARY_DIR}/FlashSentry.rc")
+    list(APPEND RESOURCES "${CMAKE_CURRENT_BINARY_DIR}/FlashSpartan.rc")
 endif()
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${RESOURCES})
 if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         WIN32_EXECUTABLE TRUE
-        OUTPUT_NAME "FlashSentry"
+        OUTPUT_NAME "FlashSpartan"
     )
 endif()
 
@@ -241,85 +243,85 @@ endif()
 
 include(GNUInstallDirs)
 
-set(FLASHSENTRY_HELPER_RELDIR "${CMAKE_INSTALL_LIBDIR}/flashsentry")
-set(FLASHSENTRY_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper")
+set(FLASHSPARTAN_HELPER_RELDIR "${CMAKE_INSTALL_LIBDIR}/flashspartan")
+set(FLASHSPARTAN_READ_HELPER "${CMAKE_INSTALL_PREFIX}/${FLASHSPARTAN_HELPER_RELDIR}/flashspartan-read-helper")
 
-add_executable(flashsentry-policyd
-    src/flashsentry-policyd.cpp
+add_executable(flashspartan-policyd
+    src/flashspartan-policyd.cpp
     src/policy/PolicyPaths.cpp
     src/policy/PolicyBlobCodec.cpp
     src/policy/PolicyAudit.cpp
     src/policy/PolicyStoreEngine.cpp
 )
-target_include_directories(flashsentry-policyd PRIVATE
+target_include_directories(flashspartan-policyd PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${OPENSSL_INCLUDE_DIRS}
 )
-target_link_libraries(flashsentry-policyd PRIVATE
+target_link_libraries(flashspartan-policyd PRIVATE
     Qt6::Core Qt6::Network
     ${OPENSSL_LIBRARIES}
 )
 
-add_executable(flashsentry-read-helper
-    src/flashsentry-read-helper.cpp
+add_executable(flashspartan-read-helper
+    src/flashspartan-read-helper.cpp
     src/RawDeviceHash.cpp
     src/RawDeviceHashAdvanced.cpp
 )
-target_include_directories(flashsentry-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
-target_link_libraries(flashsentry-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
+target_include_directories(flashspartan-read-helper PRIVATE include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(flashspartan-read-helper PRIVATE Qt6::Core ${OPENSSL_LIBRARIES})
 if(WIN32)
-    target_sources(flashsentry-read-helper PRIVATE src/WinStorage.cpp)
-    target_link_libraries(flashsentry-read-helper PRIVATE setupapi cfgmgr32 shell32)
-    set_target_properties(flashsentry-read-helper PROPERTIES OUTPUT_NAME "flashsentry-read-helper")
+    target_sources(flashspartan-read-helper PRIVATE src/WinStorage.cpp)
+    target_link_libraries(flashspartan-read-helper PRIVATE setupapi cfgmgr32 shell32)
+    set_target_properties(flashspartan-read-helper PROPERTIES OUTPUT_NAME "flashspartan-read-helper")
 endif()
-target_compile_definitions(flashsentry-read-helper PRIVATE
-    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
+target_compile_definitions(flashspartan-read-helper PRIVATE
+    FLASHSPARTAN_VERSION="${PROJECT_VERSION}"
 )
 
 if(NOT WIN32)
     configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/org.flashsentry.policy.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy"
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/org.flashspartan.policy.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/org.flashspartan.policy"
         @ONLY
     )
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    FLASHSENTRY_READ_HELPER_PATH="$<TARGET_FILE:flashsentry-read-helper>"
-    FLASHSENTRY_VERSION="${PROJECT_VERSION}"
-    FLASHSENTRY_POLICYD_PATH="$<TARGET_FILE:flashsentry-policyd>"
+    FLASHSPARTAN_READ_HELPER_PATH="$<TARGET_FILE:flashspartan-read-helper>"
+    FLASHSPARTAN_VERSION="${PROJECT_VERSION}"
+    FLASHSPARTAN_POLICYD_PATH="$<TARGET_FILE:flashspartan-policyd>"
 )
-add_dependencies(${PROJECT_NAME} flashsentry-read-helper flashsentry-policyd)
+add_dependencies(${PROJECT_NAME} flashspartan-read-helper flashspartan-policyd)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if(WIN32)
-    install(TARGETS flashsentry-policyd flashsentry-read-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS flashspartan-policyd flashspartan-read-helper RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
-    install(TARGETS flashsentry-policyd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-    install(TARGETS flashsentry-read-helper RUNTIME DESTINATION ${FLASHSENTRY_HELPER_RELDIR})
+    install(TARGETS flashspartan-policyd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS flashspartan-read-helper RUNTIME DESTINATION ${FLASHSPARTAN_HELPER_RELDIR})
     install(CODE "
-      set(_helper \"\${CMAKE_INSTALL_PREFIX}/${FLASHSENTRY_HELPER_RELDIR}/flashsentry-read-helper\")
-      set(_legacy \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/flashsentry\")
+      set(_helper \"\${CMAKE_INSTALL_PREFIX}/${FLASHSPARTAN_HELPER_RELDIR}/flashspartan-read-helper\")
+      set(_legacy \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBEXECDIR}/flashspartan\")
       file(MAKE_DIRECTORY \"\$ENV{DESTDIR}\${_legacy}\")
       execute_process(
         COMMAND \${CMAKE_COMMAND} -E copy
           \"\$ENV{DESTDIR}\${_helper}\"
-          \"\$ENV{DESTDIR}\${_legacy}/flashsentry-read-helper\"
+          \"\$ENV{DESTDIR}\${_legacy}/flashspartan-read-helper\"
         RESULT_VARIABLE _copy_result
       )
       if(NOT _copy_result EQUAL 0)
-        message(WARNING \"Could not install libexec compatibility copy of flashsentry-read-helper\")
+        message(WARNING \"Could not install libexec compatibility copy of flashspartan-read-helper\")
       endif()
     ")
-    install(FILES packaging/flashsentry.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-    install(FILES resources/icons/flashsentry.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.flashsentry.policy DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
-    install(FILES packaging/99-flashsentry.rules DESTINATION ${CMAKE_INSTALL_LIBDIR}/udev/rules.d)
-    install(FILES packaging/flashsentry.service DESTINATION ${CMAKE_INSTALL_DATADIR}/systemd/user)
+    install(FILES packaging/flashspartan.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    install(FILES resources/icons/flashspartan.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.flashspartan.policy DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/actions)
+    install(FILES packaging/99-flashspartan.rules DESTINATION ${CMAKE_INSTALL_LIBDIR}/udev/rules.d)
+    install(FILES packaging/flashspartan.service DESTINATION ${CMAKE_INSTALL_DATADIR}/systemd/user)
 endif()
 
-install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/flashsentry)
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/flashspartan)
 
 install(
     FILES
@@ -332,9 +334,9 @@ install(
 )
 install(FILES docs/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME docs-README.md)
 install(FILES resources/iso-catalog/embedded-manifest.json
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/flashsentry/iso-catalog)
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/flashspartan/iso-catalog)
 install(DIRECTORY packaging/iso-catalog.d/
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/flashsentry/iso-catalog.d
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/flashspartan/iso-catalog.d
     FILES_MATCHING PATTERN "*.md" PATTERN "*.json")
 
 if(NOT TARGET uninstall)
@@ -348,19 +350,19 @@ if(NOT TARGET uninstall)
     )
 endif()
 
-option(FLASHSENTRY_BUILD_TESTS "Build unit tests" ON)
-if(FLASHSENTRY_BUILD_TESTS)
+option(FLASHSPARTAN_BUILD_TESTS "Build unit tests" ON)
+if(FLASHSPARTAN_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
 
-message(STATUS "FlashSentry v${PROJECT_VERSION}")
+message(STATUS "FlashSpartan v${PROJECT_VERSION}")
 message(STATUS "  Build type:    ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ Standard:  ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Qt6 Version:   ${Qt6_VERSION}")
 message(STATUS "  libnotify:     ${LIBNOTIFY_FOUND}")
 message(STATUS "  Install to:    ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "  Read helper:   ${FLASHSENTRY_READ_HELPER}")
+message(STATUS "  Read helper:   ${FLASHSPARTAN_READ_HELPER}")
 message(STATUS "  Platform:      ${CMAKE_SYSTEM_NAME}")
 message(STATUS "")
 
@@ -379,28 +381,28 @@ if(WIN32)
     endif()
 
     set(CPACK_GENERATOR "ZIP")
-    set(CPACK_PACKAGE_NAME "FlashSentry")
-    set(CPACK_PACKAGE_VENDOR "FlashSentry")
+    set(CPACK_PACKAGE_NAME "FlashSpartan")
+    set(CPACK_PACKAGE_VENDOR "FlashSpartan")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "USB and ISO security monitor")
-    set(CPACK_PACKAGE_INSTALL_DIRECTORY "FlashSentry")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "FlashSpartan")
 
-    set(FLASHSENTRY_USBPCAP_INSTALLER "" CACHE FILEPATH
+    set(FLASHSPARTAN_USBPCAP_INSTALLER "" CACHE FILEPATH
         "Path to official USBPcapSetup.exe to offer during NSIS install (optional)")
-    if(FLASHSENTRY_USBPCAP_INSTALLER AND EXISTS "${FLASHSENTRY_USBPCAP_INSTALLER}")
-        file(TO_NATIVE_PATH "${FLASHSENTRY_USBPCAP_INSTALLER}" _flashsentry_usbpcap_installer)
-        get_filename_component(_flashsentry_usbpcap_name "${FLASHSENTRY_USBPCAP_INSTALLER}" NAME)
+    if(FLASHSPARTAN_USBPCAP_INSTALLER AND EXISTS "${FLASHSPARTAN_USBPCAP_INSTALLER}")
+        file(TO_NATIVE_PATH "${FLASHSPARTAN_USBPCAP_INSTALLER}" _flashspartan_usbpcap_installer)
+        get_filename_component(_flashspartan_usbpcap_name "${FLASHSPARTAN_USBPCAP_INSTALLER}" NAME)
         list(APPEND CPACK_GENERATOR "NSIS")
         set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
         set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS
-            "MessageBox MB_YESNO|MB_ICONQUESTION \"Install USBPcap now? (Recommended for BadUSB USB packet capture. Requires a one-time driver install.)\" IDYES flashsentry_do_usbpcap"
-            "Goto flashsentry_skip_usbpcap"
-            "flashsentry_do_usbpcap:"
+            "MessageBox MB_YESNO|MB_ICONQUESTION \"Install USBPcap now? (Recommended for BadUSB USB packet capture. Requires a one-time driver install.)\" IDYES flashspartan_do_usbpcap"
+            "Goto flashspartan_skip_usbpcap"
+            "flashspartan_do_usbpcap:"
             "SetOutPath \"$$PLUGINSDIR\""
-            "File /oname=${_flashsentry_usbpcap_name} \"${_flashsentry_usbpcap_installer}\""
-            "ExecWait '$$PLUGINSDIR\\${_flashsentry_usbpcap_name} /S' $$0"
-            "Delete \"$$PLUGINSDIR\\${_flashsentry_usbpcap_name}\""
-            "flashsentry_skip_usbpcap:")
-        message(STATUS "  NSIS+USBPcap:   ${_flashsentry_usbpcap_installer}")
+            "File /oname=${_flashspartan_usbpcap_name} \"${_flashspartan_usbpcap_installer}\""
+            "ExecWait '$$PLUGINSDIR\\${_flashspartan_usbpcap_name} /S' $$0"
+            "Delete \"$$PLUGINSDIR\\${_flashspartan_usbpcap_name}\""
+            "flashspartan_skip_usbpcap:")
+        message(STATUS "  NSIS+USBPcap:   ${_flashspartan_usbpcap_installer}")
     endif()
 
     include(CPack)

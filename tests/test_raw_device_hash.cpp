@@ -6,7 +6,7 @@
 #include <cerrno>
 #include <unistd.h>
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestRawDeviceHash : public QObject {
     Q_OBJECT

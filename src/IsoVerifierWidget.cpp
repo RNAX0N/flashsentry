@@ -32,7 +32,7 @@
 #include <QComboBox>
 #include <QTextCursor>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -176,7 +176,7 @@ QWidget* IsoVerifierWidget::buildEmptyStatePage()
     layout->addWidget(title);
 
     auto* body = new QLabel(
-        QStringLiteral("FlashSentry will verify image files on the mounted volume, or you can "
+        QStringLiteral("FlashSpartan will verify image files on the mounted volume, or you can "
                        "pick a folder manually.\nWorks with any copy method — not tied to one "
                        "multiboot tool."));
     body->setWordWrap(true);
@@ -575,7 +575,7 @@ void IsoVerifierWidget::onExportReport()
         return;
     }
     const QString path = QFileDialog::getSaveFileName(
-        this, QStringLiteral("Export report"), QStringLiteral("flashsentry-report.html"),
+        this, QStringLiteral("Export report"), QStringLiteral("flashspartan-report.html"),
         QStringLiteral("HTML (*.html);;JSON (*.json);;CSV (*.csv);;Text (*.txt)"));
     if (path.isEmpty()) {
         return;
@@ -735,4 +735,4 @@ void IsoVerifierWidget::appendReport(const QString& text)
     m_reportView->verticalScrollBar()->setValue(m_reportView->verticalScrollBar()->maximum());
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

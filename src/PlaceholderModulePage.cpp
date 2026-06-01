@@ -5,7 +5,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 PlaceholderModulePage::PlaceholderModulePage(const QString& title, const QString& description,
                                              QWidget* parent)
@@ -43,4 +43,4 @@ void PlaceholderModulePage::setPrimaryAction(const QString& text, bool visible)
     m_actionBtn->setVisible(visible);
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

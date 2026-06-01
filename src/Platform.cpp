@@ -2,7 +2,7 @@
 
 #include <QtGlobal>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 PlatformCapabilities Platform::capabilities()
 {
@@ -47,4 +47,4 @@ bool Platform::isLinux()
 #endif
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

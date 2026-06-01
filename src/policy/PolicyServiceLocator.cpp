@@ -1,6 +1,6 @@
 #include "policy/PolicyServiceLocator.h"
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 namespace {
 
@@ -23,4 +23,4 @@ bool PolicyServiceLocator::hasGateway()
     return static_cast<bool>(g_gateway);
 }
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

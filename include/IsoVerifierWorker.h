@@ -8,7 +8,7 @@
 
 #include <atomic>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief Runs ISO verification on a background thread (mount-triggered or manual).
@@ -38,4 +38,4 @@ private:
     QFuture<void> m_activeJob;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

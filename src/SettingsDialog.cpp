@@ -10,12 +10,12 @@
 #include <QUrl>
 #include <QDebug>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent)
 {
-    setWindowTitle("FlashSentry Settings");
+    setWindowTitle("FlashSpartan Settings");
     setMinimumSize(550, 500);
     setModal(true);
     
@@ -298,12 +298,12 @@ QWidget* SettingsDialog::createGeneralTab()
     QVBoxLayout* startupLayout = new QVBoxLayout(startupGroup);
     
     m_startMinimizedCheck = new QCheckBox("Start minimized to tray");
-    m_startMinimizedCheck->setToolTip("Start FlashSentry minimized to the system tray");
+    m_startMinimizedCheck->setToolTip("Start FlashSpartan minimized to the system tray");
     connect(m_startMinimizedCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     startupLayout->addWidget(m_startMinimizedCheck);
     
     m_autoStartCheck = new QCheckBox("Start automatically at login");
-    m_autoStartCheck->setToolTip("Launch FlashSentry when you log in");
+    m_autoStartCheck->setToolTip("Launch FlashSpartan when you log in");
     m_autoStartCheck->setEnabled(AutostartManager::isAvailable());
     connect(m_autoStartCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     startupLayout->addWidget(m_autoStartCheck);
@@ -315,7 +315,7 @@ QWidget* SettingsDialog::createGeneralTab()
     QVBoxLayout* behaviorLayout = new QVBoxLayout(behaviorGroup);
     
     m_minimizeToTrayCheck = new QCheckBox("Minimize to system tray instead of closing");
-    m_minimizeToTrayCheck->setToolTip("Keep FlashSentry running in the background when you close the window");
+    m_minimizeToTrayCheck->setToolTip("Keep FlashSpartan running in the background when you close the window");
     connect(m_minimizeToTrayCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     behaviorLayout->addWidget(m_minimizeToTrayCheck);
     
@@ -799,13 +799,13 @@ QWidget* SettingsDialog::createAboutTab()
     
     // App icon/logo
     QLabel* logoLabel = new QLabel;
-    UiIcons::setLabelPixmap(logoLabel, ":/icons/flashsentry.svg", 48);
+    UiIcons::setLabelPixmap(logoLabel, ":/icons/flashspartan.svg", 48);
     logoLabel->setStyleSheet("font-size: 64px;");
     logoLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(logoLabel);
     
     // App name
-    QLabel* nameLabel = new QLabel("FlashSentry");
+    QLabel* nameLabel = new QLabel("FlashSpartan");
     nameLabel->setFont(FSFont(Heading1));
     nameLabel->setAlignment(Qt::AlignCenter);
     nameLabel->setStyleSheet(QString("color: %1;").arg(
@@ -840,7 +840,7 @@ QWidget* SettingsDialog::createAboutTab()
     QPushButton* githubBtn = new QPushButton("GitHub");
     githubBtn->setCursor(Qt::PointingHandCursor);
     connect(githubBtn, &QPushButton::clicked, []() {
-        QDesktopServices::openUrl(QUrl("https://github.com/flashsentry"));
+        QDesktopServices::openUrl(QUrl("https://github.com/flashspartan"));
     });
     linksLayout->addWidget(githubBtn);
     
@@ -848,8 +848,8 @@ QWidget* SettingsDialog::createAboutTab()
     licenseBtn->setCursor(Qt::PointingHandCursor);
     connect(licenseBtn, &QPushButton::clicked, [this]() {
         QMessageBox::information(this, "License",
-            "FlashSentry is licensed under the MIT License.\n\n"
-            "Copyright (c) 2024 FlashSentry Contributors\n\n"
+            "FlashSpartan is licensed under the MIT License.\n\n"
+            "Copyright (c) 2024 FlashSpartan Contributors\n\n"
             "Permission is hereby granted, free of charge, to any person "
             "obtaining a copy of this software...");
     });
@@ -916,7 +916,7 @@ void SettingsDialog::onExportDatabase()
     QString path = QFileDialog::getSaveFileName(
         this,
         "Export Database",
-        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/flashsentry_export.json",
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/flashspartan_export.json",
         "JSON Files (*.json);;All Files (*)");
     
     if (!path.isEmpty()) {
@@ -1037,4 +1037,4 @@ void SettingsDialog::setDatabaseStatistics(int deviceCount, const QString& datab
         QStringLiteral("%1 whitelisted device(s)\n%2").arg(deviceCount).arg(path));
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -1,6 +1,6 @@
 #include "BadUsbAnalyzer.h"
 
-namespace FlashSentry::BadUsbAnalyzer {
+namespace FlashSpartan::BadUsbAnalyzer {
 
 namespace {
 
@@ -88,4 +88,4 @@ QString severityLabel(BadUsbSeverity severity)
     return QStringLiteral("Unknown");
 }
 
-} // namespace FlashSentry::BadUsbAnalyzer
+} // namespace FlashSpartan::BadUsbAnalyzer

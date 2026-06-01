@@ -4,7 +4,7 @@
 
 #include <optional>
 
-namespace FlashSentry::BadUsbAnalyzer {
+namespace FlashSpartan::BadUsbAnalyzer {
 
 BadUsbAnomalyResult analyzeConnect(const HidDeviceInfo& device,
                                    const std::optional<BadUsbBaselineEntry>& baseline,
@@ -14,4 +14,4 @@ BadUsbAnomalyResult analyzeConnect(const HidDeviceInfo& device,
 
 QString severityLabel(BadUsbSeverity severity);
 
-} // namespace FlashSentry::BadUsbAnalyzer
+} // namespace FlashSpartan::BadUsbAnalyzer

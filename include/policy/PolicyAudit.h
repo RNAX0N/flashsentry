@@ -2,7 +2,7 @@
 
 #include <QString>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 /** Append-only audit trail written only by the policy engine / daemon. */
 class PolicyAudit {
@@ -14,4 +14,4 @@ private:
     static void appendLine(const QString& jsonLine);
 };
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

@@ -7,7 +7,7 @@ class QLineEdit;
 class QTableWidget;
 class QLabel;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 struct AllowBlockRow {
     QString uniqueId;
@@ -65,4 +65,4 @@ private:
     QList<AllowBlockRow> m_rows;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

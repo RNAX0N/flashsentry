@@ -9,7 +9,7 @@
 #include <QFileInfo>
 #include <QElapsedTimer>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -368,4 +368,4 @@ WatchManifest ManifestService::rebuildManifestRoots(const QString& mountPoint, c
     return out;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

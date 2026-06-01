@@ -19,12 +19,12 @@ body:
       label: Steps to reproduce
       placeholder: |
         1. Mount USB with ...
-        2. Open FlashSentry ...
+        2. Open FlashSpartan ...
   - type: input
     id: version
     attributes:
-      label: FlashSentry version
-      placeholder: "1.1.4 (flashsentry --version)"
+      label: FlashSpartan version
+      placeholder: "1.1.4 (flashspartan --version)"
   - type: input
     id: distro
     attributes:

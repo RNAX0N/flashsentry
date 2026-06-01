@@ -10,7 +10,7 @@ class QListWidget;
 class QPushButton;
 class QTableWidget;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class BadUsbWidget : public QWidget {
     Q_OBJECT
@@ -54,4 +54,4 @@ private:
     QHash<QString, bool> m_trusted;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

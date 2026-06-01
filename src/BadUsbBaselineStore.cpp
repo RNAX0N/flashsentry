@@ -10,7 +10,7 @@
 #include <QSaveFile>
 #include <QStandardPaths>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 BadUsbBaselineStore::BadUsbBaselineStore(QObject* parent)
     : QObject(parent)
@@ -193,4 +193,4 @@ bool BadUsbBaselineStore::save() const
     return true;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

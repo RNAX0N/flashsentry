@@ -9,7 +9,7 @@
 #include <QStorageInfo>
 #include <qt_windows.h>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -183,7 +183,7 @@ QString DeviceMonitor::getSysAttr(struct udev_device* /*dev*/, const char* /*key
     return {};
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan
 
 #else
 
@@ -197,7 +197,7 @@ QString DeviceMonitor::getSysAttr(struct udev_device* /*dev*/, const char* /*key
 #include <QFile>
 #include <QIODevice>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 DeviceMonitor::DeviceMonitor(QObject* parent)
     : QThread(parent)
@@ -598,6 +598,6 @@ QString DeviceMonitor::getSysAttr(struct udev_device* dev, const char* key)
     return value ? QString::fromUtf8(value).trimmed() : QString();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan
 
 #endif

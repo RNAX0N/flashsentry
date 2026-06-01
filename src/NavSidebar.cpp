@@ -8,7 +8,7 @@
 #include <QFrame>
 #include <QPixmap>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 NavSidebar::NavSidebar(QWidget* parent)
     : QWidget(parent)
@@ -26,7 +26,7 @@ NavSidebar::NavSidebar(QWidget* parent)
     brandLayout->setContentsMargins(8, 16, 8, 12);
     brandLayout->setSpacing(0);
 
-    const QPixmap logoPx(QStringLiteral(":/branding/flashsentry-logo.png"));
+    const QPixmap logoPx(QStringLiteral(":/branding/flashspartan-logo.png"));
     if (!logoPx.isNull()) {
         auto* logoLabel = new QLabel;
         logoLabel->setObjectName(QStringLiteral("NavLogo"));
@@ -34,7 +34,7 @@ NavSidebar::NavSidebar(QWidget* parent)
         logoLabel->setPixmap(logoPx.scaledToWidth(200, Qt::SmoothTransformation));
         brandLayout->addWidget(logoLabel);
     } else {
-        auto* title = new QLabel(QStringLiteral("FlashSentry"));
+        auto* title = new QLabel(QStringLiteral("FlashSpartan"));
         title->setFont(FSFont(Heading3));
         title->setStyleSheet(QString("color: %1; font-weight: 700;")
                                  .arg(FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary)));
@@ -154,4 +154,4 @@ void NavSidebar::onButtonClicked()
     emit pageSelected(page);
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

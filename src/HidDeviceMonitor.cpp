@@ -4,7 +4,7 @@
 
 #include <QMutexLocker>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 HidDeviceMonitor::HidDeviceMonitor(QObject* parent)
     : QThread(parent)
@@ -50,7 +50,7 @@ std::optional<HidDeviceInfo> HidDeviceMonitor::getDevice(const QString& stableId
     return *it;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan
 
 #else
 
@@ -63,7 +63,7 @@ std::optional<HidDeviceInfo> HidDeviceMonitor::getDevice(const QString& stableId
 #include <QMutexLocker>
 #include <QSet>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 HidDeviceMonitor::HidDeviceMonitor(QObject* parent)
     : QThread(parent)
@@ -408,6 +408,6 @@ QString HidDeviceMonitor::getSysAttr(struct udev_device* dev, const char* key) c
     return value ? QString::fromUtf8(value).trimmed() : QString();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan
 
 #endif

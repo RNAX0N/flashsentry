@@ -3,7 +3,7 @@
 #include "policy/PolicyGateway.h"
 #include "policy/PolicyServiceLocator.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 BlockedDriveStore& BlockedDriveStore::instance()
 {
@@ -86,4 +86,4 @@ QSet<QString> BlockedDriveStore::blockedUniqueIds() const
     return ids;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

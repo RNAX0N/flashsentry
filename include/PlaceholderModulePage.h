@@ -5,7 +5,7 @@
 class QLabel;
 class QPushButton;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class PlaceholderModulePage : public QWidget {
     Q_OBJECT
@@ -25,4 +25,4 @@ private:
     QPushButton* m_actionBtn = nullptr;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

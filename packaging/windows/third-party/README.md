@@ -8,6 +8,6 @@ Download the official USBPcap installer here for local packaging:
 Configure CMake:
 
 ```powershell
-cmake -B build -DFLASHSENTRY_BUILD_WINDOWS_INSTALLERS=ON `
-  -DFLASHSENTRY_USBPCAP_INSTALLER="$PWD/packaging/windows/third-party/USBPcapSetup-1.5.4.0.exe"
+cmake -B build -DFLASHSPARTAN_BUILD_WINDOWS_INSTALLERS=ON `
+  -DFLASHSPARTAN_USBPCAP_INSTALLER="$PWD/packaging/windows/third-party/USBPcapSetup-1.5.4.0.exe"
 ```

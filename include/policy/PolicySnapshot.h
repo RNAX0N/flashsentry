@@ -5,7 +5,7 @@
 
 #include <QList>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 /** In-memory authoritative policy state. */
 struct PolicySnapshot {
@@ -13,4 +13,4 @@ struct PolicySnapshot {
     QList<BlockedDriveEntry> blocks;
 };
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

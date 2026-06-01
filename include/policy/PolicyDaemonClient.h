@@ -2,7 +2,7 @@
 
 #include "policy/PolicyGateway.h"
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 class PolicyDaemonClient : public PolicyGateway {
 public:
@@ -34,4 +34,4 @@ private:
     QString m_socketPath;
 };
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

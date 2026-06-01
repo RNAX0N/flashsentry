@@ -8,7 +8,7 @@
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
 
-namespace FlashSentry::RawDeviceHash {
+namespace FlashSpartan::RawDeviceHash {
 
 QString scanModeTag(ScanMode mode)
 {
@@ -335,7 +335,7 @@ HashResult hashAdvanced(int fd, const Options& options, uint64_t deviceSize)
     return hashChunkedResumeWin(handle, options, deviceSize);
 }
 
-} // namespace FlashSentry::RawDeviceHash
+} // namespace FlashSpartan::RawDeviceHash
 
 #else
 
@@ -344,7 +344,7 @@ HashResult hashAdvanced(int fd, const Options& options, uint64_t deviceSize)
 #include <cerrno>
 #include <cstring>
 
-namespace FlashSentry::RawDeviceHash {
+namespace FlashSpartan::RawDeviceHash {
 
 namespace {
 
@@ -620,6 +620,6 @@ HashResult hashAdvanced(int fd, const Options& options, uint64_t deviceSize)
     return hashChunkedResume(fd, options, deviceSize);
 }
 
-} // namespace FlashSentry::RawDeviceHash
+} // namespace FlashSpartan::RawDeviceHash
 
 #endif

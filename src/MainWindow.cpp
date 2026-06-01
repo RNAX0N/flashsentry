@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "AppPaths.h"
 #include "UiIcons.h"
 #include "StyledMessageBox.h"
 #include "AutostartManager.h"
@@ -50,11 +51,11 @@
 
 namespace {
 
-FlashSentry::UiEventEntry makeUiEvent(const QString& event, const QString& device,
+FlashSpartan::UiEventEntry makeUiEvent(const QString& event, const QString& device,
                                       const QString& type, const QString& result,
                                       const QString& detail, const QString& deviceNode = {})
 {
-    FlashSentry::UiEventEntry e;
+    FlashSpartan::UiEventEntry e;
     e.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     e.time = QDateTime::currentDateTime();
     e.event = event;
@@ -76,7 +77,7 @@ bool isAlertResult(const QString& result)
            || r == QLatin1String("blocked") || r == QLatin1String("rejected");
 }
 
-bool isAlertUiEvent(const FlashSentry::UiEventEntry& e)
+bool isAlertUiEvent(const FlashSpartan::UiEventEntry& e)
 {
     if (isAlertResult(e.result)) {
         return true;
@@ -87,9 +88,9 @@ bool isAlertUiEvent(const FlashSentry::UiEventEntry& e)
            || ev.contains(QStringLiteral("reject")) || ev.contains(QStringLiteral("security"));
 }
 
-QList<FlashSentry::AuditLogRow> readAuditLogTail(const QString& path, int maxLines, bool policyFormat)
+QList<FlashSpartan::AuditLogRow> readAuditLogTail(const QString& path, int maxLines, bool policyFormat)
 {
-    QList<FlashSentry::AuditLogRow> rows;
+    QList<FlashSpartan::AuditLogRow> rows;
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return rows;
@@ -113,7 +114,7 @@ QList<FlashSentry::AuditLogRow> readAuditLogTail(const QString& path, int maxLin
             continue;
         }
         const QJsonObject o = doc.object();
-        FlashSentry::AuditLogRow row;
+        FlashSpartan::AuditLogRow row;
         row.time = QDateTime::fromString(o.value(QStringLiteral("ts")).toString(), Qt::ISODate);
         if (!row.time.isValid()) {
             row.time = QDateTime::currentDateTime();
@@ -148,13 +149,14 @@ QList<FlashSentry::AuditLogRow> readAuditLogTail(const QString& path, int maxLin
 
 } // namespace
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
-    // Initialize settings storage
-    m_qsettings = std::make_unique<QSettings>("flashsentry", "FlashSentry");
+    AppPaths::migrateQSettingsFromFlashSentry();
+    m_qsettings = std::make_unique<QSettings>(QStringLiteral("flashspartan"),
+                                            QStringLiteral("FlashSpartan"));
     
     // Initialize the style manager
     FSStyle.initialize();
@@ -204,7 +206,7 @@ MainWindow::MainWindow(QWidget* parent)
         m_trayIcon->show();
     }
     
-    logMessage("FlashSentry started", LogLevel::Info);
+    logMessage("FlashSpartan started", LogLevel::Info);
 
     IsoCatalogManifest::ensureLoaded();
     QTimer::singleShot(0, this, [this]() { warnIfCatalogIntegrityFailed(); });
@@ -238,8 +240,8 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupUi()
 {
-    setWindowTitle("FlashSentry");
-    setWindowIcon(QIcon(QStringLiteral(":/icons/flashsentry.svg")));
+    setWindowTitle("FlashSpartan");
+    setWindowIcon(QIcon(QStringLiteral(":/icons/flashspartan.svg")));
     setMinimumSize(1100, 720);
 
     if (auto* screen = QApplication::primaryScreen()) {
@@ -383,11 +385,11 @@ void MainWindow::setupUi()
 
     m_aboutPage = new AboutPage;
     connect(m_aboutPage, &AboutPage::openRepositoryRequested, this, []() {
-        QDesktopServices::openUrl(QUrl(QStringLiteral("https://github.com/RNAX0N/flashsentry")));
+        QDesktopServices::openUrl(QUrl(QStringLiteral("https://github.com/RNAX0N/flashspartan")));
     });
     connect(m_aboutPage, &AboutPage::openUserGuideRequested, this, []() {
         QDesktopServices::openUrl(
-            QUrl(QStringLiteral("https://github.com/RNAX0N/flashsentry/blob/main/docs/USER_GUIDE.md")));
+            QUrl(QStringLiteral("https://github.com/RNAX0N/flashspartan/blob/main/docs/USER_GUIDE.md")));
     });
     m_pageStack->addWidget(m_aboutPage);
 
@@ -513,7 +515,7 @@ QWidget* MainWindow::createHeader()
     
     QLabel* logoLabel = new QLabel;
     logoLabel->setFixedSize(40, 40);
-    UiIcons::setLabelPixmap(logoLabel, ":/icons/flashsentry.svg", 36);
+    UiIcons::setLabelPixmap(logoLabel, ":/icons/flashspartan.svg", 36);
     auto* logoGlow = new QGraphicsDropShadowEffect(logoLabel);
     logoGlow->setBlurRadius(18);
     logoGlow->setColor(FSColor(AccentPrimary));
@@ -523,7 +525,7 @@ QWidget* MainWindow::createHeader()
     
     QVBoxLayout* titleTextLayout = new QVBoxLayout;
     titleTextLayout->setSpacing(0);
-    m_titleLabel = new QLabel("FlashSentry");
+    m_titleLabel = new QLabel("FlashSpartan");
     m_titleLabel->setFont(FSFont(Heading2));
     m_titleLabel->setStyleSheet(QString("color: %1;").arg(
         FSStyle.colorCss(StyleManager::ColorRole::AccentPrimary)));
@@ -2605,8 +2607,8 @@ void MainWindow::refreshAboutPage()
     if (!m_aboutPage || !m_database) {
         return;
     }
-#ifdef FLASHSENTRY_VERSION
-    m_aboutPage->setVersion(QStringLiteral(FLASHSENTRY_VERSION));
+#ifdef FLASHSPARTAN_VERSION
+    m_aboutPage->setVersion(QStringLiteral(FLASHSPARTAN_VERSION));
 #else
     m_aboutPage->setVersion(QStringLiteral("1.4.2"));
 #endif
@@ -3280,4 +3282,4 @@ void MainWindow::offerUnmountWithoutHash(const QString& deviceNode, const QStrin
 
 
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

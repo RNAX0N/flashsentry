@@ -1,10 +1,10 @@
-# FlashSentry User Guide
+# FlashSpartan User Guide
 
-This guide explains how to use FlashSentry day to day. You do **not** need prior knowledge of SHA-256, PGP, or Kleopatra for the main workflows.
+This guide explains how to use FlashSpartan day to day. You do **not** need prior knowledge of SHA-256, PGP, or Kleopatra for the main workflows.
 
-## What FlashSentry does
+## What FlashSpartan does
 
-FlashSentry offers three levels of checking, from most practical to most thorough:
+FlashSpartan offers three levels of checking, from most practical to most thorough:
 
 | Level | Best for | Speed |
 |-------|----------|-------|
@@ -38,7 +38,7 @@ Open **Settings → Verification → Mode**.
 
 ### What you need
 
-- Arch Linux with FlashSentry installed
+- Arch Linux with FlashSpartan installed
 - `gpg` package (`sudo pacman -S gnupg`)
 - Internet access when verifying (to download official checksums)
 - A USB stick with an image file on it — after **Rufus**, **`dd`**, a manual copy, or any similar method
@@ -47,7 +47,7 @@ Open **Settings → Verification → Mode**.
 
 1. Enable **Settings → Verification → Automatically verify ISOs when a USB drive is mounted** (default: on).
 2. Insert the USB drive and wait for it to mount.
-3. FlashSentry will:
+3. FlashSpartan will:
    - Find `.iso` files on the volume
    - Match the filename to a known publisher (see [supported list](#supported-iso-publishers-automatic))
    - Download official `SHA256SUMS` (or equivalent) and signature files
@@ -62,7 +62,7 @@ Open **Settings → Verification → Mode**.
 
 - Your file’s hash matches the publisher’s published hash, **and**
 - The checksum file’s signature is valid, **and**
-- The signing key fingerprint matches FlashSentry’s trusted list for that distro
+- The signing key fingerprint matches FlashSpartan’s trusted list for that distro
 
 ### What if verification fails?
 
@@ -70,7 +70,7 @@ Open **Settings → Verification → Mode**.
 |---------|----------------|
 | Hash mismatch | Corrupt download, wrong file, or incomplete copy |
 | PGP failed | Missing `gpg`, bad signature file, or tampered checksums |
-| Untrusted fingerprint | Key not in FlashSentry’s list (report upstream) |
+| Untrusted fingerprint | Key not in FlashSpartan’s list (report upstream) |
 | Unknown publisher | Unsupported filename; add `.sha256` / `.asc` sidecars manually |
 | No ISO found | Stick was written with `dd` as a live image — see below |
 
@@ -81,11 +81,11 @@ If you already downloaded checksums, you can place them next to the ISO on the s
 - `myimage.iso.sha256` or `SHA256SUMS`
 - `myimage.iso.asc` or `SHA256SUMS.gpg`
 
-FlashSentry uses these when publisher download is unavailable.
+FlashSpartan uses these when publisher download is unavailable.
 
 ### `dd` or Rufus “ISO mode” without a loose file
 
-When the stick **is** the live system (no separate `.iso` on the filesystem), FlashSentry detects a **bootable layout** and explains that:
+When the stick **is** the live system (no separate `.iso` on the filesystem), FlashSpartan detects a **bootable layout** and explains that:
 
 - Automated ISO file hashing needs a `.iso` on the volume, **or**
 - Use **watch folders** for important paths, **or**
@@ -105,12 +105,12 @@ Use this when you care about **certain files** changing, not the entire drive.
    - Single file: `report.pdf`
    - Folder: `Documents` (hashes all files inside recursively)
 4. Choose verification profile for this device if prompted.
-5. Click **Build baseline** — FlashSentry stores a Merkle root for each group.
+5. Click **Build baseline** — FlashSpartan stores a Merkle root for each group.
 
 ### Everyday use
 
 1. Plug in the device (auto-mount).
-2. FlashSentry compares current files to the baseline.
+2. FlashSpartan compares current files to the baseline.
 3. **Match** → status shows verified.
 4. **Mismatch** → you can rebuild baseline (intentional change) or investigate tampering.
 
@@ -139,7 +139,7 @@ Use when you need a fingerprint of **every byte** on the partition.
 
 ## Smarter hashing (1.5+)
 
-FlashSentry can fingerprint **one partition** or the **entire block device** when several partitions share the same USB drive.
+FlashSpartan can fingerprint **one partition** or the **entire block device** when several partitions share the same USB drive.
 
 | Scan mode | Speed | Use when |
 |-----------|-------|----------|
@@ -158,7 +158,7 @@ Configure defaults under **Settings → Hashing → Smarter hashing**. Click **R
 
 ## Verify history (sidebar)
 
-The main window sidebar lists recent verification results (full-disk hash, watch-folder manifest, and ISO/image scans). Entries are stored in `~/.config/FlashSentry/verify-history.json` (up to 500 events).
+The main window sidebar lists recent verification results (full-disk hash, watch-folder manifest, and ISO/image scans). Entries are stored in `~/.config/FlashSpartan/verify-history.json` (up to 500 events).
 
 - **Filter by device** — click a device card to show only that drive’s history.
 - **Open ISO report** — click a history line (or a mounted device card) to jump to the **ISO verify** tab with that volume selected.
@@ -168,13 +168,13 @@ The main window sidebar lists recent verification results (full-disk hash, watch
 
 ## First-run wizard
 
-On first launch (or when **Show this wizard again on next start** is enabled), FlashSentry walks through:
+On first launch (or when **Show this wizard again on next start** is enabled), FlashSpartan walks through:
 
 1. **Intro** — ISO verify, watch folders, and optional full-partition hash.
 2. **Security preset** — choose **Default**, **Multi-image USB**, **Work USB**, or **Paranoid** (see below).
 3. **System setup** — checks membership in the `storage` group and shows commands to disable desktop auto-mount (GNOME `gsettings` example).
 
-To run the wizard again, enable **Show this wizard again on next start** on the last wizard page (or set `general/showFirstRunWizard` to `true` in `~/.config/FlashSentry/FlashSentry.conf`), then restart FlashSentry.
+To run the wizard again, enable **Show this wizard again on next start** on the last wizard page (or set `general/showFirstRunWizard` to `true` in `~/.config/FlashSpartan/FlashSpartan.conf`), then restart FlashSpartan.
 
 ---
 
@@ -209,7 +209,7 @@ Preset descriptions also appear under **Settings → General → Security preset
 | Option | Description |
 |--------|-------------|
 | **Start minimized to tray** | Launch into the tray instead of showing the main window |
-| **Start automatically at login** | Enables `flashsentry.service` (systemd user unit) when installed from the Arch package; otherwise writes an XDG autostart entry under `~/.config/autostart/` |
+| **Start automatically at login** | Enables `flashspartan.service` (systemd user unit) when installed from the Arch package; otherwise writes an XDG autostart entry under `~/.config/autostart/` |
 | **Minimize to tray instead of closing** | Keep running in the background when the window is closed |
 | **Show desktop notifications** | Tray / libnotify alerts for device events |
 
@@ -287,13 +287,13 @@ Watch folder setup: ![Watch lists](../docs/images/watch-lists.png)
 Headless checks exit with `0` on full pass, `1` if any image fails, `2` on usage errors:
 
 ```bash
-flashsentry --verify-iso /path/to/debian-12.5.0-amd64-netinst.iso
-flashsentry --verify-mount /run/media/$USER/USB
-flashsentry --verify-dir ~/Downloads/isos
-flashsentry --update-catalog
-flashsentry --export-report /run/media/$USER/USB --report-format csv
-flashsentry --list-publishers
-flashsentry --trust-hash Win11_24H2_English_x64.iso:41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54
+flashspartan --verify-iso /path/to/debian-12.5.0-amd64-netinst.iso
+flashspartan --verify-mount /run/media/$USER/USB
+flashspartan --verify-dir ~/Downloads/isos
+flashspartan --update-catalog
+flashspartan --export-report /run/media/$USER/USB --report-format csv
+flashspartan --list-publishers
+flashspartan --trust-hash Win11_24H2_English_x64.iso:41196290521b7e4f814aca30c2cc4c7fab1e3076439418673b90954a1ffc54
 ```
 
 Reports can be plain text (default), `csv`, `html`, or `json`. Profiles: **Default**, **Multi-image USB**, **Work USB**, **Paranoid** (settings id `multi_image` replaces the legacy `ventoy` id automatically).
@@ -304,20 +304,20 @@ Reports can be plain text (default), `csv`, `html`, or `json`. Profiles: **Defau
 
 | Path | Contents |
 |------|----------|
-| `~/.config/FlashSentry/FlashSentry.conf` | UI and behavior settings |
-| `~/.config/flashsentry/devices.json` | Whitelist, baselines, optional partition hashes |
-| `~/.config/flashsentry/audit.log` | JSON-lines log of ISO verify results |
-| `~/.config/flashsentry/iso-catalog.d/` | Optional drop-in manifest fragments |
-| `~/.cache/FlashSentry/iso-verify/` | Downloaded checksums, GPG homedir cache |
+| `~/.config/FlashSpartan/FlashSpartan.conf` | UI and behavior settings |
+| `~/.config/flashspartan/devices.json` | Whitelist, baselines, optional partition hashes |
+| `~/.config/flashspartan/audit.log` | JSON-lines log of ISO verify results |
+| `~/.config/flashspartan/iso-catalog.d/` | Optional drop-in manifest fragments |
+| `~/.cache/FlashSpartan/iso-verify/` | Downloaded checksums, GPG homedir cache |
 
-ISO verification contacts publisher mirrors over HTTPS. No telemetry is sent to FlashSentry developers by the app itself.
+ISO verification contacts publisher mirrors over HTTPS. No telemetry is sent to FlashSpartan developers by the app itself.
 
 ---
 
 ## FAQ
 
 **Do I need Kleopatra?**  
-No. FlashSentry calls `gpg` itself with a private homedir under your cache directory.
+No. FlashSpartan calls `gpg` itself with a private homedir under your cache directory.
 
 **Will it verify Windows ISOs?**  
 Known builds are listed in the embedded catalog (refresh with **Update catalog** or `--update-catalog`). For other `Win11_*` / `Win10_*` names, place a `.sha256` sidecar from Microsoft’s download page next to the ISO.
@@ -339,7 +339,7 @@ Use the **USB devices** / **ISO verify** tabs in the window header to jump betwe
 
 ## Images on USB (any preparation method)
 
-FlashSentry verifies **files on a mounted volume** — it does not care whether you used `dd`, Rufus, `cp`, a multiboot stick, or something else:
+FlashSpartan verifies **files on a mounted volume** — it does not care whether you used `dd`, Rufus, `cp`, a multiboot stick, or something else:
 
 | Method | What we verify |
 |--------|----------------|
@@ -360,7 +360,7 @@ Use **ISO verify → Verification profile → Multi-image USB** (or **Settings �
 
 On the **ISO verify** tab: plug in a flash drive or choose a folder, pick a profile, then **Verify images**. Click a result row to jump to that file in the report. Device cards on the **USB devices** tab show the latest image check summary.
 
-**Compatibility:** FlashSentry only **reads** image files. Vendor boot trees (`EFI/`, `ventoy/`, Easy2Boot `_ISO/`, etc.) are not scanned or modified. Desktop automount is supported — verification runs on the mount your session already has.
+**Compatibility:** FlashSpartan only **reads** image files. Vendor boot trees (`EFI/`, `ventoy/`, Easy2Boot `_ISO/`, etc.) are not scanned or modified. Desktop automount is supported — verification runs on the mount your session already has.
 
 ---
 
@@ -368,4 +368,4 @@ On the **ISO verify** tab: plug in a flash drive or choose a folder, pick a prof
 
 - Technical detail: [VERIFICATION.md](VERIFICATION.md)
 - Build / development: [CLAUDE.md](../CLAUDE.md) and [README.md](../README.md)
-- Issues: [GitHub Issues](https://github.com/RNAX0N/flashsentry/issues)
+- Issues: [GitHub Issues](https://github.com/RNAX0N/flashspartan/issues)

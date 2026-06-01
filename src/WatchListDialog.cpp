@@ -14,7 +14,7 @@
 #include <QUuid>
 #include <QMessageBox>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 WatchListDialog::WatchListDialog(const QString& mountPoint, const QString& deviceDisplayName,
                                  WatchManifest manifest, QWidget* parent)
@@ -206,7 +206,7 @@ void WatchListDialog::onBuildBaseline()
     emit buildBaselineRequested(m_manifest);
     QMessageBox::information(
         this, QStringLiteral("Building baseline"),
-        QStringLiteral("FlashSentry will hash the selected paths and store Merkle roots. "
+        QStringLiteral("FlashSpartan will hash the selected paths and store Merkle roots. "
                        "This may take a moment."));
     accept();
 }
@@ -261,4 +261,4 @@ WatchGroup WatchListDialog::currentGroupFromEditor() const
     return g;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

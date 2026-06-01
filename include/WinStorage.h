@@ -6,7 +6,7 @@
 #include <qt_windows.h>
 #endif
 
-namespace FlashSentry::WinStorage {
+namespace FlashSpartan::WinStorage {
 
 #ifdef Q_OS_WIN
 
@@ -28,4 +28,4 @@ bool ejectVolumeRoot(const QString& volumeRoot, bool force, QString* error);
 
 #endif
 
-} // namespace FlashSentry::WinStorage
+} // namespace FlashSpartan::WinStorage

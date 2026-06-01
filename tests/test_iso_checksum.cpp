@@ -1,7 +1,7 @@
 #include <QtTest>
 #include "IsoChecksum.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestIsoChecksum : public QObject {
     Q_OBJECT

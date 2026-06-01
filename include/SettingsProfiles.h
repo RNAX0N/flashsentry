@@ -2,7 +2,7 @@
 
 #include "Types.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class SettingsProfiles {
 public:
@@ -15,4 +15,4 @@ public:
     static QString normalizeProfileId(const QString& profileId);
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

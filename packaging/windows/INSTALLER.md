@@ -1,11 +1,11 @@
 # Windows installers (.msi + .exe)
 
-FlashSentry ships two Windows installer formats built with the **WiX Toolset v3**:
+FlashSpartan ships two Windows installer formats built with the **WiX Toolset v3**:
 
 | Artifact | Format | Purpose |
 |----------|--------|---------|
-| `FlashSentry-x.y.z-x64.msi` | MSI | IT / GPO / `msiexec`; feature tree includes **USBPcap** checkbox |
-| `FlashSentry-x.y.z-x64-setup.exe` | Burn bundle | End-user bootstrapper; **Options** page checkbox for USBPcap |
+| `FlashSpartan-x.y.z-x64.msi` | MSI | IT / GPO / `msiexec`; feature tree includes **USBPcap** checkbox |
+| `FlashSpartan-x.y.z-x64-setup.exe` | Burn bundle | End-user bootstrapper; **Options** page checkbox for USBPcap |
 
 Both require the official **USBPcapSetup.exe** at build time (not committed to git).
 
@@ -26,17 +26,17 @@ Both require the official **USBPcapSetup.exe** at build time (not committed to g
 cmake -B build -G "Visual Studio 17 2022" -A x64 `
   -DCMAKE_BUILD_TYPE=Release `
   -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64" `
-  -DFLASHSENTRY_BUILD_WINDOWS_INSTALLERS=ON `
-  -DFLASHSENTRY_USBPCAP_INSTALLER="$PWD/packaging/windows/third-party/USBPcapSetup-1.5.4.0.exe"
+  -DFLASHSPARTAN_BUILD_WINDOWS_INSTALLERS=ON `
+  -DFLASHSPARTAN_USBPCAP_INSTALLER="$PWD/packaging/windows/third-party/USBPcapSetup-1.5.4.0.exe"
 
 cmake --build build --config Release
-cmake --build build --config Release --target flashsentry-windows-installers
+cmake --build build --config Release --target flashspartan-windows-installers
 ```
 
 Outputs (under `build/wix-out/`):
 
-- `FlashSentry-1.4.2-x64.msi`
-- `FlashSentry-1.4.2-x64-setup.exe`
+- `FlashSpartan-1.4.2-x64.msi`
+- `FlashSpartan-1.4.2-x64-setup.exe`
 
 ## USBPcap behavior
 
@@ -47,7 +47,7 @@ Outputs (under `build/wix-out/`):
 
 When selected, the official `USBPcapSetup.exe /S` runs elevated (driver + `USBPcapCMD.exe`).
 
-FlashSentry finds `C:\Program Files\USBPcap\USBPcapCMD.exe` without PATH (`UsbPcapLocator`).
+FlashSpartan finds `C:\Program Files\USBPcap\USBPcapCMD.exe` without PATH (`UsbPcapLocator`).
 
 ## Legal
 
@@ -67,6 +67,6 @@ Unchanged: `cmake --install` + `windeployqt` ZIP without USBPcap. Use installers
 | Issue | Fix |
 |-------|-----|
 | `candle` not found | Install WiX Toolset; reopen shell |
-| `heat` fails on `share/` | Run `cmake --install` first (`flashsentry-stage-windows`) |
+| `heat` fails on `share/` | Run `cmake --install` first (`flashspartan-stage-windows`) |
 | Burn not built | Install full WiX (`lit.exe` missing) — MSI still builds |
 | USBPcap capture fails | Re-run installer with USBPcap enabled; reboot if driver requests it |

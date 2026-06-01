@@ -5,7 +5,7 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 ContentPageShell::ContentPageShell(const QString& title, QWidget* content, QWidget* parent)
     : QWidget(parent)
@@ -35,4 +35,4 @@ void ContentPageShell::setContent(QWidget* content)
     }
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

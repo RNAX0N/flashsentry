@@ -4,21 +4,21 @@
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 
 <!--
-  FlashSentry Polkit Policy
+  FlashSpartan Polkit Policy
 
-  This policy allows FlashSentry to perform privileged operations
+  This policy allows FlashSpartan to perform privileged operations
   such as reading raw block devices for hashing without requiring
   the application to run as root.
 -->
 
 <policyconfig>
 
-  <vendor>FlashSentry</vendor>
-  <vendor_url>https://github.com/RNAX0N/flashsentry</vendor_url>
-  <icon_name>flashsentry</icon_name>
+  <vendor>FlashSpartan</vendor>
+  <vendor_url>https://github.com/flashspartan/flashspartan</vendor_url>
+  <icon_name>flashspartan</icon_name>
 
   <!-- Action for reading raw block devices (for hashing) -->
-  <action id="org.flashsentry.read-raw-device">
+  <action id="org.flashspartan.read-raw-device">
     <description>Read raw USB block device</description>
     <description xml:lang="de">Rohes USB-Blockgerät lesen</description>
     <description xml:lang="es">Leer dispositivo de bloque USB sin procesar</description>
@@ -31,15 +31,15 @@
     <defaults>
       <allow_any>auth_admin</allow_any>
       <allow_inactive>auth_admin</allow_inactive>
-      <allow_active>auth_self_keep</allow_active>
+      <allow_active>auth_admin_keep</allow_active>
     </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">@FLASHSENTRY_READ_HELPER@</annotate>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/flashspartan/flashspartan-read-helper</annotate>
     <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
     <annotate key="org.freedesktop.policykit.exec.argv1">hash</annotate>
   </action>
 
   <!-- Action for mounting USB devices -->
-  <action id="org.flashsentry.mount-device">
+  <action id="org.flashspartan.mount-device">
     <description>Mount USB storage device</description>
     <description xml:lang="de">USB-Speichergerät einhängen</description>
     <description xml:lang="es">Montar dispositivo de almacenamiento USB</description>
@@ -57,7 +57,7 @@
   </action>
 
   <!-- Action for unmounting USB devices -->
-  <action id="org.flashsentry.unmount-device">
+  <action id="org.flashspartan.unmount-device">
     <description>Unmount USB storage device</description>
     <description xml:lang="de">USB-Speichergerät aushängen</description>
     <description xml:lang="es">Desmontar dispositivo de almacenamiento USB</description>
@@ -75,7 +75,7 @@
   </action>
 
   <!-- Action for ejecting/powering off USB devices -->
-  <action id="org.flashsentry.eject-device">
+  <action id="org.flashspartan.eject-device">
     <description>Eject USB storage device</description>
     <description xml:lang="de">USB-Speichergerät auswerfen</description>
     <description xml:lang="es">Expulsar dispositivo de almacenamiento USB</description>
@@ -92,16 +92,16 @@
     </defaults>
   </action>
 
-  <!-- Action for modifying FlashSentry settings -->
-  <action id="org.flashsentry.modify-settings">
-    <description>Modify FlashSentry security settings</description>
-    <description xml:lang="de">FlashSentry-Sicherheitseinstellungen ändern</description>
-    <description xml:lang="es">Modificar la configuración de seguridad de FlashSentry</description>
-    <description xml:lang="fr">Modifier les paramètres de sécurité de FlashSentry</description>
-    <message>Authentication is required to modify FlashSentry security settings.</message>
-    <message xml:lang="de">Authentifizierung ist erforderlich, um die FlashSentry-Sicherheitseinstellungen zu ändern.</message>
-    <message xml:lang="es">Se requiere autenticación para modificar la configuración de seguridad de FlashSentry.</message>
-    <message xml:lang="fr">L'authentification est requise pour modifier les paramètres de sécurité de FlashSentry.</message>
+  <!-- Action for modifying FlashSpartan settings -->
+  <action id="org.flashspartan.modify-settings">
+    <description>Modify FlashSpartan security settings</description>
+    <description xml:lang="de">FlashSpartan-Sicherheitseinstellungen ändern</description>
+    <description xml:lang="es">Modificar la configuración de seguridad de FlashSpartan</description>
+    <description xml:lang="fr">Modifier les paramètres de sécurité de FlashSpartan</description>
+    <message>Authentication is required to modify FlashSpartan security settings.</message>
+    <message xml:lang="de">Authentifizierung ist erforderlich, um die FlashSpartan-Sicherheitseinstellungen zu ändern.</message>
+    <message xml:lang="es">Se requiere autenticación para modificar la configuración de seguridad de FlashSpartan.</message>
+    <message xml:lang="fr">L'authentification est requise pour modifier les paramètres de sécurité de FlashSpartan.</message>
     <icon_name>preferences-system</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>
@@ -111,11 +111,11 @@
   </action>
 
   <!-- Action for clearing/resetting the device database -->
-  <action id="org.flashsentry.clear-database">
-    <description>Clear FlashSentry device database</description>
-    <description xml:lang="de">FlashSentry-Gerätedatenbank löschen</description>
-    <description xml:lang="es">Borrar base de datos de dispositivos de FlashSentry</description>
-    <description xml:lang="fr">Effacer la base de données des périphériques FlashSentry</description>
+  <action id="org.flashspartan.clear-database">
+    <description>Clear FlashSpartan device database</description>
+    <description xml:lang="de">FlashSpartan-Gerätedatenbank löschen</description>
+    <description xml:lang="es">Borrar base de datos de dispositivos de FlashSpartan</description>
+    <description xml:lang="fr">Effacer la base de données des périphériques FlashSpartan</description>
     <message>Authentication is required to clear the device whitelist database. This action cannot be undone.</message>
     <message xml:lang="de">Authentifizierung ist erforderlich, um die Geräte-Whitelist-Datenbank zu löschen. Diese Aktion kann nicht rückgängig gemacht werden.</message>
     <message xml:lang="es">Se requiere autenticación para borrar la base de datos de lista blanca de dispositivos. Esta acción no se puede deshacer.</message>

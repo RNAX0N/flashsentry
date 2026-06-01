@@ -4,7 +4,7 @@
 
 #include <QSettings>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 IsoVerifyOptions IsoVerifySettingsLoader::load(const QString& configFilePath)
 {
@@ -33,4 +33,4 @@ void IsoVerifySettingsLoader::applyToVerifier(const QString& configFilePath)
     IsoVerifier::setVerifyOptions(load(configFilePath));
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

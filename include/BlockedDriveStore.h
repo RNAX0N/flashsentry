@@ -5,7 +5,7 @@
 #include <QSet>
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 struct BlockedDriveEntry {
     QString driveKey;
@@ -36,4 +36,4 @@ private:
     QList<BlockedDriveEntry> m_entries;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

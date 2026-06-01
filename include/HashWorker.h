@@ -15,7 +15,7 @@
 #include "Types.h"
 #include "HashCheckpoint.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief HashWorker - High-performance asynchronous partition hashing
@@ -136,7 +136,7 @@ signals:
     /**
      * @brief Emitted when hashing completes successfully
      */
-    void hashCompleted(const QString& jobId, const FlashSentry::HashResult& result);
+    void hashCompleted(const QString& jobId, const FlashSpartan::HashResult& result);
 
     /**
      * @brief Emitted when hashing fails
@@ -227,4 +227,4 @@ private:
     static constexpr int PROGRESS_UPDATE_INTERVAL_MS = 100;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

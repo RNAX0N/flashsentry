@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -98,4 +98,4 @@ MerkleTree::MerkleTree(QVector<Leaf> leaves, QString rootHex)
 {
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -9,7 +9,7 @@ class QLineEdit;
 class QTableWidget;
 class QLabel;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class AlertsPage : public QWidget {
     Q_OBJECT
@@ -45,4 +45,4 @@ private:
     QList<UiEventEntry> m_visibleRows;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

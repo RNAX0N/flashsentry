@@ -2,7 +2,7 @@
 
 #include <QRegularExpression>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 namespace IsoCatalogInternal {
 
 QString normalizeFingerprint(const QString& fp)
@@ -510,4 +510,4 @@ QString rockyAlmaVersionPath(const QString& major, const QString& minor)
 
 
 } // namespace IsoCatalogInternal
-} // namespace FlashSentry
+} // namespace FlashSpartan

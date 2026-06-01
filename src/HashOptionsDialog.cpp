@@ -9,7 +9,7 @@
 #include <QRadioButton>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 HashOptionsDialog::HashOptionsDialog(const DeviceInfo& device,
                                      int partitionCount,
@@ -103,4 +103,4 @@ void HashOptionsDialog::onAccepted()
     accept();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

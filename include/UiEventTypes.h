@@ -3,7 +3,7 @@
 #include <QDateTime>
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /** Row in the USB Monitor "Recent events" table. */
 struct UiEventEntry {
@@ -38,4 +38,4 @@ struct UsbMonitorStats {
     int events = 0;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

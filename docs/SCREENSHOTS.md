@@ -1,8 +1,8 @@
-# Capturing real screenshots for FlashSentry
+# Capturing real screenshots for FlashSpartan
 
 The files under `docs/images/` are reference mockups. For documentation that matches the shipping UI:
 
-1. Build and run FlashSentry on Arch with a test USB stick or loop device.
+1. Build and run FlashSpartan on Arch with a test USB stick or loop device.
 2. Use **Cyber Dark** (Settings → Appearance) unless documenting another theme.
 3. Capture at **1100×700** or higher (window default size).
 4. Suggested scenes:

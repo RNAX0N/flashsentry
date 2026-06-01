@@ -9,32 +9,32 @@
 #include <QStandardPaths>
 #include <QTextStream>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
 #ifdef Q_OS_WIN
 
 constexpr auto kRunKey = "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-constexpr auto kRunValue = "FlashSentry";
+constexpr auto kRunValue = "FlashSpartan";
 
-QString flashsentryExecutable()
+QString flashspartanExecutable()
 {
     const QString app = QCoreApplication::applicationFilePath();
-    return app.isEmpty() ? QStringLiteral("flashsentry.exe") : app;
+    return app.isEmpty() ? QStringLiteral("flashspartan.exe") : app;
 }
 
 QString quotedAutostartCommand()
 {
-    QString exe = flashsentryExecutable();
+    QString exe = flashspartanExecutable();
     exe.replace(QLatin1Char('"'), QStringLiteral("\\\""));
     return QStringLiteral("\"%1\" --minimized").arg(exe);
 }
 
 #else
 
-constexpr auto kServiceName = "flashsentry.service";
-constexpr auto kAutostartFileName = "flashsentry-autostart.desktop";
+constexpr auto kServiceName = "flashspartan.service";
+constexpr auto kAutostartFileName = "flashspartan-autostart.desktop";
 
 bool commandExists(const char* name)
 {
@@ -83,13 +83,13 @@ QString xdgAutostartPath()
     return dir + QStringLiteral("/") + QString::fromLatin1(kAutostartFileName);
 }
 
-QString flashsentryExecutable()
+QString flashspartanExecutable()
 {
     const QString app = QCoreApplication::applicationFilePath();
     if (!app.isEmpty()) {
         return app;
     }
-    return QStringLiteral("flashsentry");
+    return QStringLiteral("flashspartan");
 }
 
 bool writeXdgAutostart(QString* errorMessage)
@@ -108,10 +108,10 @@ bool writeXdgAutostart(QString* errorMessage)
     QTextStream out(&file);
     out << "[Desktop Entry]\n"
         << "Type=Application\n"
-        << "Name=FlashSentry\n"
+        << "Name=FlashSpartan\n"
         << "Comment=USB and ISO security monitor\n"
-        << "Exec=" << flashsentryExecutable() << " --minimized\n"
-        << "Icon=flashsentry\n"
+        << "Exec=" << flashspartanExecutable() << " --minimized\n"
+        << "Icon=flashspartan\n"
         << "Terminal=false\n"
         << "X-GNOME-Autostart-enabled=true\n";
 
@@ -169,7 +169,7 @@ std::optional<bool> AutostartManager::isLoginAutostartEnabled()
     if (value.isEmpty()) {
         return false;
     }
-    return value.contains(flashsentryExecutable(), Qt::CaseInsensitive);
+    return value.contains(flashspartanExecutable(), Qt::CaseInsensitive);
 #else
     if (commandExists("systemctl") && systemdUnitExists()) {
         const auto systemdState = systemdAutostartEnabled();
@@ -234,7 +234,7 @@ bool AutostartManager::setLoginAutostartEnabled(bool enabled, QString* errorMess
 
     if (errorMessage) {
         *errorMessage = QStringLiteral(
-            "Install flashsentry.service (Arch package) or run from a desktop session with XDG config.");
+            "Install flashspartan.service (Arch package) or run from a desktop session with XDG config.");
     }
     return false;
 #endif
@@ -244,7 +244,7 @@ QString AutostartManager::backendDescription()
 {
     switch (backend()) {
     case Backend::Systemd:
-        return QStringLiteral("systemd user service (flashsentry.service)");
+        return QStringLiteral("systemd user service (flashspartan.service)");
     case Backend::Xdg:
         return QStringLiteral("desktop autostart entry");
     case Backend::WindowsRegistry:
@@ -255,4 +255,4 @@ QString AutostartManager::backendDescription()
     return QString();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

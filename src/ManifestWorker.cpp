@@ -6,7 +6,7 @@
 #include <QFutureWatcher>
 #include <QMutexLocker>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 struct ManifestWorker::JobState {
     Job config;
@@ -148,4 +148,4 @@ void ManifestWorker::cancelAll()
     m_jobs.clear();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

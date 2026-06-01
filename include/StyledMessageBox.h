@@ -4,7 +4,7 @@
 
 #include <QMessageBox>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 inline void applyDialogStyle(QMessageBox& box)
 {
@@ -68,4 +68,4 @@ inline int showStyledCritical(QWidget* parent, const QString& title, const QStri
     return box.exec();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

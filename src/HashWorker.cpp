@@ -8,7 +8,7 @@
 #include <QDebug>
 #include <QtConcurrent>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -383,4 +383,4 @@ HashResult HashWorker::hashWithMmap(std::shared_ptr<JobState> state)
     return r;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

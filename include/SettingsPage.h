@@ -5,7 +5,7 @@
 
 #include <QWidget>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class SettingsDialog;
 
@@ -33,4 +33,4 @@ private:
     SettingsDialog* m_form = nullptr;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

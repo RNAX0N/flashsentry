@@ -17,12 +17,13 @@
 #include <iostream>
 #include <csignal>
 
+#include "AppPaths.h"
 #include "MainWindow.h"
 #include "StyleManager.h"
 #include "Types.h"
 #include "VerifyCli.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 // Global pointer for signal handling
 static MainWindow* g_mainWindow = nullptr;
@@ -37,7 +38,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext& /*context*/, const
     if (!initialized) {
         QString logDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
         QDir().mkpath(logDir);
-        QString logPath = logDir + "/flashsentry.log";
+        QString logPath = logDir + "/flashspartan.log";
         
         logFile.setFileName(logPath);
         if (logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
@@ -91,7 +92,7 @@ void signalHandler(int signum)
 // Check if another instance is running
 bool isAlreadyRunning()
 {
-    static QSharedMemory sharedMemory("FlashSentry_SingleInstance_Lock");
+    static QSharedMemory sharedMemory("FlashSpartan_SingleInstance_Lock");
     
     if (sharedMemory.attach()) {
         // Another instance is already running
@@ -113,10 +114,10 @@ bool isAlreadyRunning()
 
 void printVersion()
 {
-#ifdef FLASHSENTRY_VERSION
-    std::cout << "FlashSentry v" << FLASHSENTRY_VERSION << std::endl;
+#ifdef FLASHSPARTAN_VERSION
+    std::cout << "FlashSpartan v" << FLASHSPARTAN_VERSION << std::endl;
 #else
-    std::cout << "FlashSentry (version unknown)" << std::endl;
+    std::cout << "FlashSpartan (version unknown)" << std::endl;
 #endif
     std::cout << "USB Flash Drive Security Monitor" << std::endl;
     std::cout << "Built with Qt " << qVersion() << std::endl;
@@ -124,14 +125,14 @@ void printVersion()
 
 int main(int argc, char* argv[])
 {
-    QCoreApplication::setApplicationName("FlashSentry");
-#ifdef FLASHSENTRY_VERSION
-    QApplication::setApplicationVersion(QLatin1String(FLASHSENTRY_VERSION));
+    QCoreApplication::setApplicationName("FlashSpartan");
+#ifdef FLASHSPARTAN_VERSION
+    QApplication::setApplicationVersion(QLatin1String(FLASHSPARTAN_VERSION));
 #else
     QApplication::setApplicationVersion(QStringLiteral("1.1.5"));
 #endif
-    QCoreApplication::setOrganizationName("FlashSentry");
-    QCoreApplication::setOrganizationDomain("flashsentry.io");
+    QCoreApplication::setOrganizationName("FlashSpartan");
+    QCoreApplication::setOrganizationDomain("flashspartan.io");
 
     QCommandLineParser parser;
     parser.setApplicationDescription("USB Flash Drive Security Monitor");
@@ -200,7 +201,8 @@ int main(int argc, char* argv[])
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
     QApplication app(argc, argv);
-    app.setWindowIcon(QIcon(QStringLiteral(":/icons/flashsentry.svg")));
+    AppPaths::migrateFromLegacyConfigIfNeeded();
+    app.setWindowIcon(QIcon(QStringLiteral(":/icons/flashspartan.svg")));
     qInstallMessageHandler(messageHandler);
     parser.process(app);
 
@@ -255,14 +257,14 @@ int main(int argc, char* argv[])
     
     // Check for single instance
     if (!parser.isSet(forceOption) && isAlreadyRunning()) {
-        qWarning() << "Another instance of FlashSentry is already running.";
+        qWarning() << "Another instance of FlashSpartan is already running.";
         qWarning() << "Use --force to start anyway.";
         
         QMessageBox::warning(
             nullptr,
-            "FlashSentry Already Running",
-            "Another instance of FlashSentry is already running.\n\n"
-            "Check your system tray for the FlashSentry icon."
+            "FlashSpartan Already Running",
+            "Another instance of FlashSpartan is already running.\n\n"
+            "Check your system tray for the FlashSpartan icon."
         );
         
         return 1;
@@ -271,7 +273,7 @@ int main(int argc, char* argv[])
     // Check for system tray availability
     if (!parser.isSet(noTrayOption) && !QSystemTrayIcon::isSystemTrayAvailable()) {
         qWarning() << "System tray is not available on this system.";
-        qWarning() << "FlashSentry will run without tray icon.";
+        qWarning() << "FlashSpartan will run without tray icon.";
     }
     
 #if defined(Q_OS_UNIX)
@@ -312,7 +314,7 @@ int main(int argc, char* argv[])
         mainWindow.show();
     }
     
-    qInfo() << "FlashSentry started successfully";
+    qInfo() << "FlashSpartan started successfully";
     qInfo() << "Qt version:" << qVersion();
     qInfo() << "System:" << QSysInfo::prettyProductName();
     
@@ -322,7 +324,7 @@ int main(int argc, char* argv[])
     // Cleanup
     g_mainWindow = nullptr;
     
-    qInfo() << "FlashSentry exiting with code" << result;
+    qInfo() << "FlashSpartan exiting with code" << result;
     
     return result;
 }

@@ -8,7 +8,7 @@
 #include <QScrollArea>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 SettingsPage::SettingsPage(QWidget* parent)
     : QWidget(parent)
@@ -87,4 +87,4 @@ void SettingsPage::setDatabaseStatistics(int deviceCount, const QString& databas
     m_form->setDatabaseStatistics(deviceCount, databasePath);
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

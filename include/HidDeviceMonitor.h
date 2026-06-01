@@ -12,7 +12,7 @@ struct udev;
 struct udev_monitor;
 struct udev_device;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class HidDeviceMonitor : public QThread {
     Q_OBJECT
@@ -30,9 +30,9 @@ public:
     std::optional<HidDeviceInfo> getDevice(const QString& stableId) const;
 
 signals:
-    void hidConnected(const FlashSentry::HidDeviceInfo& device);
+    void hidConnected(const FlashSpartan::HidDeviceInfo& device);
     void hidDisconnected(const QString& stableId);
-    void hidChanged(const FlashSentry::HidDeviceInfo& device);
+    void hidChanged(const FlashSpartan::HidDeviceInfo& device);
     void monitorError(const QString& error);
     void initialScanComplete(int deviceCount);
 
@@ -63,4 +63,4 @@ private:
     static constexpr int POLL_TIMEOUT_MS = 500;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

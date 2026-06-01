@@ -6,7 +6,7 @@ class QListWidget;
 class QLabel;
 class QPushButton;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 struct DeviceInfo;
 
@@ -35,4 +35,4 @@ private:
     QPushButton* m_editBtn = nullptr;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

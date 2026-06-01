@@ -11,7 +11,7 @@
 
 #include "Types.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief DatabaseManager - Thread-safe persistent storage for device records
@@ -363,4 +363,4 @@ private:
     static constexpr const char* DB_VERSION = "1.0";
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

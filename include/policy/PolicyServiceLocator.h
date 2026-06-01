@@ -4,7 +4,7 @@
 
 #include <memory>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 /** Process-wide installed policy gate (daemon client or in-process for tests). */
 class PolicyServiceLocator {
@@ -17,4 +17,4 @@ private:
     PolicyServiceLocator() = delete;
 };
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

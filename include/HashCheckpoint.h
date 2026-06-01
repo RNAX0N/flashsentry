@@ -7,7 +7,7 @@
 #include <QString>
 #include <QStringList>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 struct HashCheckpoint {
     QString deviceNode;
@@ -42,4 +42,4 @@ private:
     QList<HashCheckpoint> m_checkpoints;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

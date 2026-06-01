@@ -6,11 +6,11 @@
 #include <QStandardPaths>
 #include <QString>
 
-namespace FlashSentryTest {
+namespace FlashSpartanTest {
 
 inline QString gpgProgram()
 {
-    return FlashSentry::gpgProgram();
+    return FlashSpartan::gpgProgram();
 }
 
 inline bool gpgAvailable()
@@ -24,7 +24,7 @@ inline bool gpgAvailable()
     }
     QProcess proc;
     proc.setProgram(gpg);
-    proc.setArguments(FlashSentry::gpgBatchArgs() << QStringLiteral("--version"));
+    proc.setArguments(FlashSpartan::gpgBatchArgs() << QStringLiteral("--version"));
     proc.start();
     if (!proc.waitForFinished(10000)) {
         proc.kill();
@@ -33,4 +33,4 @@ inline bool gpgAvailable()
     return proc.exitCode() == 0;
 }
 
-} // namespace FlashSentryTest
+} // namespace FlashSpartanTest

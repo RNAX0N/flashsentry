@@ -8,10 +8,10 @@
 
 #include "Types.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
- * @brief TrayIcon - System tray integration for FlashSentry
+ * @brief TrayIcon - System tray integration for FlashSpartan
  * 
  * Provides:
  * - Status icon with dynamic updates
@@ -234,4 +234,4 @@ private:
     QList<DeviceInfo> m_currentDevices;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -8,7 +8,7 @@
 #include <QHash>
 #include <memory>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class ManifestWorker : public QObject {
     Q_OBJECT
@@ -48,4 +48,4 @@ private:
     QMutex m_mutex;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

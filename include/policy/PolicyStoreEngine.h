@@ -7,7 +7,7 @@
 #include <QReadWriteLock>
 #include <QString>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 /**
  * Private in-process policy store (custom signed blob).
@@ -42,4 +42,4 @@ private:
     mutable QReadWriteLock m_lock;
 };
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

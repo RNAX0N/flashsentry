@@ -14,7 +14,7 @@
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -293,4 +293,4 @@ void AllowBlockListPage::onFilterChanged()
     emit filterChanged();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

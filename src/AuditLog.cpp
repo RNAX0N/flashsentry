@@ -8,7 +8,7 @@
 #include <QJsonObject>
 #include <QStandardPaths>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 QString AuditLog::logPath()
 {
@@ -64,4 +64,4 @@ void AuditLog::appendBadUsbEvent(const BadUsbAnomalyResult& result)
     appendLine(QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact)));
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -5,7 +5,7 @@
 
 #include <QProcessEnvironment>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 std::unique_ptr<PolicyGateway> PolicyGateway::createInProcess(const QString& storePath)
 {
@@ -15,8 +15,8 @@ std::unique_ptr<PolicyGateway> PolicyGateway::createInProcess(const QString& sto
 std::unique_ptr<PolicyGateway> PolicyGateway::createDefault()
 {
     const QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    if (env.value(QStringLiteral("FLASHSENTRY_POLICY_IN_PROCESS")) == QStringLiteral("1")) {
-        return createInProcess(env.value(QStringLiteral("FLASHSENTRY_POLICY_STORE")));
+    if (env.value(QStringLiteral("FLASHSPARTAN_POLICY_IN_PROCESS")) == QStringLiteral("1")) {
+        return createInProcess(env.value(QStringLiteral("FLASHSPARTAN_POLICY_STORE")));
     }
 
     QString err;
@@ -26,4 +26,4 @@ std::unique_ptr<PolicyGateway> PolicyGateway::createDefault()
     return std::make_unique<PolicyDaemonClient>();
 }
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

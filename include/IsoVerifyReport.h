@@ -5,7 +5,7 @@
 #include <QList>
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class IsoVerifyReport {
 public:
@@ -24,4 +24,4 @@ public:
     static QString summaryLine(const QList<IsoVerifyResult>& results);
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

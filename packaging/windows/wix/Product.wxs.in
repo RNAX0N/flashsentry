@@ -21,10 +21,10 @@
 
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
 
-    <Feature Id="ProductFeature" Title="FlashSentry Application" Level="1" Display="expand" ConfigurableDirectory="INSTALLFOLDER">
-      <ComponentGroupRef Id="FlashSentryBinFiles" />
-      <ComponentGroupRef Id="FlashSentryShareFiles" />
-      <ComponentRef Id="FlashSentryStartMenuShortcut" />
+    <Feature Id="ProductFeature" Title="FlashSpartan Application" Level="1" Display="expand" ConfigurableDirectory="INSTALLFOLDER">
+      <ComponentGroupRef Id="FlashSpartanBinFiles" />
+      <ComponentGroupRef Id="FlashSpartanShareFiles" />
+      <ComponentRef Id="FlashSpartanStartMenuShortcut" />
     </Feature>
 
     <Feature Id="UsbPcapFeature"
@@ -56,24 +56,24 @@
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
-        <Directory Id="INSTALLFOLDER" Name="FlashSentry">
+        <Directory Id="INSTALLFOLDER" Name="FlashSpartan">
           <Directory Id="RedistFolder" Name="redist" />
           <Directory Id="SHAREFOLDER" Name="share" />
         </Directory>
       </Directory>
       <Directory Id="ProgramMenuFolder">
-        <Directory Id="ApplicationProgramsFolder" Name="FlashSentry" />
+        <Directory Id="ApplicationProgramsFolder" Name="FlashSpartan" />
       </Directory>
     </Directory>
 
-    <Component Id="FlashSentryStartMenuShortcut" Guid="{C1D2E3F4-A5B6-7890-CDEF-123456789ABC}" Directory="ApplicationProgramsFolder">
+    <Component Id="FlashSpartanStartMenuShortcut" Guid="{C1D2E3F4-A5B6-7890-CDEF-123456789ABC}" Directory="ApplicationProgramsFolder">
       <Shortcut Id="ApplicationStartMenuShortcut"
-                Name="FlashSentry"
+                Name="FlashSpartan"
                 Description="USB and ISO security monitor"
-                Target="[INSTALLFOLDER]FlashSentry.exe"
+                Target="[INSTALLFOLDER]FlashSpartan.exe"
                 WorkingDirectory="INSTALLFOLDER" />
       <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
-      <RegistryValue Root="HKCU" Key="Software\FlashSentry" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      <RegistryValue Root="HKCU" Key="Software\FlashSpartan" Name="installed" Type="integer" Value="1" KeyPath="yes" />
     </Component>
 
     <Component Id="UsbPcapRedistComponent" Guid="{D2E3F4A5-B6C7-8901-DEF0-23456789ABCD}" Directory="RedistFolder">

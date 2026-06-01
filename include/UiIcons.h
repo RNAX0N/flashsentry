@@ -6,7 +6,7 @@
 #include <QPushButton>
 #include <QSize>
 
-namespace FlashSentry::UiIcons {
+namespace FlashSpartan::UiIcons {
 
 inline QIcon icon(const char* resourcePath, int size = 24)
 {
@@ -45,4 +45,4 @@ inline void addLeadingSearchAction(QLineEdit* edit, int size = 16)
     Q_UNUSED(size);
 }
 
-} // namespace FlashSentry::UiIcons
+} // namespace FlashSpartan::UiIcons

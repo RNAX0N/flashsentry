@@ -1,7 +1,7 @@
 #include <QtTest>
 #include "Types.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestTypes : public QObject {
     Q_OBJECT

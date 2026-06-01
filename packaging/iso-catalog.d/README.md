@@ -1,8 +1,8 @@
 # ISO catalog drop-ins
 
-Install additional manifest fragments here as `*.json` files. FlashSentry merges them after the embedded catalog and remote cache.
+Install additional manifest fragments here as `*.json` files. FlashSpartan merges them after the embedded catalog and remote cache.
 
-User overrides: `~/.config/flashsentry/iso-catalog.d/`
+User overrides: `~/.config/flashspartan/iso-catalog.d/`
 
 ## Example fragment
 

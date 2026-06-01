@@ -10,12 +10,12 @@
 #include <QString>
 #include <QStringList>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
-/** Resolved gpg(1) executable. Honors FLASHSENTRY_GPG_PROGRAM on every call. */
+/** Resolved gpg(1) executable. Honors FLASHSPARTAN_GPG_PROGRAM on every call. */
 inline QString gpgProgram()
 {
-    const QByteArray env = qgetenv("FLASHSENTRY_GPG_PROGRAM");
+    const QByteArray env = qgetenv("FLASHSPARTAN_GPG_PROGRAM");
     if (!env.isEmpty()) {
         const QString fromEnv = QString::fromUtf8(env);
         if (QFile::exists(fromEnv)) {
@@ -63,7 +63,7 @@ inline QStringList gpgBatchArgs()
 /** Writable scratch directory (repo root on CI; avoids short Windows temp paths). */
 inline QString gpgScratchRoot()
 {
-    const QByteArray testHome = qgetenv("FLASHSENTRY_TEST_GPG_HOME");
+    const QByteArray testHome = qgetenv("FLASHSPARTAN_TEST_GPG_HOME");
     if (!testHome.isEmpty()) {
         return QFileInfo(QString::fromUtf8(testHome)).absolutePath();
     }
@@ -71,7 +71,7 @@ inline QString gpgScratchRoot()
     if (!workspace.isEmpty()) {
         return QDir::fromNativeSeparators(QString::fromUtf8(workspace));
     }
-    const QByteArray sourceRoot = qgetenv("FLASHSENTRY_SOURCE_ROOT");
+    const QByteArray sourceRoot = qgetenv("FLASHSPARTAN_SOURCE_ROOT");
     if (!sourceRoot.isEmpty()) {
         return QDir::fromNativeSeparators(QString::fromUtf8(sourceRoot));
     }
@@ -80,7 +80,7 @@ inline QString gpgScratchRoot()
 
 inline QString gpgHomedirOverride()
 {
-    const QByteArray testHome = qgetenv("FLASHSENTRY_TEST_GPG_HOME");
+    const QByteArray testHome = qgetenv("FLASHSPARTAN_TEST_GPG_HOME");
     if (!testHome.isEmpty()) {
         return QString::fromUtf8(testHome);
     }
@@ -111,4 +111,4 @@ inline void configureGpgProcess(QProcess& proc)
     proc.setProcessEnvironment(env);
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

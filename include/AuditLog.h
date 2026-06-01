@@ -2,7 +2,7 @@
 
 #include "Types.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /** Append-only JSON-lines audit log for verification events. */
 class AuditLog {
@@ -17,4 +17,4 @@ private:
     static void appendLine(const QString& jsonLine);
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

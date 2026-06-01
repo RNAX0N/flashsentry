@@ -6,7 +6,7 @@
 #include <QParallelAnimationGroup>
 #include <QDebug>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 // Static theme palettes
 const QHash<StyleManager::Theme, QHash<StyleManager::ColorRole, QColor>> StyleManager::s_themePalettes = {
@@ -969,4 +969,4 @@ void StyleManager::generateStyleSheet()
     .arg(labelStyleSheet());
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

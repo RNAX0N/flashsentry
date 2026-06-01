@@ -5,7 +5,7 @@
 #include <QRegularExpression>
 
 #include <optional>
-namespace FlashSentry {
+namespace FlashSpartan {
 
 struct IsoPublisherMatch {
     QString publisherId;
@@ -38,4 +38,4 @@ public:
     static bool isVerifiableImageFileName(const QString& fileName);
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

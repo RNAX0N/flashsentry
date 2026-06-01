@@ -2,13 +2,13 @@
 
 #include <QString>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
-/** Ensures flashsentry-policyd is running and socket is reachable. */
+/** Ensures flashspartan-policyd is running and socket is reachable. */
 class PolicyDaemonLauncher {
 public:
     static bool ensureRunning(QString* error = nullptr);
     static QString daemonExecutablePath();
 };
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

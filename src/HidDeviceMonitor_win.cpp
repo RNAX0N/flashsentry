@@ -17,7 +17,7 @@
 #include <devpropdef.h>
 #include <devpkey.h>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -337,6 +337,6 @@ QString HidDeviceMonitor::getSysAttr(struct udev_device* /*dev*/, const char* /*
     return {};
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan
 
 #endif

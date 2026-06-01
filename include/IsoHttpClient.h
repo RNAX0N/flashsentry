@@ -4,7 +4,7 @@
 #include <QString>
 #include <functional>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /** HTTP fetch for ISO verification (replaceable in tests). */
 class IsoHttpClient {
@@ -19,4 +19,4 @@ private:
     static Handler& handlerRef();
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

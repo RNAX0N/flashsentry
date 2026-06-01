@@ -4,7 +4,7 @@
 #include <QList>
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 enum class VerifyHistoryKind {
     Hash,
@@ -47,4 +47,4 @@ private:
     static constexpr int kMaxEntries = 500;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

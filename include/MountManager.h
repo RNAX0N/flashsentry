@@ -15,7 +15,7 @@
 
 #include "Types.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief MountManager - device mount status and mount operations.
@@ -84,8 +84,8 @@ public:
     bool isLoopDevice(const QString& deviceNode) const;
 
 signals:
-    void mountCompleted(const FlashSentry::MountManager::MountResult& result);
-    void unmountCompleted(const FlashSentry::MountManager::UnmountResult& result);
+    void mountCompleted(const FlashSpartan::MountManager::MountResult& result);
+    void unmountCompleted(const FlashSpartan::MountManager::UnmountResult& result);
     void powerOffCompleted(const QString& deviceNode, bool success, const QString& error);
     void mountStatusChanged(const QString& deviceNode, bool mounted, const QString& mountPoint);
     void error(const QString& deviceNode, const QString& message);
@@ -129,7 +129,7 @@ private:
     QHash<QString, QString> m_mountPoints;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan
 
-Q_DECLARE_METATYPE(FlashSentry::MountManager::MountResult)
-Q_DECLARE_METATYPE(FlashSentry::MountManager::UnmountResult)
+Q_DECLARE_METATYPE(FlashSpartan::MountManager::MountResult)
+Q_DECLARE_METATYPE(FlashSpartan::MountManager::UnmountResult)

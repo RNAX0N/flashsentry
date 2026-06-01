@@ -4,7 +4,7 @@
 
 #include <QWizard>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * First-run wizard: profiles, storage group, and desktop automount guidance.
@@ -25,4 +25,4 @@ private:
     void setupPages();
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

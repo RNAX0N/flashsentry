@@ -4,7 +4,7 @@
 
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 enum class MultibootTool {
     None,
@@ -46,4 +46,4 @@ public:
     static QString coexistenceNote(MultibootTool tool);
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

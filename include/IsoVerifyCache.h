@@ -2,7 +2,7 @@
 
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /** Session-persistent SHA-256 cache keyed by path, size, and mtime. */
 class IsoVerifyCache {
@@ -13,4 +13,4 @@ public:
     static void clear();
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

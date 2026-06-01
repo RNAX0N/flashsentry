@@ -4,7 +4,7 @@
 
 #include <QByteArray>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 /** Signed custom on-disk format (not JSON). */
 class PolicyBlobCodec {
@@ -21,4 +21,4 @@ public:
     static QByteArray loadOrCreateKey();
 };
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

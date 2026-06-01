@@ -1,4 +1,4 @@
-# FlashSentry screenshots
+# FlashSpartan screenshots
 
 UI reference images for the README and user guide. These are stylized mockups for documentation (replace with your own captures from a real session if you prefer).
 

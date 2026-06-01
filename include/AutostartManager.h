@@ -3,12 +3,12 @@
 #include <QString>
 #include <optional>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
- * @brief Enables or disables FlashSentry at graphical login.
+ * @brief Enables or disables FlashSpartan at graphical login.
  *
- * Linux: prefers systemd user unit (flashsentry.service), falls back to XDG autostart.
+ * Linux: prefers systemd user unit (flashspartan.service), falls back to XDG autostart.
  * Windows: current-user Run registry key.
  */
 class AutostartManager {
@@ -24,4 +24,4 @@ public:
     static QString backendDescription();
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

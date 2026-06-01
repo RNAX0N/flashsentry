@@ -5,7 +5,7 @@
 
 #include "ManifestService.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 namespace {
 

@@ -3,7 +3,7 @@
 #include <QRegularExpression>
 #include <QStringList>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -67,4 +67,4 @@ QString IsoChecksum::parseSha256Content(const QString& content, const QString& i
     return {};
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

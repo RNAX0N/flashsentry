@@ -1,7 +1,7 @@
-# FlashSentry
+# FlashSpartan
 
 <p align="center">
-  <img src="resources/icons/flashsentry.svg" alt="FlashSentry Logo" width="128" height="128">
+  <img src="resources/icons/flashspartan.svg" alt="FlashSpartan Logo" width="128" height="128">
 </p>
 
 <p align="center">
@@ -20,9 +20,9 @@
 
 ---
 
-FlashSentry monitors USB storage, maintains a cryptographic whitelist of trusted devices, verifies Linux ISOs on mounted sticks, and alerts you when content changes. It is built with Qt6 and OpenSSL.
+FlashSpartan monitors USB storage, maintains a cryptographic whitelist of trusted devices, verifies Linux ISOs on mounted sticks, and alerts you when content changes. It is built with Qt6 and OpenSSL.
 
-- **Linux (Arch, primary):** libudev device events, UDisks2 mounts, polkit, optional `flashsentry-policyd` and raw-disk hashing.
+- **Linux (Arch, primary):** libudev device events, UDisks2 mounts, polkit, optional `flashspartan-policyd` and raw-disk hashing.
 - **Windows 10/11 (preview):** removable-volume polling via Qt, full GUI shell, ISO verify, watch manifests, signed policy store (in-process). See [docs/WINDOWS.md](docs/WINDOWS.md).
 
 **Current version:** 1.4.2 (see [CHANGELOG.md](CHANGELOG.md))
@@ -34,7 +34,7 @@ FlashSentry monitors USB storage, maintains a cryptographic whitelist of trusted
 | Feature | What it does |
 |--------|----------------|
 | **Automatic ISO verification** | Finds `.iso` files on mounted USB volumes, downloads official checksums/signatures, verifies hashes and OpenPGP where configured |
-| **Watch-folder verification** | You choose paths on a drive; FlashSentry builds a Merkle baseline and alerts when watched files change — without reading every sector |
+| **Watch-folder verification** | You choose paths on a drive; FlashSpartan builds a Merkle baseline and alerts when watched files change — without reading every sector |
 | **Left-nav shell** | Dedicated pages for USB monitoring, device history, allow/block lists, alerts, reports, ISO verify, BadUSB, settings, and about |
 
 ### USB monitoring
@@ -53,7 +53,7 @@ FlashSentry monitors USB storage, maintains a cryptographic whitelist of trusted
 |--------|----------------|
 | **Alerts page** | Security-relevant session events (warnings, mismatches, blocks) plus failed verifications from history |
 | **Reports page** | Verification history table, verification audit log (`audit.log`), policy mutation log (`policy-audit.log`) |
-| **Policy daemon** | `flashsentry-policyd` owns the signed trust/block store; the GUI talks to it over a local socket (in-process fallback if the daemon is unavailable) |
+| **Policy daemon** | `flashspartan-policyd` owns the signed trust/block store; the GUI talks to it over a local socket (in-process fallback if the daemon is unavailable) |
 | **BadUSB monitor** | HID baseline and anomaly detection (optional usbmon capture) |
 
 ### Advanced (optional)
@@ -97,27 +97,27 @@ If you only need “is every byte on this partition the same as last time?”, e
 
 More UI reference images: [`docs/images/`](docs/images/). Capture guidance: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 
-After install, user docs are under `/usr/share/doc/flashsentry/` (including [docs/USER_GUIDE.md](docs/USER_GUIDE.md)).
+After install, user docs are under `/usr/share/doc/flashspartan/` (including [docs/USER_GUIDE.md](docs/USER_GUIDE.md)).
 
 ## Installation
 
 ### From AUR (recommended)
 
 ```bash
-yay -S flashsentry
+yay -S flashspartan
 # or
-paru -S flashsentry
+paru -S flashspartan
 ```
 
 ### From source (Arch)
 
 ```bash
-git clone https://github.com/RNAX0N/flashsentry.git
-cd flashsentry/packaging
+git clone https://github.com/RNAX0N/flashspartan.git
+cd flashspartan/packaging
 ./build-package.sh -si
 ```
 
-This builds and installs `flashsentry`, `flashsentry-policyd`, and `flashsentry-read-helper` via CMake.
+This builds and installs `flashspartan`, `flashspartan-policyd`, and `flashspartan-read-helper` via CMake.
 
 ### Post-installation setup
 
@@ -126,9 +126,9 @@ This builds and installs `flashsentry`, `flashsentry-policyd`, and `flashsentry-
 sudo usermod -aG storage $USER
 
 # Optional: autostart minimized to tray
-systemctl --user enable --now flashsentry.service
+systemctl --user enable --now flashspartan.service
 
-# Recommended: disable the desktop environment's automount so FlashSentry controls mounts
+# Recommended: disable the desktop environment's automount so FlashSpartan controls mounts
 # GNOME:
 gsettings set org.gnome.desktop.media-handling automount false
 # KDE: System Settings → Removable Storage → disable automount
@@ -145,14 +145,26 @@ Not yet on Windows (stubs return clear errors):
 - Programmatic mount/eject (Explorer handles removable volumes)
 - Full-partition raw hashing (`\\.\PhysicalDriveN`)
 - BadUSB HID monitoring and usbmon capture
-- `flashsentry-policyd` / `flashsentry-read-helper` (policy runs in-process)
+- `flashspartan-policyd` / `flashspartan-read-helper` (policy runs in-process)
 
-**Build:** Qt 6, MSVC, OpenSSL — full steps in [docs/WINDOWS.md](docs/WINDOWS.md). CI produces a portable ZIP artifact on each push.
+### Download (installers)
+
+Official Windows builds are attached to **[GitHub Releases](https://github.com/RNAX0N/flashsentry/releases/latest)**:
+
+| Asset | Purpose |
+|-------|---------|
+| `FlashSpartan-*-x64-setup.exe` | **Recommended** — graphical installer (optional USBPcap driver) |
+| `FlashSpartan-*-x64.msi` | MSI for IT / `msiexec` |
+| `FlashSpartan-*-x64-portable.zip` | Unzip and run (no installer) |
+
+New releases are published when a version tag is pushed (for example `v1.5.0`). See [packaging/windows/INSTALLER.md](packaging/windows/INSTALLER.md).
+
+**Build from source:** Qt 6, MSVC, OpenSSL — [docs/WINDOWS.md](docs/WINDOWS.md).
 
 ```powershell
 cmake -B build -G "Visual Studio 17 2022" -A x64 `
   -DCMAKE_BUILD_TYPE=Release `
-  -DFLASHSENTRY_BUILD_TESTS=ON `
+  -DFLASHSPARTAN_BUILD_TESTS=ON `
   -DOPENSSL_ROOT_DIR="C:\Program Files\OpenSSL-Win64"
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
@@ -160,28 +172,28 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## Usage
 
-### Starting FlashSentry
+### Starting FlashSpartan
 
 ```bash
-flashsentry                  # normal start
-flashsentry --minimized      # start in the system tray
-flashsentry --debug          # verbose Qt logging
-flashsentry --no-tray        # disable tray icon
-flashsentry --help           # all options
+flashspartan                  # normal start
+flashspartan --minimized      # start in the system tray
+flashspartan --debug          # verbose Qt logging
+flashspartan --no-tray        # disable tray icon
+flashspartan --help           # all options
 ```
 
-On Linux, the policy daemon is started automatically when needed (`flashsentry-policyd`). On Windows, policy always runs in-process.
+On Linux, the policy daemon is started automatically when needed (`flashspartan-policyd`). On Windows, policy always runs in-process.
 
 For tests or development without the daemon (Linux):
 
 ```bash
-export FLASHSENTRY_POLICY_IN_PROCESS=1
-flashsentry
+export FLASHSPARTAN_POLICY_IN_PROCESS=1
+flashspartan
 ```
 
 ### Typical USB workflow
 
-1. **Connect a USB device** — FlashSentry detects it (udev on Linux, volume polling on Windows).
+1. **Connect a USB device** — FlashSpartan detects it (udev on Linux, volume polling on Windows).
 2. **New device?** — You are prompted to trust it (whitelist / watch folders / hash).
 3. **Known device?** — Verification runs according to its profile (watch manifest, hash, or both).
 4. **Hash or manifest matches** — Mount proceeds (subject to your settings).
@@ -203,7 +215,7 @@ flashsentry
 
 Primary settings file:
 
-`~/.config/FlashSentry/FlashSentry.conf`
+`~/.config/FlashSpartan/FlashSpartan.conf`
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -215,20 +227,20 @@ Primary settings file:
 | Use memory mapping | on | mmap for faster hashing |
 | Allowed-count mode | configurable | What counts as “allowed” in stats (trust / hash / either) |
 
-System-wide defaults (optional): `/etc/flashsentry/config.json` — see packaging `config.json.default`.
+System-wide defaults (optional): `/etc/flashspartan/config.json` — see packaging `config.json.default`.
 
 ### Data and audit files
 
 | Path | Purpose |
 |------|---------|
-| `~/.config/FlashSentry/policy.store` | Signed trust list and block list (authoritative) |
-| `~/.config/FlashSentry/policy.key` | HMAC key for `policy.store` (mode 600) |
-| `~/.config/FlashSentry/policy-audit.log` | Append-only policy mutations |
-| `~/.config/FlashSentry/verify-history.json` | Verification history (hash / manifest / ISO) |
-| `~/.config/FlashSentry/audit.log` | ISO and BadUSB audit events (JSON lines) |
-| `~/.config/FlashSentry/hash-checkpoints.json` | Resume data for long full-disk hashes |
-| `~/.config/FlashSentry/blocked-drives.json.migrated` | Legacy block list (after migration only) |
-| `~/.config/FlashSentry/flashsentry/devices.json.migrated` | Legacy device JSON (after migration only) |
+| `~/.config/FlashSpartan/policy.store` | Signed trust list and block list (authoritative) |
+| `~/.config/FlashSpartan/policy.key` | HMAC key for `policy.store` (mode 600) |
+| `~/.config/FlashSpartan/policy-audit.log` | Append-only policy mutations |
+| `~/.config/FlashSpartan/verify-history.json` | Verification history (hash / manifest / ISO) |
+| `~/.config/FlashSpartan/audit.log` | ISO and BadUSB audit events (JSON lines) |
+| `~/.config/FlashSpartan/hash-checkpoints.json` | Resume data for long full-disk hashes |
+| `~/.config/FlashSpartan/blocked-drives.json.migrated` | Legacy block list (after migration only) |
+| `~/.config/FlashSpartan/flashspartan/devices.json.migrated` | Legacy device JSON (after migration only) |
 
 JSON export/import in **Settings** is for backup and interchange only; the policy store is the source of truth.
 
@@ -247,14 +259,14 @@ JSON export/import in **Settings** is for backup and interchange only; the polic
 ```bash
 sudo pacman -S qt6-base qt6-tools cmake base-devel openssl pkgconf
 mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Debug -DFLASHSENTRY_BUILD_TESTS=ON ..
+cmake -DCMAKE_BUILD_TYPE=Debug -DFLASHSPARTAN_BUILD_TESTS=ON ..
 cmake --build . -j"$(nproc)"
-./flashsentry
+./flashspartan
 ```
 
 ### Windows
 
-See [docs/WINDOWS.md](docs/WINDOWS.md). Output executable: `FlashSentry.exe`.
+See [docs/WINDOWS.md](docs/WINDOWS.md). Output executable: `FlashSpartan.exe`.
 
 ### Tests
 
@@ -270,7 +282,7 @@ cmake --build . -j"$(nproc)"
 sudo cmake --install . --prefix /usr
 ```
 
-Installed binaries include `flashsentry`, `flashsentry-policyd`, and `flashsentry-read-helper` (privileged raw read helper).
+Installed binaries include `flashspartan`, `flashspartan-policyd`, and `flashspartan-read-helper` (privileged raw read helper).
 
 ## Kernel compatibility
 
@@ -307,8 +319,8 @@ pgrep -f polkit
 
 ```bash
 # Check daemon socket and logs
-ls -la "${XDG_RUNTIME_DIR:-/tmp}/flashsentry-policy.sock"
-tail -20 ~/.config/FlashSentry/policy-audit.log
+ls -la "${XDG_RUNTIME_DIR:-/tmp}/flashspartan-policy.sock"
+tail -20 ~/.config/FlashSpartan/policy-audit.log
 ```
 
 ### Hash speed is slow
@@ -322,7 +334,7 @@ tail -20 ~/.config/FlashSentry/policy-audit.log
 
 - **No continuous root** — polkit escalates mount and helper operations.
 - **Signed policy store** — HMAC-protected `policy.store`; mutations logged.
-- **Split process** — `flashsentry-policyd` can hold policy state separately from the GUI.
+- **Split process** — `flashspartan-policyd` can hold policy state separately from the GUI.
 - **Secure mount defaults** — `noexec`, `nosuid`, `nodev` where supported.
 - **Tamper detection** — Cryptographic hashes and Merkle manifests on watched paths.
 - **User confirmation** — Prompts for unknown or modified devices (configurable).
@@ -341,7 +353,7 @@ tail -20 ~/.config/FlashSentry/policy-audit.log
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and feature requests: [GitHub Issues](https://github.com/RNAX0N/flashsentry/issues).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and feature requests: [GitHub Issues](https://github.com/RNAX0N/flashspartan/issues).
 
 ## License
 

@@ -10,7 +10,7 @@
 #include <QWidget>
 #include <memory>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief StyleManager - Centralized theming and styling for the application
@@ -364,8 +364,8 @@ private:
 };
 
 // Convenience macros for accessing style manager
-#define FSStyle FlashSentry::StyleManager::instance()
-#define FSColor(role) FlashSentry::StyleManager::instance().color(FlashSentry::StyleManager::ColorRole::role)
-#define FSFont(role) FlashSentry::StyleManager::instance().font(FlashSentry::StyleManager::FontRole::role)
+#define FSStyle FlashSpartan::StyleManager::instance()
+#define FSColor(role) FlashSpartan::StyleManager::instance().color(FlashSpartan::StyleManager::ColorRole::role)
+#define FSFont(role) FlashSpartan::StyleManager::instance().font(FlashSpartan::StyleManager::FontRole::role)
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

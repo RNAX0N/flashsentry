@@ -10,7 +10,7 @@
 #include <winioctl.h>
 #include <cfgmgr32.h>
 
-namespace FlashSentry::WinStorage {
+namespace FlashSpartan::WinStorage {
 
 namespace {
 
@@ -234,6 +234,6 @@ bool ejectVolumeRoot(const QString& volumeRoot, bool force, QString* error)
     return true;
 }
 
-} // namespace FlashSentry::WinStorage
+} // namespace FlashSpartan::WinStorage
 
 #endif

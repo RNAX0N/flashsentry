@@ -22,7 +22,7 @@ jobs:
             libnotify-dev
 
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DFLASHSENTRY_BUILD_TESTS=ON
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DFLASHSPARTAN_BUILD_TESTS=ON
 
       - name: Build
         run: cmake --build build -j$(nproc)
@@ -79,7 +79,7 @@ jobs:
           }
           cmake -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
-            -DFLASHSENTRY_BUILD_TESTS=ON `
+            -DFLASHSPARTAN_BUILD_TESTS=ON `
             -DOPENSSL_ROOT_DIR="$env:OPENSSL_ROOT_DIR"
 
       - name: Verify catalog byte order before build
@@ -105,7 +105,7 @@ jobs:
           foreach ($bin in @('C:\Program Files\Git\usr\bin', 'C:\Program Files\Git\mingw64\bin')) {
             if (Test-Path $bin) { $env:PATH = "$bin;$env:PATH" }
           }
-          $env:FLASHSENTRY_SOURCE_ROOT = "${{ github.workspace }}"
+          $env:FLASHSPARTAN_SOURCE_ROOT = "${{ github.workspace }}"
           ctest --test-dir build -C Release --output-on-failure
           if ($LASTEXITCODE -ne 0) {
             $tests = @(
@@ -122,9 +122,9 @@ jobs:
         shell: pwsh
         run: |
           cmake --install build --config Release --prefix "$pwd/stage"
-          $exe = Get-ChildItem -Path "$pwd/stage" -Filter FlashSentry.exe -Recurse | Select-Object -First 1
+          $exe = Get-ChildItem -Path "$pwd/stage" -Filter FlashSpartan.exe -Recurse | Select-Object -First 1
           if (-not $exe) {
-            throw "FlashSentry.exe was not installed into the staging directory"
+            throw "FlashSpartan.exe was not installed into the staging directory"
           }
           windeployqt --release --compiler-runtime --no-translations "$($exe.FullName)"
           $opensslBins = @(
@@ -138,19 +138,18 @@ jobs:
             }
           }
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          Compress-Archive -Path stage/* -DestinationPath artifacts/FlashSentry-windows-portable.zip
+          Compress-Archive -Path stage/* -DestinationPath artifacts/FlashSpartan-windows-portable.zip
 
       - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FlashSentry-windows-portable
-          path: artifacts/FlashSentry-windows-portable.zip
+          name: FlashSpartan-windows-portable
+          path: artifacts/FlashSpartan-windows-portable.zip
 
   windows-installers:
     runs-on: windows-latest
     needs: windows-build-and-test
     if: success()
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -193,13 +192,13 @@ jobs:
           }
           cmake -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
-            -DFLASHSENTRY_BUILD_TESTS=OFF `
-            -DFLASHSENTRY_BUILD_WINDOWS_INSTALLERS=ON `
-            -DFLASHSENTRY_USBPCAP_INSTALLER="${{ steps.usbpcap.outputs.installer }}" `
+            -DFLASHSPARTAN_BUILD_TESTS=OFF `
+            -DFLASHSPARTAN_BUILD_WINDOWS_INSTALLERS=ON `
+            -DFLASHSPARTAN_USBPCAP_INSTALLER="${{ steps.usbpcap.outputs.installer }}" `
             -DOPENSSL_ROOT_DIR="$opensslRoot" `
             "${{ github.workspace }}"
           cmake --build build --config Release --parallel
-          cmake --build build --config Release --target flashsentry-windows-installers
+          cmake --build build --config Release --target flashspartan-windows-installers
           New-Item -ItemType Directory -Force -Path artifacts/installers | Out-Null
           $msi = Get-ChildItem build/wix-out -Filter *.msi -ErrorAction SilentlyContinue
           $setup = Get-ChildItem build/wix-out -Filter *-setup.exe -ErrorAction SilentlyContinue
@@ -211,5 +210,5 @@ jobs:
       - name: Upload Windows installers
         uses: actions/upload-artifact@v4
         with:
-          name: FlashSentry-windows-installers
+          name: FlashSpartan-windows-installers
           path: artifacts/installers/

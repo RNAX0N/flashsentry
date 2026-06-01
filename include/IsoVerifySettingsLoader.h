@@ -4,13 +4,13 @@
 
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
-/** Load ISO verify options from FlashSentry.conf (same keys as the GUI). */
+/** Load ISO verify options from FlashSpartan.conf (same keys as the GUI). */
 class IsoVerifySettingsLoader {
 public:
     static IsoVerifyOptions load(const QString& configFilePath = {});
     static void applyToVerifier(const QString& configFilePath = {});
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

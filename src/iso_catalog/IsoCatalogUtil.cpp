@@ -1,6 +1,6 @@
 #include "IsoCatalog.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 bool IsoCatalog::isVerifiableImageFileName(const QString& fileName)
 {
@@ -28,4 +28,4 @@ QStringList IsoCatalog::knownPublisherIds()
             QStringLiteral("nixos"),             QStringLiteral("microsoft-windows")};
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

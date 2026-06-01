@@ -7,7 +7,7 @@
 #include <QBuffer>
 #include <QDebug>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 TrayIcon::TrayIcon(QObject* parent)
     : QObject(parent)
@@ -322,7 +322,7 @@ void TrayIcon::createMenu()
     m_menu->setStyleSheet(FSStyle.menuStyleSheet());
     
     // Title/header
-    QAction* titleAction = m_menu->addAction("FlashSentry");
+    QAction* titleAction = m_menu->addAction("FlashSpartan");
     titleAction->setEnabled(false);
     QFont titleFont = titleAction->font();
     titleFont.setBold(true);
@@ -359,7 +359,7 @@ void TrayIcon::createMenu()
 
 void TrayIcon::updateTooltip()
 {
-    QString tooltip = "FlashSentry\n";
+    QString tooltip = "FlashSpartan\n";
     
     switch (m_iconState) {
         case IconState::Hashing:
@@ -455,4 +455,4 @@ QIcon TrayIcon::createColoredIcon(const QColor& color) const
     return QIcon(pixmap);
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -7,7 +7,7 @@
 #include <memory>
 #include <optional>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 /**
  * Sole gate for policy mutations. UI and monitors must not touch policy files.
@@ -39,4 +39,4 @@ public:
     static std::unique_ptr<PolicyGateway> createInProcess(const QString& storePath = {});
 };
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

@@ -7,7 +7,7 @@
 #include <QMutex>
 #include <optional>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class BadUsbBaselineStore : public QObject {
     Q_OBJECT
@@ -39,4 +39,4 @@ private:
     QHash<QString, BadUsbBaselineEntry> m_devices;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

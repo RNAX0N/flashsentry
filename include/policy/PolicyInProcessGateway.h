@@ -3,7 +3,7 @@
 #include "policy/PolicyGateway.h"
 #include "policy/PolicyStoreEngine.h"
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 class PolicyInProcessGateway : public PolicyGateway {
 public:
@@ -33,4 +33,4 @@ private:
     PolicyStoreEngine m_engine;
 };
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

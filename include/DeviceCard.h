@@ -13,7 +13,7 @@
 
 #include "Types.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief DeviceCard - Futuristic card widget displaying USB device information
@@ -303,4 +303,4 @@ private:
     static constexpr int PULSE_INTERVAL = 50;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

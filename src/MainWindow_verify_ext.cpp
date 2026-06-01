@@ -9,7 +9,7 @@
 #include "VerifyHistory.h"
 #include <QMessageBox>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 void MainWindow::applyAppModule()
 {
@@ -351,7 +351,7 @@ void MainWindow::warnIfCatalogIntegrityFailed()
         QStringLiteral("ISO catalog integrity"),
         QStringLiteral(
             "%1\n\n"
-            "Image verification may be unreliable until you reinstall FlashSentry or run "
+            "Image verification may be unreliable until you reinstall FlashSpartan or run "
             "\"Update catalog\" from the ISO verification tab.\n\n"
             "If you did not modify system files, treat this as a possible installation problem.")
             .arg(detail));
@@ -407,4 +407,4 @@ void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
     }
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

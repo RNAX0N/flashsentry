@@ -10,7 +10,7 @@
 #include <QCryptographicHash>
 #include <cstdint>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 struct DeviceInfo {
     QString deviceNode;
@@ -825,14 +825,14 @@ struct LogEntry {
     }
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan
 
-Q_DECLARE_METATYPE(FlashSentry::DeviceInfo)
-Q_DECLARE_METATYPE(FlashSentry::DeviceRecord)
-Q_DECLARE_METATYPE(FlashSentry::HashResult)
-Q_DECLARE_METATYPE(FlashSentry::VerificationStatus)
-Q_DECLARE_METATYPE(FlashSentry::ManifestVerifyResult)
-Q_DECLARE_METATYPE(FlashSentry::WatchManifest)
-Q_DECLARE_METATYPE(FlashSentry::IsoVerifyResult)
-Q_DECLARE_METATYPE(FlashSentry::HidDeviceInfo)
-Q_DECLARE_METATYPE(FlashSentry::BadUsbAnomalyResult)
+Q_DECLARE_METATYPE(FlashSpartan::DeviceInfo)
+Q_DECLARE_METATYPE(FlashSpartan::DeviceRecord)
+Q_DECLARE_METATYPE(FlashSpartan::HashResult)
+Q_DECLARE_METATYPE(FlashSpartan::VerificationStatus)
+Q_DECLARE_METATYPE(FlashSpartan::ManifestVerifyResult)
+Q_DECLARE_METATYPE(FlashSpartan::WatchManifest)
+Q_DECLARE_METATYPE(FlashSpartan::IsoVerifyResult)
+Q_DECLARE_METATYPE(FlashSpartan::HidDeviceInfo)
+Q_DECLARE_METATYPE(FlashSpartan::BadUsbAnomalyResult)

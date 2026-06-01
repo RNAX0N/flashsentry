@@ -6,7 +6,7 @@
 #include <QString>
 #include <QStringList>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief Fully automated ISO verification: local hash, remote publisher checksums, GPG.
@@ -49,4 +49,4 @@ public:
     static bool mountScanHasFailures(const QList<IsoVerifyResult>& results);
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

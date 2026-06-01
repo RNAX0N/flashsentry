@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "catalog_signing_fingerprint": "541DFAEB302C380671E666C7BBD811EF6FBA0EBC",
-  "remote_url": "https://raw.githubusercontent.com/RNAX0N/flashsentry/main/resources/iso-catalog/embedded-manifest.json",
+  "remote_url": "https://raw.githubusercontent.com/RNAX0N/flashspartan/main/resources/iso-catalog/embedded-manifest.json",
   "entries": [
     {
       "publisher_id": "microsoft-windows",

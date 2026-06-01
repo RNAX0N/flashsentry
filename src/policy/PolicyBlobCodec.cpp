@@ -14,7 +14,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 namespace {
 
@@ -250,4 +250,4 @@ QByteArray PolicyBlobCodec::loadOrCreateKey()
     return key;
 }
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

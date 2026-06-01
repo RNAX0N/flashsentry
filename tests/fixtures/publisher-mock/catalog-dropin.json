@@ -3,7 +3,7 @@
   "entries": [
     {
       "publisher_id": "mock-publisher",
-      "publisher_name": "FlashSentry Mock Publisher",
+      "publisher_name": "FlashSpartan Mock Publisher",
       "file_pattern": "^mock-distro-.*\\.iso$",
       "release_label": "Mock distro test image",
       "sha256": "",

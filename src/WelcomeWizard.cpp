@@ -10,7 +10,7 @@
 #include <QVBoxLayout>
 #include <QWizardPage>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -30,12 +30,12 @@ class IntroPage : public QWizardPage {
 public:
     IntroPage()
     {
-        setTitle(QStringLiteral("Welcome to FlashSentry"));
+        setTitle(QStringLiteral("Welcome to FlashSpartan"));
         setSubTitle(QStringLiteral("Verify USB sticks and image files on Arch Linux"));
 
         auto* layout = new QVBoxLayout(this);
         layout->addWidget(new QLabel(QStringLiteral(
-            "<p>FlashSentry helps you trust removable USB storage:</p>"
+            "<p>FlashSpartan helps you trust removable USB storage:</p>"
             "<ul>"
             "<li><b>ISO / image verify</b> — checksums and signatures for Linux ISOs, Windows "
             "installers, Raspberry Pi images, and files copied with <code>dd</code>, Rufus, or "
@@ -113,7 +113,7 @@ public:
         auto* automountBox = new QGroupBox(QStringLiteral("Disable desktop auto-mount (recommended)"));
         auto* automountLayout = new QVBoxLayout(automountBox);
         automountLayout->addWidget(new QLabel(QStringLiteral(
-            "Let FlashSentry mount after verification. GNOME example:")));
+            "Let FlashSpartan mount after verification. GNOME example:")));
         auto* cmd = new QPlainTextEdit(QStringLiteral(
             "gsettings set org.gnome.desktop.media-handling automount false\n"
             "gsettings set org.gnome.desktop.media-handling automount-open false"));
@@ -141,7 +141,7 @@ private:
 WelcomeWizard::WelcomeWizard(QWidget* parent)
     : QWizard(parent)
 {
-    setWindowTitle(QStringLiteral("FlashSentry setup"));
+    setWindowTitle(QStringLiteral("FlashSpartan setup"));
     setMinimumSize(520, 420);
     setWizardStyle(QWizard::ModernStyle);
     setupPages();
@@ -177,4 +177,4 @@ void WelcomeWizard::applyToSettings(AppSettings& settings) const
     settings.showFirstRunWizard = property("showWizardAgain").toBool();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -2,7 +2,7 @@
 
 #include "BadUsbAnalyzer.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestBadUsbAnalyzer : public QObject {
     Q_OBJECT

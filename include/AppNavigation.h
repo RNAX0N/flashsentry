@@ -2,7 +2,7 @@
 
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /** Left-rail application modules (content pages in the main stack). */
 enum class AppPage {
@@ -33,4 +33,4 @@ inline QString appPageLabel(AppPage page)
     return QStringLiteral("USB Monitor");
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

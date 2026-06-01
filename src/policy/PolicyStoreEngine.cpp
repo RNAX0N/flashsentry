@@ -11,7 +11,7 @@
 #include <QJsonObject>
 #include <QSaveFile>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 namespace {
 
@@ -257,4 +257,4 @@ bool PolicyStoreEngine::unblockDrive(const QString& driveKey, const QString& uni
     return commitMutation(actor, QStringLiteral("unblock_drive"), uniqueId, {});
 }
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

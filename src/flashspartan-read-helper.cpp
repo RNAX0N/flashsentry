@@ -1,6 +1,6 @@
 /**
  * Polkit-privileged helper for raw USB block device reads.
- * Invoked via: pkexec /usr/lib/flashsentry/flashsentry-read-helper hash <dev> <algo> <buffer_kb> <mmap>
+ * Invoked via: pkexec /usr/lib/flashspartan/flashspartan-read-helper hash <dev> <algo> <buffer_kb> <mmap>
  * Prints one JSON line to stdout.
  */
 
@@ -16,7 +16,7 @@
 #include <cerrno>
 #include <cstring>
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 static void printResult(const HashResult& result, qint64 durationMs)
 {
@@ -40,7 +40,7 @@ static void printResult(const HashResult& result, qint64 durationMs)
 int main(int argc, char* argv[])
 {
     QCoreApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("flashsentry-read-helper"));
+    app.setApplicationName(QStringLiteral("flashspartan-read-helper"));
 
     const QStringList args = app.arguments();
     QString outputPath;
@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
 
     if (positional.size() != 5 || positional.at(0) != QStringLiteral("hash")) {
         QTextStream err(stderr);
-        err << "Usage: flashsentry-read-helper hash <device> <algorithm> <buffer_kb> "
+        err << "Usage: flashspartan-read-helper hash <device> <algorithm> <buffer_kb> "
                "<use_mmap 0|1> [--output path]\n";
         return 2;
     }

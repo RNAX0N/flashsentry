@@ -45,7 +45,7 @@ def _to_gpg_path(gpg_exe: str, path: Path) -> str:
 
 
 def _resolve_gpg() -> str | None:
-    env = os.environ.get("FLASHSENTRY_GPG_PROGRAM", "").strip()
+    env = os.environ.get("FLASHSPARTAN_GPG_PROGRAM", "").strip()
     if env and Path(env).is_file():
         return env
     found = shutil.which("gpg")
@@ -79,7 +79,7 @@ def _verify_openpgp() -> tuple[bool, str]:
     env = os.environ.copy()
     env.pop("GNUPGHOME", None)
 
-    with tempfile.TemporaryDirectory(prefix="flashsentry-gpg-", dir=ROOT) as gpg_home:
+    with tempfile.TemporaryDirectory(prefix="flashspartan-gpg-", dir=ROOT) as gpg_home:
         home = Path(gpg_home)
         homedir_flag = _to_gpg_path(gpg_exe, home)
         pub = _to_gpg_path(gpg_exe, PUB_FILE)

@@ -8,7 +8,7 @@
           Version="$(var.ProductVersion)"
           Manufacturer="$(var.Manufacturer)"
           UpgradeCode="$(var.BundleUpgradeCode)"
-          AboutUrl="https://github.com/RNAX0N/flashsentry">
+          AboutUrl="https://github.com/RNAX0N/flashspartan">
 
     <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
       <bal:WixStandardBootstrapperApplication LicenseFile="$(var.LicenseRtf)"
@@ -28,8 +28,8 @@
                      Variable="UsbPcapAlreadyInstalled" />
 
     <Chain>
-      <MsiPackage Id="FlashSentryMsi"
-                  SourceFile="$(var.FlashSentryMsi)"
+      <MsiPackage Id="FlashSpartanMsi"
+                  SourceFile="$(var.FlashSpartanMsi)"
                   Vital="yes"
                   DisplayInternalUI="no"
                   EnableFeatureSelection="no">

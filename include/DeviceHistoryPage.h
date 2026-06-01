@@ -7,7 +7,7 @@
 class QComboBox;
 class QTableWidget;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class DeviceHistoryPage : public QWidget {
     Q_OBJECT
@@ -38,4 +38,4 @@ private:
     QList<UiEventEntry> m_eventRows;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

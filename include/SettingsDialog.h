@@ -19,10 +19,10 @@
 #include "Types.h"
 #include "StyleManager.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
- * @brief SettingsDialog - Configuration dialog for FlashSentry
+ * @brief SettingsDialog - Configuration dialog for FlashSpartan
  * 
  * Provides settings for:
  * - General behavior (startup, notifications, tray)
@@ -241,4 +241,4 @@ private:
     QList<StyleManager::Theme> m_themeList;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

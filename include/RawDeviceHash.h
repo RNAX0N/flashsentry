@@ -6,9 +6,9 @@
 #include <atomic>
 #include <cstdint>
 
-namespace FlashSentry { struct HashCheckpoint; }
+namespace FlashSpartan { struct HashCheckpoint; }
 
-namespace FlashSentry::RawDeviceHash {
+namespace FlashSpartan::RawDeviceHash {
 
 enum class Algorithm {
     SHA256,
@@ -38,7 +38,7 @@ struct Options {
     std::atomic<uint64_t>* bytesProcessed = nullptr;
     ScanMode scanMode = ScanMode::Full;
     uint64_t resumeFromBytes = 0;
-    FlashSentry::HashCheckpoint* checkpointOut = nullptr;
+    FlashSpartan::HashCheckpoint* checkpointOut = nullptr;
     int checkpointEveryBlocks = 4;
 };
 
@@ -59,4 +59,4 @@ HashResult hashOpenFd(int fd, const Options& options);
 /** Open (or use polkit helper) and hash. */
 HashResult hashDevice(const Options& options, const QString& pkexecHelperPath = QString());
 
-} // namespace FlashSentry::RawDeviceHash
+} // namespace FlashSpartan::RawDeviceHash

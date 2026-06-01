@@ -4,7 +4,7 @@
 
 #include <QFileInfo>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 std::optional<IsoPublisherMatch> IsoCatalog::matchIso(const QString& isoPath)
 {
@@ -317,4 +317,4 @@ std::optional<IsoPublisherMatch> IsoCatalog::matchIso(const QString& isoPath)
 }
 
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

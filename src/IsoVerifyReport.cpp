@@ -5,7 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 static QString csvEscape(QString value)
 {
@@ -122,10 +122,10 @@ QString IsoVerifyReport::buildJson(const QList<IsoVerifyResult>& results)
 QString IsoVerifyReport::buildHtml(const QList<IsoVerifyResult>& results)
 {
     QString html = QStringLiteral(
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>FlashSentry report</title>"
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>FlashSpartan report</title>"
         "<style>body{font-family:sans-serif}table{border-collapse:collapse;width:100%}"
         "td,th{border:1px solid #ccc;padding:6px}tr.fail{background:#fdd}</style></head><body>");
-    html += QStringLiteral("<h1>FlashSentry verification</h1><p>%1</p><table><tr>"
+    html += QStringLiteral("<h1>FlashSpartan verification</h1><p>%1</p><table><tr>"
                            "<th>File</th><th>Publisher</th><th>SHA-256</th><th>PGP</th><th>Status</th></tr>")
                 .arg(summaryLine(results).toHtmlEscaped());
     for (const IsoVerifyResult& r : results) {
@@ -153,4 +153,4 @@ QString IsoVerifyReport::buildHtml(const QList<IsoVerifyResult>& results)
     return html;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

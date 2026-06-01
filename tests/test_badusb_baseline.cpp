@@ -3,7 +3,7 @@
 
 #include "BadUsbBaselineStore.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestBadUsbBaselineStore : public QObject {
     Q_OBJECT

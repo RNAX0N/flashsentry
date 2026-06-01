@@ -2,7 +2,7 @@
 
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /** Resolves USBPcapCMD.exe from PATH and standard install locations (no PATH required). */
 class UsbPcapLocator {
@@ -10,4 +10,4 @@ public:
     static QString findUsbPcapCmdExecutable();
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

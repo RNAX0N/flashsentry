@@ -4,7 +4,7 @@
 
 #include "AutostartManager.h"
 
-using namespace FlashSentry;
+using namespace FlashSpartan;
 
 class TestAutostart : public QObject {
     Q_OBJECT
@@ -26,7 +26,7 @@ void TestAutostart::initTestCase()
         QSKIP("XDG autostart backend required (no packaged systemd unit in this environment)");
     }
     m_autostartPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
-        + QStringLiteral("/autostart/flashsentry-autostart.desktop");
+        + QStringLiteral("/autostart/flashspartan-autostart.desktop");
 }
 
 void TestAutostart::cleanup()

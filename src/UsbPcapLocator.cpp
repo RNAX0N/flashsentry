@@ -9,7 +9,7 @@
 #include <qt_windows.h>
 #endif
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -62,7 +62,7 @@ QString UsbPcapLocator::findUsbPcapCmdExecutable()
     }
 
     const QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    const QString override = env.value(QStringLiteral("FLASHSENTRY_USBPCAP_CMD"));
+    const QString override = env.value(QStringLiteral("FLASHSPARTAN_USBPCAP_CMD"));
     if (!override.isEmpty() && isExecutableFile(override)) {
         return QDir::toNativeSeparators(override);
     }
@@ -71,4 +71,4 @@ QString UsbPcapLocator::findUsbPcapCmdExecutable()
     return {};
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

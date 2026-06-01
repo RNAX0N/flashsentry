@@ -1,5 +1,5 @@
 /**
- * flashsentry-policyd — isolated process owning the signed policy store.
+ * flashspartan-policyd — isolated process owning the signed policy store.
  * All trust/block mutations go through this daemon; the GUI uses PolicyDaemonClient.
  */
 
@@ -16,8 +16,8 @@
 #include <QLocalSocket>
 #include <QObject>
 
-using namespace FlashSentry;
-using namespace FlashSentry::Policy;
+using namespace FlashSpartan;
+using namespace FlashSpartan::Policy;
 
 class PolicyDaemonServer : public QObject {
     Q_OBJECT
@@ -196,7 +196,7 @@ private:
 int main(int argc, char* argv[])
 {
     QCoreApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("flashsentry-policyd"));
+    app.setApplicationName(QStringLiteral("flashspartan-policyd"));
 
     PolicyDaemonServer server;
     QString err;
@@ -210,4 +210,4 @@ int main(int argc, char* argv[])
     return app.exec();
 }
 
-#include "flashsentry-policyd.moc"
+#include "flashspartan-policyd.moc"

@@ -15,7 +15,7 @@
 #include <QDebug>
 #include <QDateTime>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 DatabaseManager::DatabaseManager(QObject* parent)
     : QObject(parent)
@@ -838,4 +838,4 @@ bool DatabaseManager::setVerificationProfile(const QString& uniqueId, Verificati
     return true;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

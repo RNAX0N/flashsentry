@@ -13,7 +13,7 @@ struct udev;
 struct udev_monitor;
 struct udev_device;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief DeviceMonitor - Monitors USB block devices via libudev
@@ -75,7 +75,7 @@ signals:
      * @brief Emitted when a USB partition is connected
      * Note: This is emitted for each partition, not each physical device.
      */
-    void deviceConnected(const FlashSentry::DeviceInfo& device);
+    void deviceConnected(const FlashSpartan::DeviceInfo& device);
 
     /**
      * @brief Emitted when a USB partition is disconnected
@@ -85,7 +85,7 @@ signals:
     /**
      * @brief Emitted when device properties change (e.g., mount status)
      */
-    void deviceChanged(const FlashSentry::DeviceInfo& device);
+    void deviceChanged(const FlashSpartan::DeviceInfo& device);
 
     /**
      * @brief Emitted when a monitoring error occurs
@@ -164,4 +164,4 @@ private:
     static constexpr int POLL_TIMEOUT_MS = 500;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

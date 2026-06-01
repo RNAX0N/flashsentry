@@ -16,7 +16,7 @@ class QTextEdit;
 class QSplitter;
 class QStackedWidget;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class IsoVerifierWorker;
 
@@ -99,4 +99,4 @@ private:
     QString m_lastDeviceNode;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

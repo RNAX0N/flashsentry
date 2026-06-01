@@ -5,7 +5,7 @@
 #include <QDir>
 #include <QFileInfo>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -171,4 +171,4 @@ QString IsoScanRules::coexistenceNote(MultibootTool tool)
     return {};
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

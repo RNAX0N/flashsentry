@@ -7,7 +7,7 @@
 #include <QTextEdit>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 EventDetailDialog::EventDetailDialog(const UiEventEntry& entry, QWidget* parent)
     : QDialog(parent)
@@ -36,4 +36,4 @@ EventDetailDialog::EventDetailDialog(const UiEventEntry& entry, QWidget* parent)
     layout->addWidget(buttons);
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

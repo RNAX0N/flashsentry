@@ -10,7 +10,7 @@
 #include <QTimer>
 #include <qt_windows.h>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -174,7 +174,7 @@ bool MountManager::isLoopDevice(const QString& /*deviceNode*/) const
     return false;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan
 
 #else
 
@@ -187,7 +187,7 @@ bool MountManager::isLoopDevice(const QString& /*deviceNode*/) const
 #include <QFile>
 #include <QMutexLocker>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 MountManager::MountManager(QObject* parent)
     : QObject(parent)
@@ -736,6 +736,6 @@ QString MountManager::extractErrorMessage(const QDBusError& error) const
     return message;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan
 
 #endif

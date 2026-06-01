@@ -8,7 +8,7 @@
 #include <QRegularExpression>
 #include <QStandardPaths>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 UsbmonCapture::UsbmonCapture(QObject* parent)
     : QObject(parent)
@@ -83,7 +83,7 @@ bool UsbmonCapture::startCapture(const HidDeviceInfo& device,
     }
     if (!QFileInfo::exists(program)) {
         emit captureFailed(QStringLiteral(
-            "USBPcapCMD.exe was not found. Re-run the FlashSentry installer and enable "
+            "USBPcapCMD.exe was not found. Re-run the FlashSpartan installer and enable "
             "\"Install USBPcap\", or install from https://desowin.org/usbpcap/ "
             "(standard path: C:\\Program Files\\USBPcap\\USBPcapCMD.exe)."));
         return false;
@@ -197,4 +197,4 @@ void UsbmonCapture::stopCapture()
     }
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

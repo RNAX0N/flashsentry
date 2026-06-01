@@ -1,35 +1,35 @@
 [Desktop Entry]
 Type=Application
-Name=FlashSentry
+Name=FlashSpartan
 GenericName=USB Security Monitor
 Comment=Verify Linux ISOs and USB sticks — automatic checksums, PGP, and folder watch lists
-Exec=flashsentry %U
-Icon=flashsentry
+Exec=flashspartan %U
+Icon=flashspartan
 Terminal=false
 Categories=System;Security;Utility;
 Keywords=USB;ISO;Linux;security;hash;verify;gpg;Rufus;checksum;Merkle;
 StartupNotify=true
-StartupWMClass=FlashSentry
+StartupWMClass=FlashSpartan
 
 # Actions for right-click menu
 Actions=minimized;settings;
 
 [Desktop Action minimized]
 Name=Start Minimized
-Exec=flashsentry --minimized
+Exec=flashspartan --minimized
 
 [Desktop Action settings]
 Name=Open Settings
-Exec=flashsentry --settings
+Exec=flashspartan --settings
 
 # Translations
-Name[de]=FlashSentry
+Name[de]=FlashSpartan
 Comment[de]=USB-Flash-Laufwerke überwachen und verifizieren
-Name[es]=FlashSentry
+Name[es]=FlashSpartan
 Comment[es]=Monitorear y verificar unidades flash USB
-Name[fr]=FlashSentry
+Name[fr]=FlashSpartan
 Comment[fr]=Surveiller et vérifier les clés USB
-Name[ja]=FlashSentry
+Name[ja]=FlashSpartan
 Comment[ja]=USBフラッシュドライブの監視と検証
-Name[zh_CN]=FlashSentry
+Name[zh_CN]=FlashSpartan
 Comment[zh_CN]=监控和验证USB闪存驱动器

@@ -1,11 +1,11 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
     <qresource prefix="/branding">
-        <file>branding/flashsentry-logo.png</file>
-        <file>branding/flashsentry-logo-banner.png</file>
+        <file>branding/flashspartan-logo.png</file>
+        <file>branding/flashspartan-logo-banner.png</file>
     </qresource>
     <qresource prefix="/icons">
-        <file>icons/flashsentry.svg</file>
+        <file>icons/flashspartan.svg</file>
         <file>icons/usb-drive.svg</file>
         <file>icons/shield-check.svg</file>
         <file>icons/shield-alert.svg</file>

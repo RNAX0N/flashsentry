@@ -6,7 +6,7 @@
 
 class QTextEdit;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class EventDetailDialog : public QDialog {
     Q_OBJECT
@@ -18,4 +18,4 @@ private:
     QTextEdit* m_body = nullptr;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

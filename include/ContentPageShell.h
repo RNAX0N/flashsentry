@@ -4,7 +4,7 @@
 
 class QLabel;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /** Standard page chrome: title + scrollable content. */
 class ContentPageShell : public QWidget {
@@ -14,4 +14,4 @@ public:
     void setContent(QWidget* content);
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

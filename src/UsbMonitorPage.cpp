@@ -13,7 +13,7 @@
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -323,4 +323,4 @@ void UsbMonitorPage::onEventDetailsClicked()
     emit eventDetailsRequested(m_eventRows.at(row));
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -3,7 +3,7 @@ Help me make a program for my arch machine that will check any usb flash drive t
 Here is a modular baseline in Python using PyQt6 and pyudev.
 
 Name Options
-FlashSentry
+FlashSpartan
 
 PortPatrol
 
@@ -16,7 +16,7 @@ Disable your desktop environment's auto-mount to let this script handle mounting
 
 Bash
 sudo pacman -S python-pyqt6 python-pyudev python-psutil udisks2
-The Modular Baseline (flashsentry.py)
+The Modular Baseline (flashspartan.py)
 This script integrates device monitoring, hashing, database tracking (JSON), and a Qt6 GUI.
 
 Python
@@ -107,7 +107,7 @@ class MonitorThread(QThread):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("FlashSentry")
+        self.setWindowTitle("FlashSpartan")
         self.resize(500, 400)
         self.manager = DeviceManager()
         self.active_mounts = {} # Map dev_path -> mount_point
@@ -289,14 +289,14 @@ System Prep (Arch)
 Bash
 sudo pacman -S qt6-base cmake base-devel openssl
 1. Project Structure
-Create a folder FlashSentry with these files. This setup separates the GUI from the heavy lifting (hashing/monitoring).
+Create a folder FlashSpartan with these files. This setup separates the GUI from the heavy lifting (hashing/monitoring).
 
 2. The Build System (CMakeLists.txt)
 This file tells the compiler how to link Qt6, OpenSSL, and standard Linux libraries.
 
 CMake
 cmake_minimum_required(VERSION 3.16)
-project(FlashSentry LANGUAGES CXX)
+project(FlashSpartan LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_AUTOMOC ON)
@@ -305,7 +305,7 @@ set(CMAKE_AUTOUIC ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 find_package(OpenSSL REQUIRED)
 
-add_executable(FlashSentry
+add_executable(FlashSpartan
     main.cpp
     MainWindow.cpp
     MainWindow.h
@@ -314,7 +314,7 @@ add_executable(FlashSentry
 )
 
 # Link Qt, OpenSSL, and udev (udev is usually part of system libs)
-target_link_libraries(FlashSentry PRIVATE 
+target_link_libraries(FlashSpartan PRIVATE 
     Qt6::Core Qt6::Gui Qt6::Widgets 
     OpenSSL::Crypto
     udev
@@ -578,7 +578,7 @@ int main(int argc, char *argv[]) {
 
     QApplication app(argc, argv);
     MainWindow w;
-    w.setWindowTitle("FlashSentry (C++)");
+    w.setWindowTitle("FlashSpartan (C++)");
     w.show();
     return app.exec();
 }
@@ -592,7 +592,7 @@ make
 Run:
 
 Bash
-sudo ./FlashSentry
+sudo ./FlashSpartan
 Next Steps for the C++ Version
 Threaded Hashing: Currently, QCoreApplication::processEvents() in hashPartition keeps the GUI responsive, but it's a "hack." The proper C++ way is to move the SHA256 logic into a class inheriting QRunnable and run it via QThreadPool::globalInstance()->start().
 

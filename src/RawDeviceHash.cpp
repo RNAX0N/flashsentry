@@ -39,7 +39,7 @@
 #include <cerrno>
 #include <cstring>
 
-namespace FlashSentry::RawDeviceHash {
+namespace FlashSpartan::RawDeviceHash {
 
 namespace {
 
@@ -99,17 +99,17 @@ QString resolveDevicePath(const QString& deviceNode, int* errorCode)
 
 QString defaultHelperPath()
 {
-#ifdef FLASHSENTRY_READ_HELPER_PATH
-    return QString(FLASHSENTRY_READ_HELPER_PATH);
+#ifdef FLASHSPARTAN_READ_HELPER_PATH
+    return QString(FLASHSPARTAN_READ_HELPER_PATH);
 #else
     return QCoreApplication::applicationDirPath()
-           + QStringLiteral("/flashsentry-read-helper.exe");
+           + QStringLiteral("/flashspartan-read-helper.exe");
 #endif
 }
 
 QString resolveHelperPath(const QString& helperPath)
 {
-    const QByteArray overridePath = qgetenv("FLASHSENTRY_READ_HELPER");
+    const QByteArray overridePath = qgetenv("FLASHSPARTAN_READ_HELPER");
     if (!overridePath.isEmpty()) {
         return QString::fromLocal8Bit(overridePath);
     }
@@ -118,7 +118,7 @@ QString resolveHelperPath(const QString& helperPath)
     }
 
     const QString sibling =
-        QCoreApplication::applicationDirPath() + QStringLiteral("/flashsentry-read-helper.exe");
+        QCoreApplication::applicationDirPath() + QStringLiteral("/flashspartan-read-helper.exe");
     if (QFileInfo::exists(sibling)) {
         return sibling;
     }
@@ -221,7 +221,7 @@ HashResult hashViaElevatedHelper(const Options& options, const QString& helperPa
         return result;
     }
 
-    QTemporaryFile tempFile(QDir::tempPath() + QStringLiteral("/flashsentry-hash-XXXXXX.json"));
+    QTemporaryFile tempFile(QDir::tempPath() + QStringLiteral("/flashspartan-hash-XXXXXX.json"));
     tempFile.setAutoRemove(true);
     if (!tempFile.open()) {
         result.errorMessage = QStringLiteral("Failed to create temporary result file");
@@ -404,7 +404,7 @@ HashResult hashDevice(const Options& options, const QString& pkexecHelperPath)
     return result;
 }
 
-} // namespace FlashSentry::RawDeviceHash
+} // namespace FlashSpartan::RawDeviceHash
 
 #else
 
@@ -419,7 +419,7 @@ HashResult hashDevice(const Options& options, const QString& pkexecHelperPath)
 #include <cerrno>
 #include <cstring>
 
-namespace FlashSentry::RawDeviceHash {
+namespace FlashSpartan::RawDeviceHash {
 
 namespace {
 
@@ -630,25 +630,25 @@ HashResult hashMmapLoop(int fd, const Options& options, uint64_t deviceSize)
 
 QString defaultHelperPath()
 {
-#ifdef FLASHSENTRY_READ_HELPER_PATH
-    return QString(FLASHSENTRY_READ_HELPER_PATH);
+#ifdef FLASHSPARTAN_READ_HELPER_PATH
+    return QString(FLASHSPARTAN_READ_HELPER_PATH);
 #else
-    return QStringLiteral("/usr/lib/flashsentry/flashsentry-read-helper");
+    return QStringLiteral("/usr/lib/flashspartan/flashspartan-read-helper");
 #endif
 }
 
 
 QString resolveHelperPath()
 {
-    const QByteArray overridePath = qgetenv("FLASHSENTRY_READ_HELPER");
+    const QByteArray overridePath = qgetenv("FLASHSPARTAN_READ_HELPER");
     if (!overridePath.isEmpty()) {
         return QString::fromLocal8Bit(overridePath);
     }
 
     const QStringList candidates = {
         defaultHelperPath(),
-        QStringLiteral("/usr/lib/flashsentry/flashsentry-read-helper"),
-        QStringLiteral("/usr/libexec/flashsentry/flashsentry-read-helper"),
+        QStringLiteral("/usr/lib/flashspartan/flashspartan-read-helper"),
+        QStringLiteral("/usr/libexec/flashspartan/flashspartan-read-helper"),
     };
 
     for (const QString& candidate : candidates) {
@@ -671,12 +671,12 @@ HashResult hashViaPkexec(const Options& options, const QString& helperPath)
     QProcess proc;
     if (!QFileInfo::exists(path)) {
         result.errorMessage = QString(
-            "Privileged helper not found at %1. Reinstall flashsentry or: sudo usermod -aG storage $USER")
+            "Privileged helper not found at %1. Reinstall flashspartan or: sudo usermod -aG storage $USER")
             .arg(path);
         return result;
     }
 
-    // pkexec matches org.flashsentry.read-raw-device via exec.path on the helper.
+    // pkexec matches org.flashspartan.read-raw-device via exec.path on the helper.
     proc.setProgram(QStringLiteral("pkexec"));
     proc.setArguments({
         path,
@@ -717,7 +717,7 @@ HashResult hashViaPkexec(const Options& options, const QString& helperPath)
             || lower.contains(QStringLiteral("permission denied"))
             || lower.contains(QStringLiteral("cannot run"))) {
             msg += QStringLiteral(
-                "\n\nEnsure flashsentry is reinstalled, a polkit agent is running in your "
+                "\n\nEnsure flashspartan is reinstalled, a polkit agent is running in your "
                 "desktop session (e.g. polkit-kde-agent or polkit-gnome), and try: "
                 "sudo usermod -aG storage $USER (then log out and back in).");
         }
@@ -901,6 +901,6 @@ HashResult hashDevice(const Options& options, const QString& pkexecHelperPath)
     return result;
 }
 
-} // namespace FlashSentry::RawDeviceHash
+} // namespace FlashSpartan::RawDeviceHash
 
 #endif

@@ -11,12 +11,12 @@ cat > "$BATCH" <<'EOF'
 %no-protection
 Key-Type: RSA
 Key-Length: 2048
-Name-Real: FlashSentry Catalog Signing
-Name-Email: catalog@flashsentry.test
+Name-Real: FlashSpartan Catalog Signing
+Name-Email: catalog@flashspartan.test
 Expire-Date: 0
 EOF
 gpg --batch --pinentry-mode loopback --generate-key "$BATCH"
-gpg --batch --armor --export catalog@flashsentry.test > "$ROOT/resources/iso-catalog/catalog-signing.pub"
+gpg --batch --armor --export catalog@flashspartan.test > "$ROOT/resources/iso-catalog/catalog-signing.pub"
 rm -f "$BATCH"
 echo "Wrote resources/iso-catalog/catalog-signing.pub"
 echo "Run tools/sign-embedded-manifest.sh after editing embedded-manifest.json"

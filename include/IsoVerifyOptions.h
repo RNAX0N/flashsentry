@@ -5,7 +5,7 @@
 
 #include <QString>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 struct IsoVerifyOptions {
     bool useHashCache = true;
@@ -17,4 +17,4 @@ struct IsoVerifyOptions {
     std::function<void(int current, int total, const QString& fileName)> progress;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

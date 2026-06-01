@@ -6,7 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 PolicyDaemonClient::PolicyDaemonClient(QString socketPath)
     : m_socketPath(socketPath.isEmpty() ? PolicyPaths::socketPath() : std::move(socketPath))
@@ -19,7 +19,7 @@ QJsonObject PolicyDaemonClient::request(const QJsonObject& req, QString* error) 
     socket.connectToServer(m_socketPath);
     if (!socket.waitForConnected(3000)) {
         if (error) {
-            *error = QStringLiteral("Cannot connect to flashsentry-policyd");
+            *error = QStringLiteral("Cannot connect to flashspartan-policyd");
         }
         return {};
     }
@@ -195,4 +195,4 @@ int PolicyDaemonClient::importJson(const QString& path, bool merge, const QStrin
     return resp.value(QStringLiteral("count")).toInt(-1);
 }
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

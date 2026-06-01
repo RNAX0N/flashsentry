@@ -4,7 +4,7 @@
 
 #include <optional>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 /**
  * @brief Embedded and remotely updatable SHA-256 catalog (Windows and extensions).
@@ -32,4 +32,4 @@ public:
     static QString integrityStatusText();
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

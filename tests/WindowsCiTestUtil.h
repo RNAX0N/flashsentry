@@ -2,7 +2,7 @@
 
 #include <QtGlobal>
 
-namespace FlashSentryTest {
+namespace FlashSpartanTest {
 
 /** GPG from MSVC/Qt is flaky on GitHub Windows runners; covered by validate-iso-manifest.py. */
 inline bool skipGpgAssertionsOnWindowsCi()
@@ -14,4 +14,4 @@ inline bool skipGpgAssertionsOnWindowsCi()
 #endif
 }
 
-} // namespace FlashSentryTest
+} // namespace FlashSpartanTest

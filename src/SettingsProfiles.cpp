@@ -1,6 +1,6 @@
 #include "SettingsProfiles.h"
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 QString SettingsProfiles::normalizeProfileId(const QString& profileId)
 {
@@ -98,4 +98,4 @@ void SettingsProfiles::applyProfile(const QString& profileId, AppSettings& setti
     }
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

@@ -8,14 +8,14 @@
 #include <QJsonObject>
 #include <QStandardPaths>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
 QString historyFilePath()
 {
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
-                        + QStringLiteral("/FlashSentry");
+                        + QStringLiteral("/FlashSpartan");
     return dir + QStringLiteral("/verify-history.json");
 }
 
@@ -185,4 +185,4 @@ QString VerifyHistory::formatEntryLine(const VerifyHistoryEntry& entry) const
     return line;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

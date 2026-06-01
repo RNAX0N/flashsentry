@@ -10,21 +10,21 @@
 #include <QStandardPaths>
 #include <QThread>
 
-#ifndef FLASHSENTRY_POLICYD_PATH
-#define FLASHSENTRY_POLICYD_PATH ""
+#ifndef FLASHSPARTAN_POLICYD_PATH
+#define FLASHSPARTAN_POLICYD_PATH ""
 #endif
 
-namespace FlashSentry::Policy {
+namespace FlashSpartan::Policy {
 
 QString PolicyDaemonLauncher::daemonExecutablePath()
 {
-    const QByteArray compiled = QByteArray(FLASHSENTRY_POLICYD_PATH);
+    const QByteArray compiled = QByteArray(FLASHSPARTAN_POLICYD_PATH);
     if (!compiled.isEmpty() && QFile::exists(QString::fromUtf8(compiled))) {
         return QString::fromUtf8(compiled);
     }
 
     QString sibling =
-        QCoreApplication::applicationDirPath() + QStringLiteral("/flashsentry-policyd");
+        QCoreApplication::applicationDirPath() + QStringLiteral("/flashspartan-policyd");
 #if defined(Q_OS_WIN)
     if (!QFile::exists(sibling)) {
         sibling += QStringLiteral(".exe");
@@ -34,7 +34,7 @@ QString PolicyDaemonLauncher::daemonExecutablePath()
         return sibling;
     }
 
-    const QString inPath = QStandardPaths::findExecutable(QStringLiteral("flashsentry-policyd"));
+    const QString inPath = QStandardPaths::findExecutable(QStringLiteral("flashspartan-policyd"));
     if (!inPath.isEmpty()) {
         return inPath;
     }
@@ -52,7 +52,7 @@ bool PolicyDaemonLauncher::ensureRunning(QString* error)
     const QString daemon = daemonExecutablePath();
     if (daemon.isEmpty() || !QFile::exists(daemon)) {
         if (error) {
-            *error = QStringLiteral("flashsentry-policyd not found");
+            *error = QStringLiteral("flashspartan-policyd not found");
         }
         return false;
     }
@@ -62,7 +62,7 @@ bool PolicyDaemonLauncher::ensureRunning(QString* error)
     proc.setProcessChannelMode(QProcess::MergedChannels);
     if (!proc.startDetached()) {
         if (error) {
-            *error = QStringLiteral("Failed to start flashsentry-policyd");
+            *error = QStringLiteral("Failed to start flashspartan-policyd");
         }
         return false;
     }
@@ -75,9 +75,9 @@ bool PolicyDaemonLauncher::ensureRunning(QString* error)
     }
 
     if (error) {
-        *error = QStringLiteral("flashsentry-policyd did not become ready");
+        *error = QStringLiteral("flashspartan-policyd did not become ready");
     }
     return false;
 }
 
-} // namespace FlashSentry::Policy
+} // namespace FlashSpartan::Policy

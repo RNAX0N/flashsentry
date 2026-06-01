@@ -19,7 +19,7 @@
 #include <QTemporaryDir>
 #include <QTimer>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 namespace {
 
@@ -64,7 +64,7 @@ QString userTofuPath()
 QStringList catalogDropInDirs()
 {
     QStringList dirs;
-    dirs << QStringLiteral("/usr/share/flashsentry/iso-catalog.d");
+    dirs << QStringLiteral("/usr/share/flashspartan/iso-catalog.d");
     dirs << QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
               + QStringLiteral("/iso-catalog.d");
     return dirs;
@@ -239,7 +239,7 @@ bool verifyEmbeddedGpgOnDisk()
     }
 
     const QString gpgHome =
-        root + QStringLiteral("/.flashsentry-embedded-gpg-home");
+        root + QStringLiteral("/.flashspartan-embedded-gpg-home");
     if (!QDir().mkpath(gpgHome)) {
         g_embeddedGpgDetail = QStringLiteral("cannot create gpg homedir");
         return false;
@@ -267,7 +267,7 @@ bool verifyEmbeddedGpgSignature(const QByteArray& manifestBytes)
         return false;
     }
 
-    const QString scratchRoot = gpgScratchRoot() + QStringLiteral("/.flashsentry-gpg-scratch");
+    const QString scratchRoot = gpgScratchRoot() + QStringLiteral("/.flashspartan-gpg-scratch");
     QDir().mkpath(scratchRoot);
     QTemporaryDir temp(scratchRoot + QStringLiteral("/verify-XXXXXX"));
     if (!temp.isValid()) {
@@ -432,7 +432,7 @@ QString IsoCatalogManifest::integrityStatusText()
 bool IsoCatalogManifest::refreshRemoteIfStale(int maxAgeSeconds, bool force)
 {
     ensureLoaded();
-    if (qEnvironmentVariableIsSet("FLASHSENTRY_SKIP_REMOTE_CATALOG")) {
+    if (qEnvironmentVariableIsSet("FLASHSPARTAN_SKIP_REMOTE_CATALOG")) {
         return true;
     }
     if (g_remoteUrl.isEmpty()) {
@@ -451,9 +451,9 @@ bool IsoCatalogManifest::refreshRemoteIfStale(int maxAgeSeconds, bool force)
     QNetworkRequest req{QUrl(g_remoteUrl)};
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
-#ifdef FLASHSENTRY_VERSION
+#ifdef FLASHSPARTAN_VERSION
     req.setHeader(QNetworkRequest::UserAgentHeader,
-                  QStringLiteral("FlashSentry/" FLASHSENTRY_VERSION));
+                  QStringLiteral("FlashSpartan/" FLASHSPARTAN_VERSION));
 #endif
 
     QNetworkReply* reply = nam.get(req);
@@ -554,4 +554,4 @@ bool IsoCatalogManifest::trustUserHash(const QString& fileName, const QString& s
     return true;
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

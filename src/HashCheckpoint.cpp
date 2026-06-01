@@ -8,7 +8,7 @@
 #include <QSaveFile>
 #include <QStandardPaths>
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 HashCheckpointStore& HashCheckpointStore::instance()
 {
@@ -19,7 +19,7 @@ HashCheckpointStore& HashCheckpointStore::instance()
 static QString checkpointPath()
 {
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
-        + QStringLiteral("/FlashSentry");
+        + QStringLiteral("/FlashSpartan");
     QDir().mkpath(dir);
     return dir + QStringLiteral("/hash-checkpoints.json");
 }
@@ -121,4 +121,4 @@ void HashCheckpointStore::clearAll()
     save();
 }
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

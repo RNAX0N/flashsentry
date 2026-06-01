@@ -8,7 +8,7 @@
 class QPushButton;
 class QVBoxLayout;
 
-namespace FlashSentry {
+namespace FlashSpartan {
 
 class NavSidebar : public QWidget {
     Q_OBJECT
@@ -31,4 +31,4 @@ private:
     AppPage m_current = AppPage::UsbMonitor;
 };
 
-} // namespace FlashSentry
+} // namespace FlashSpartan

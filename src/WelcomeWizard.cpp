@@ -1,4 +1,5 @@
 #include "WelcomeWizard.h"
+#include "Platform.h"
 #include "SettingsProfiles.h"
 
 #include <QCheckBox>
@@ -31,7 +32,9 @@ public:
     IntroPage()
     {
         setTitle(QStringLiteral("Welcome to FlashSpartan"));
-        setSubTitle(QStringLiteral("Verify USB sticks and image files on Arch Linux"));
+        setSubTitle(Platform::isWindows()
+                        ? QStringLiteral("Verify USB sticks and image files on Windows")
+                        : QStringLiteral("Verify USB sticks and image files on Linux"));
 
         auto* layout = new QVBoxLayout(this);
         layout->addWidget(new QLabel(QStringLiteral(
@@ -100,29 +103,42 @@ public:
 
         auto* layout = new QVBoxLayout(this);
 
-        const bool inStorage = userInStorageGroup();
-        m_storageOk = new QLabel(inStorage
-                                     ? QStringLiteral("✓ Your user is in the <b>storage</b> group.")
-                                     : QStringLiteral(
-                                           "⚠ Add yourself to the <b>storage</b> group for raw "
-                                           "device reads, then log out and back in:<br>"
-                                           "<code>sudo usermod -aG storage $USER</code>"));
-        m_storageOk->setWordWrap(true);
-        layout->addWidget(m_storageOk);
+        if (Platform::isWindows()) {
+            layout->addWidget(new QLabel(QStringLiteral(
+                "<p><b>USB flash drives</b> appear on the <b>USB Monitor</b> page when Windows "
+                "assigns a drive letter (for example <code>E:\\</code>). Many sticks show as "
+                "removable or USB fixed disks — both are detected.</p>"
+                "<p><b>Full-disk hashing</b> may prompt for administrator approval (UAC) via "
+                "<code>flashspartan-read-helper.exe</code>.</p>"
+                "<p><b>BadUSB packet capture</b> is optional. Install USBPcap from the setup "
+                "installer feature tree, the bootstrapper options page, or "
+                "<a href=\"https://desowin.org/usbpcap/\">desowin.org/usbpcap</a>.</p>")));
+        } else {
+            const bool inStorage = userInStorageGroup();
+            m_storageOk = new QLabel(inStorage
+                                         ? QStringLiteral("✓ Your user is in the <b>storage</b> group.")
+                                         : QStringLiteral(
+                                               "⚠ Add yourself to the <b>storage</b> group for raw "
+                                               "device reads, then log out and back in:<br>"
+                                               "<code>sudo usermod -aG storage $USER</code>"));
+            m_storageOk->setWordWrap(true);
+            layout->addWidget(m_storageOk);
 
-        auto* automountBox = new QGroupBox(QStringLiteral("Disable desktop auto-mount (recommended)"));
-        auto* automountLayout = new QVBoxLayout(automountBox);
-        automountLayout->addWidget(new QLabel(QStringLiteral(
-            "Let FlashSpartan mount after verification. GNOME example:")));
-        auto* cmd = new QPlainTextEdit(QStringLiteral(
-            "gsettings set org.gnome.desktop.media-handling automount false\n"
-            "gsettings set org.gnome.desktop.media-handling automount-open false"));
-        cmd->setReadOnly(true);
-        cmd->setMaximumHeight(72);
-        automountLayout->addWidget(cmd);
-        automountLayout->addWidget(new QLabel(QStringLiteral(
-            "KDE: System Settings → Removable Storage → disable automatic mounting.")));
-        layout->addWidget(automountBox);
+            auto* automountBox =
+                new QGroupBox(QStringLiteral("Disable desktop auto-mount (recommended)"));
+            auto* automountLayout = new QVBoxLayout(automountBox);
+            automountLayout->addWidget(new QLabel(QStringLiteral(
+                "Let FlashSpartan mount after verification. GNOME example:")));
+            auto* cmd = new QPlainTextEdit(QStringLiteral(
+                "gsettings set org.gnome.desktop.media-handling automount false\n"
+                "gsettings set org.gnome.desktop.media-handling automount-open false"));
+            cmd->setReadOnly(true);
+            cmd->setMaximumHeight(72);
+            automountLayout->addWidget(cmd);
+            automountLayout->addWidget(new QLabel(QStringLiteral(
+                "KDE: System Settings → Removable Storage → disable automatic mounting.")));
+            layout->addWidget(automountBox);
+        }
 
         m_skipWizard = new QCheckBox(QStringLiteral("Show this wizard again on next start"));
         m_skipWizard->setChecked(false);

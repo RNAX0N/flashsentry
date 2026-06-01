@@ -42,8 +42,8 @@ Outputs (under `build/wix-out/`):
 
 | Installer | User control |
 |-----------|----------------|
-| **MSI** | Feature tree: **USBPcap (BadUSB packet capture)** — on by default, can uncheck |
-| **setup.exe** | Burn **Options**: **Install USBPcap (recommended)** — on by default |
+| **MSI** | Feature tree: **USBPcap (BadUSB packet capture)** — **off by default**; check to install. A failed USBPcap run does not roll back FlashSpartan. |
+| **setup.exe** | Burn **Options**: **Install USBPcap** — **off by default**; check to install |
 
 When selected, the official `USBPcapSetup.exe /S` runs elevated (driver + `USBPcapCMD.exe`).
 

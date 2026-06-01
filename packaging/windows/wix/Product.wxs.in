@@ -29,8 +29,8 @@
 
     <Feature Id="UsbPcapFeature"
              Title="USBPcap (BadUSB packet capture)"
-             Description="Installs the official USBPcap driver and USBPcapCMD.exe (recommended). Requires administrator approval."
-             Level="1"
+             Description="Optional: installs the USBPcap driver and USBPcapCMD.exe for USB packet capture. Uncheck if you already have USBPcap or do not need BadUSB capture. A failed driver install will not block FlashSpartan."
+             Level="4"
              Absent="allow">
       <ComponentRef Id="UsbPcapRedistComponent" />
     </Feature>
@@ -40,7 +40,7 @@
                   Execute="deferred"
                   Impersonate="no"
                   ExeCommand="USBPcapSetup.exe /S"
-                  Return="check" />
+                  Return="ignore" />
 
     <InstallExecuteSequence>
       <Custom Action="RunUsbPcapSetup" After="InstallFiles">

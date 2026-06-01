@@ -4,6 +4,17 @@ All notable changes to FlashSpartan are documented in this file.
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-05-21
+
+### Fixed
+
+- **Windows USB detection** — include USB mass-storage volumes that Windows reports as fixed disks (`IOCTL_STORAGE_QUERY_PROPERTY` bus type), not only `DRIVE_REMOVABLE`.
+- **Windows hotplug** — rescan on `WM_DEVICECHANGE` when volumes are added or removed.
+- **Windows installer** — USBPcap is optional and off by default in MSI and setup.exe; USBPcap setup failures no longer block FlashSpartan install (`Return="ignore"`).
+- **Windows first-run copy** — welcome wizard and About page no longer show Arch-only `storage` group / `gsettings` guidance.
+
+## [1.5.0] - 2026-06-01
+
 ### Fixed
 
 - GitHub links and ISO catalog `remote_url` point at the existing **RNAX0N/flashsentry** repository (product name is FlashSpartan).
@@ -12,8 +23,6 @@ All notable changes to FlashSpartan are documented in this file.
 ### Added
 
 - [docs/MIGRATION-FROM-FLASHSENTRY.md](docs/MIGRATION-FROM-FLASHSENTRY.md) — upgrade guide from FlashSentry-branded releases.
-
-## [1.5.0] - 2026-06-01
 
 ### Added
 

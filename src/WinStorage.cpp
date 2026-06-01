@@ -23,6 +23,47 @@ QString driveLetterFromRoot(const QString& volumeRoot)
     return {};
 }
 
+bool physicalDriveBusType(const QString& physicalPath, STORAGE_BUS_TYPE* busOut)
+{
+    if (physicalPath.isEmpty() || busOut == nullptr) {
+        return false;
+    }
+
+    HANDLE handle = openDeviceHandle(physicalPath, 0, nullptr);
+    if (handle == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    STORAGE_PROPERTY_QUERY query{};
+    query.PropertyId = StorageDeviceProperty;
+    query.QueryType = PropertyStandardQuery;
+
+    STORAGE_DESCRIPTOR_HEADER header{};
+    DWORD bytesReturned = 0;
+    if (!DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), &header,
+                         sizeof(header), &bytesReturned, nullptr)
+        || header.Size < sizeof(STORAGE_DEVICE_DESCRIPTOR)) {
+        closeDeviceHandle(handle);
+        return false;
+    }
+
+    QByteArray buffer(static_cast<int>(header.Size), Qt::Uninitialized);
+    if (!DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query),
+                         buffer.data(), static_cast<DWORD>(buffer.size()), &bytesReturned,
+                         nullptr)) {
+        closeDeviceHandle(handle);
+        return false;
+    }
+    closeDeviceHandle(handle);
+
+    const auto* desc = reinterpret_cast<const STORAGE_DEVICE_DESCRIPTOR*>(buffer.constData());
+    if (desc->Size < sizeof(STORAGE_DEVICE_DESCRIPTOR)) {
+        return false;
+    }
+    *busOut = desc->BusType;
+    return true;
+}
+
 QString winErrorMessage(DWORD code)
 {
     wchar_t* buffer = nullptr;
@@ -191,6 +232,30 @@ bool dismountVolumeHandle(HANDLE volumeHandle, QString* error)
                      .arg(winErrorMessage(GetLastError()));
     }
     return false;
+}
+
+bool isUsbFlashVolumeRoot(const QString& volumeRoot)
+{
+    const QString root = normalizeVolumeRoot(volumeRoot);
+    if (root.isEmpty()) {
+        return false;
+    }
+
+    const UINT driveType =
+        GetDriveTypeW(reinterpret_cast<LPCWSTR>(root.utf16()));
+    if (driveType == DRIVE_REMOVABLE) {
+        return true;
+    }
+    if (driveType != DRIVE_FIXED && driveType != DRIVE_UNKNOWN) {
+        return false;
+    }
+
+    STORAGE_BUS_TYPE busType = BusTypeUnknown;
+    const QString physical = physicalDrivePathForVolume(root);
+    if (!physicalDriveBusType(physical, &busType)) {
+        return false;
+    }
+    return busType == BusTypeUsb;
 }
 
 bool ejectVolumeRoot(const QString& volumeRoot, bool force, QString* error)

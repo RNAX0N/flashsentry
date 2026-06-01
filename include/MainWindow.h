@@ -95,6 +95,9 @@ protected:
     void closeEvent(QCloseEvent* event) override;
     void showEvent(QShowEvent* event) override;
     void hideEvent(QHideEvent* event) override;
+#ifdef Q_OS_WIN
+    bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result) override;
+#endif
 
 private slots:
     // Device events
@@ -348,6 +351,9 @@ private:
 
     // Backend components
     std::unique_ptr<DeviceMonitor> m_deviceMonitor;
+#ifdef Q_OS_WIN
+    void* m_volumeDeviceNotify = nullptr;
+#endif
     std::unique_ptr<HashWorker> m_hashWorker;
     std::unique_ptr<ManifestWorker> m_manifestWorker;
     IsoVerifierWidget* m_isoWidget = nullptr;

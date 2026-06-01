@@ -49,6 +49,11 @@
 #include <QCursor>
 #include <QUuid>
 
+#ifdef Q_OS_WIN
+#include <dbt.h>
+#include <qt_windows.h>
+#endif
+
 namespace {
 
 FlashSpartan::UiEventEntry makeUiEvent(const QString& event, const QString& device,
@@ -215,7 +220,14 @@ MainWindow::MainWindow(QWidget* parent)
 MainWindow::~MainWindow()
 {
     m_isClosing = true;
-    
+
+#ifdef Q_OS_WIN
+    if (m_volumeDeviceNotify) {
+        UnregisterDeviceNotification(reinterpret_cast<HDEVNOTIFY>(m_volumeDeviceNotify));
+        m_volumeDeviceNotify = nullptr;
+    }
+#endif
+
     // Stop monitoring
     if (m_deviceMonitor) {
         m_deviceMonitor->stopMonitoring();
@@ -1159,6 +1171,17 @@ void MainWindow::showEvent(QShowEvent* event)
     QMainWindow::showEvent(event);
     m_trayIcon->updateWindowVisibility(true);
 
+#ifdef Q_OS_WIN
+    if (!m_volumeDeviceNotify && internalWinId()) {
+        DEV_BROADCAST_DEVICEINTERFACE filter = {};
+        filter.dbcc_size = sizeof(filter);
+        filter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
+        filter.dbcc_classguid = GUID_DEVINTERFACE_VOLUME;
+        m_volumeDeviceNotify = RegisterDeviceNotification(
+            reinterpret_cast<HDEVNOTIFY>(winId()), &filter, DEVICE_NOTIFY_WINDOW_HANDLE);
+    }
+#endif
+
     static bool wizardShown = false;
     if (!wizardShown && m_settings.showFirstRunWizard) {
         wizardShown = true;
@@ -1179,6 +1202,32 @@ void MainWindow::hideEvent(QHideEvent* event)
     QMainWindow::hideEvent(event);
     m_trayIcon->updateWindowVisibility(false);
 }
+
+#ifdef Q_OS_WIN
+bool MainWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
+{
+    if (eventType == "windows_generic_MSG" || eventType == "windows_dispatcher_MSG") {
+        const MSG* msg = static_cast<const MSG*>(message);
+        if (msg->message == WM_DEVICECHANGE) {
+            switch (msg->wParam) {
+            case DBT_DEVICEARRIVAL:
+            case DBT_DEVICEREMOVECOMPLETE:
+            case DBT_DEVNODES_CHANGED:
+                if (m_deviceMonitor) {
+                    m_deviceMonitor->rescan();
+                }
+                if (m_mountManager) {
+                    m_mountManager->refreshMountStatus();
+                }
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    return QMainWindow::nativeEvent(eventType, message, result);
+}
+#endif
 
 // ============================================================================
 // Device Events

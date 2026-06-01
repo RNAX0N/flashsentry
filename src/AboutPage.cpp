@@ -1,4 +1,5 @@
 #include "AboutPage.h"
+#include "Platform.h"
 #include "StyleManager.h"
 #include "UiIcons.h"
 
@@ -49,10 +50,17 @@ void AboutPage::setupUi()
                                       .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     layout->addWidget(m_versionLabel);
 
-    auto* desc = new QLabel(QStringLiteral(
-        "USB flash drive security monitor for Linux.\n\n"
-        "Cryptographic verification, allow/block policy, ISO checks, and BadUSB "
-        "HID monitoring — built for speed and clarity on Arch-based systems."));
+    const QString platformBlurb =
+        Platform::isWindows()
+            ? QStringLiteral(
+                  "USB flash drive security monitor for Windows.\n\n"
+                  "Cryptographic verification, allow/block policy, ISO checks, and BadUSB "
+                  "HID monitoring — with optional USBPcap packet capture.")
+            : QStringLiteral(
+                  "USB flash drive security monitor for Linux.\n\n"
+                  "Cryptographic verification, allow/block policy, ISO checks, and BadUSB "
+                  "HID monitoring — built for speed and clarity on Arch-based systems.");
+    auto* desc = new QLabel(platformBlurb);
     desc->setAlignment(Qt::AlignCenter);
     desc->setWordWrap(true);
     desc->setMaximumWidth(520);

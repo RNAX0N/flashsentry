@@ -19,7 +19,7 @@
     <!-- Override from setup.exe command line: /InstallUsbPcap=0 to skip driver install -->
     <Variable Name="InstallUsbPcap"
               Type="numeric"
-              Value="1"
+              Value="0"
               bal:Overridable="yes" />
 
     <util:FileSearch Id="UsbPcapCmdSearch"

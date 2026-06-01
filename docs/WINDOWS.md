@@ -9,7 +9,9 @@ udev, UDisks2, and polkit.
 - ISO verification for local files and removable-volume folders (`E:\`, etc.).
 - Embedded ISO catalog and user-trusted hash entries.
 - Watch-manifest verification on mounted paths.
-- Removable volume detection via `QStorageInfo` and `GetDriveType`.
+- USB flash volume detection via `QStorageInfo`, `GetDriveType`, and USB bus type
+  (`IOCTL_STORAGE_QUERY_PROPERTY`) so sticks reported as **fixed disks** are included.
+- Hotplug rescan via `WM_DEVICECHANGE` (volume device interface notifications).
 - **Programmatic safe eject** via `FSCTL_DISMOUNT_VOLUME` / `IOCTL_STORAGE_EJECT_MEDIA`.
 - **Full-disk raw hashing** via `\\.\PhysicalDriveN` with optional **UAC-elevated**
   `flashspartan-read-helper.exe` (same JSON protocol as Linux's polkit helper).
@@ -70,8 +72,8 @@ FlashSpartan finds `USBPcapCMD.exe` under `C:\Program Files\USBPcap\` automatica
 
 Release builds can produce:
 
-- **`FlashSpartan-x.y.z-x64.msi`** — Windows Installer with a feature-tree checkbox for USBPcap
-- **`FlashSpartan-x.y.z-x64-setup.exe`** — WiX Burn bootstrapper with an **Install USBPcap** option (checked by default)
+- **`FlashSpartan-x.y.z-x64.msi`** — Windows Installer with an **optional** USBPcap feature (off by default in the feature tree; enable if you want packet capture)
+- **`FlashSpartan-x.y.z-x64-setup.exe`** — WiX Burn bootstrapper with an **Install USBPcap** option (off by default; check to install)
 
 See [packaging/windows/INSTALLER.md](../packaging/windows/INSTALLER.md) for build steps.
 
@@ -82,7 +84,6 @@ The Windows CI job also builds a portable ZIP with `windeployqt` and OpenSSL DLL
 
 ## Roadmap
 
-1. `WM_DEVICECHANGE` hotplug (lower latency than polling).
-2. Richer USB serial/model identity (SetupAPI / WMI).
-3. WiX/MSI installer and Authenticode signing.
-4. Deeper USBPcap device matching (hub/port → USBPcap instance).
+1. Richer USB serial/model identity (SetupAPI / WMI).
+2. Authenticode signing for installers and binaries.
+3. Deeper USBPcap device matching (hub/port → USBPcap instance).

@@ -26,6 +26,9 @@ bool lockVolume(HANDLE volumeHandle, QString* error);
 bool dismountVolumeHandle(HANDLE volumeHandle, QString* error);
 bool ejectVolumeRoot(const QString& volumeRoot, bool force, QString* error);
 
+/** Removable lettered volume or USB mass-storage (including drives reported as "fixed"). */
+bool isUsbFlashVolumeRoot(const QString& volumeRoot);
+
 #endif
 
 } // namespace FlashSpartan::WinStorage

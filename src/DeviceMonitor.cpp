@@ -11,19 +11,6 @@
 
 namespace FlashSpartan {
 
-namespace {
-
-bool isRemovableVolumeRoot(const QString& rootPath)
-{
-    QString nativeRoot = QDir::toNativeSeparators(rootPath);
-    if (!nativeRoot.endsWith(QLatin1Char('\\'))) {
-        nativeRoot += QLatin1Char('\\');
-    }
-    return GetDriveTypeW(reinterpret_cast<LPCWSTR>(nativeRoot.utf16())) == DRIVE_REMOVABLE;
-}
-
-} // namespace
-
 DeviceMonitor::DeviceMonitor(QObject* parent)
     : QThread(parent)
 {
@@ -105,7 +92,8 @@ void DeviceMonitor::scanExistingDevices()
 {
     QHash<QString, DeviceInfo> detected;
     for (const QStorageInfo& storage : QStorageInfo::mountedVolumes()) {
-        if (!storage.isValid() || !storage.isReady() || !isRemovableVolumeRoot(storage.rootPath())) {
+        if (!storage.isValid() || !storage.isReady()
+            || !WinStorage::isUsbFlashVolumeRoot(storage.rootPath())) {
             continue;
         }
         DeviceInfo info;
@@ -114,7 +102,7 @@ void DeviceMonitor::scanExistingDevices()
         info.serial = QString::fromUtf8(storage.device());
         info.label = storage.displayName();
         info.model = storage.name();
-        info.vendor = QStringLiteral("Windows removable volume");
+        info.vendor = QStringLiteral("USB storage volume");
         info.fsType = QString::fromUtf8(storage.fileSystemType());
         info.mountPoint = storage.rootPath();
         info.sizeBytes = static_cast<uint64_t>(storage.bytesTotal());

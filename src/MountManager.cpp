@@ -12,19 +12,6 @@
 
 namespace FlashSpartan {
 
-namespace {
-
-bool isRemovableVolumeRoot(const QString& rootPath)
-{
-    QString nativeRoot = QDir::toNativeSeparators(rootPath);
-    if (!nativeRoot.endsWith(QLatin1Char('\\'))) {
-        nativeRoot += QLatin1Char('\\');
-    }
-    return GetDriveTypeW(reinterpret_cast<LPCWSTR>(nativeRoot.utf16())) == DRIVE_REMOVABLE;
-}
-
-} // namespace
-
 MountManager::MountManager(QObject* parent)
     : QObject(parent)
 {
@@ -135,7 +122,8 @@ void MountManager::refreshMountStatus()
 {
     QHash<QString, QString> newMountPoints;
     for (const QStorageInfo& storage : QStorageInfo::mountedVolumes()) {
-        if (!storage.isValid() || !storage.isReady() || !isRemovableVolumeRoot(storage.rootPath())) {
+        if (!storage.isValid() || !storage.isReady()
+            || !WinStorage::isUsbFlashVolumeRoot(storage.rootPath())) {
             continue;
         }
         const QString root = QDir::toNativeSeparators(storage.rootPath());

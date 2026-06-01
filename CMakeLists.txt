@@ -121,12 +121,19 @@ set(SOURCES
     src/StyleManager.cpp
 )
 
+list(APPEND SOURCES src/UsbHostMonitor.cpp)
+
 if(WIN32)
-    list(APPEND SOURCES src/WinStorage.cpp src/HidDeviceMonitor_win.cpp)
+    list(APPEND SOURCES
+        src/WinStorage.cpp
+        src/WinUsbEnumerator.cpp
+        src/HidDeviceMonitor_win.cpp)
 endif()
 
 set(HEADERS
     include/WinStorage.h
+    include/WinUsbEnumerator.h
+    include/UsbHostMonitor.h
     include/AppPaths.h
     include/Platform.h
     include/MainWindow.h

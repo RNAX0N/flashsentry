@@ -23,9 +23,9 @@
 FlashSpartan monitors USB storage, maintains a cryptographic whitelist of trusted devices, verifies Linux ISOs on mounted sticks, and alerts you when content changes. It is built with Qt6 and OpenSSL.
 
 - **Linux (Arch, primary):** libudev device events, UDisks2 mounts, polkit, optional `flashspartan-policyd` and raw-disk hashing.
-- **Windows 10/11 (preview):** removable-volume polling via Qt, full GUI shell, ISO verify, watch manifests, signed policy store (in-process). See [docs/WINDOWS.md](docs/WINDOWS.md).
+- **Windows 10/11:** USB storage volumes (including fixed-disk USB sticks), security keys/HID, and other USB attachments; ISO verify; watch manifests; policy store; optional USBPcap for packet capture. See [docs/WINDOWS.md](docs/WINDOWS.md).
 
-**Current version:** 1.4.2 (see [CHANGELOG.md](CHANGELOG.md))
+**Current version:** 1.5.1 (see [CHANGELOG.md](CHANGELOG.md))
 
 ## Features
 
@@ -39,7 +39,7 @@ FlashSpartan monitors USB storage, maintains a cryptographic whitelist of truste
 
 ### USB monitoring
 
-- **Real-time detection** — libudev (no polling)
+- **Real-time detection** — libudev on Linux; volume + USB host enumeration on Windows
 - **Whitelist & trust levels** — remember devices; prompt on unknown or modified content
 - **Allow / block list** — block drives by key or device ID; list persists in the signed policy store
 - **Secure mounting** — UDisks2 + polkit; default options include `noexec`, `nosuid`, `nodev`

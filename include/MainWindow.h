@@ -45,6 +45,7 @@
 #include "UiEventTypes.h"
 #include "BadUsbBaselineStore.h"
 #include "HidDeviceMonitor.h"
+#include "UsbHostMonitor.h"
 #include "UsbmonCapture.h"
 
 namespace FlashSpartan {
@@ -368,6 +369,7 @@ private:
     std::unique_ptr<MountManager> m_mountManager;
     std::unique_ptr<TrayIcon> m_trayIcon;
     std::unique_ptr<HidDeviceMonitor> m_hidMonitor;
+    std::unique_ptr<UsbHostMonitor> m_usbHostMonitor;
     std::unique_ptr<BadUsbBaselineStore> m_badUsbBaselineStore;
     std::unique_ptr<UsbmonCapture> m_usbmonCapture;
 

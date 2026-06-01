@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
-     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension"
-     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+     xmlns:bal="http://schemas.microsoft.com/wix/BalExtension">
   <?include "Variables.wxi" ?>
 
   <Bundle Name="$(var.ProductName) $(var.ProductVersion)"
@@ -12,44 +11,16 @@
 
     <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense">
       <bal:WixStandardBootstrapperApplication LicenseFile="$(var.LicenseRtf)"
-                                            SuppressOptionsUI="no"
+                                            SuppressOptionsUI="yes"
                                             ShowVersion="yes" />
     </BootstrapperApplicationRef>
-
-    <!-- Override from setup.exe command line: /InstallUsbPcap=0 to skip driver install -->
-    <Variable Name="InstallUsbPcap"
-              Type="numeric"
-              Value="0"
-              bal:Overridable="yes" />
-
-    <util:FileSearch Id="UsbPcapCmdSearch"
-                     Path="[ProgramFiles64Folder]USBPcap\USBPcapCMD.exe"
-                     Result="exists"
-                     Variable="UsbPcapAlreadyInstalled" />
 
     <Chain>
       <MsiPackage Id="FlashSpartanMsi"
                   SourceFile="$(var.FlashSpartanMsi)"
                   Vital="yes"
                   DisplayInternalUI="no"
-                  EnableFeatureSelection="no">
-        <MsiProperty Name="INSTALLUSBPCAP" Value="0" />
-      </MsiPackage>
-
-      <ExePackage Id="UsbPcapSetup"
-                  SourceFile="$(var.UsbPcapInstaller)"
-                  InstallCondition="InstallUsbPcap AND UsbPcapAlreadyInstalled = 0"
-                  Vital="no"
-                  Permanent="yes"
-                  PerMachine="yes"
-                  Compressed="yes"
-                  DetectCondition="UsbPcapAlreadyInstalled = 1"
-                  InstallCommand="/S"
-                  RepairCommand="/S"
-                  UninstallCommand="/S"
-                  Protocol="none">
-        <ExitCode Value="0" Behavior="success" />
-      </ExePackage>
+                  EnableFeatureSelection="no" />
     </Chain>
   </Bundle>
 </Wix>

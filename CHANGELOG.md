@@ -4,6 +4,18 @@ All notable changes to FlashSpartan are documented in this file.
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-05-21
+
+### Fixed
+
+- **Windows `setup.exe`** — Burn bundle installs only FlashSpartan (no bundled USBPcap step), so the bootstrapper cannot fail on USBPcap driver install.
+- **Windows USB Monitor** — lists storage volumes, HID/security keys, and other USB devices (hubs, power/chargers, generic USB).
+- **Windows copy** — settings/about/autostart strings no longer reference Arch-only setup where inappropriate.
+
+### Changed
+
+- **USBPcap** — install manually from desowin.org; app detects presence and shows a clear notice when capture is unavailable (install never blocks).
+
 ## [1.5.1] - 2026-05-21
 
 ### Fixed

@@ -13,14 +13,10 @@ if(NOT FLASHSPARTAN_BUILD_WINDOWS_INSTALLERS)
     return()
 endif()
 
+# USBPcap is not bundled in installers (install manually for packet capture).
+# This cache remains for optional redist packaging experiments only.
 set(FLASHSPARTAN_USBPCAP_INSTALLER "" CACHE FILEPATH
-    "Path to official USBPcapSetup.exe (required for installer targets)")
-
-if(NOT FLASHSPARTAN_USBPCAP_INSTALLER OR NOT EXISTS "${FLASHSPARTAN_USBPCAP_INSTALLER}")
-    message(FATAL_ERROR
-        "FLASHSPARTAN_USBPCAP_INSTALLER must point to official USBPcapSetup.exe. "
-        "See packaging/windows/third-party/README.md")
-endif()
+    "Optional path to USBPcapSetup.exe (not used by default WiX targets)")
 
 find_program(WIX_CANDLE candle)
 find_program(WIX_LIGHT light)
@@ -78,7 +74,6 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/wix/Bundle.wxs.in"
 )
 
-file(TO_NATIVE_PATH "${FLASHSPARTAN_USBPCAP_INSTALLER}" _usbpcap_native)
 file(TO_NATIVE_PATH "${FLASHSPARTAN_STAGE_DIR}/bin" _stage_bin_native)
 file(TO_NATIVE_PATH "${FLASHSPARTAN_STAGE_DIR}/share" _stage_share_native)
 file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/wix/License.rtf" _license_rtf_native)
@@ -126,7 +121,6 @@ add_custom_command(
             -cg FlashSpartanBinFiles
             -dr INSTALLFOLDER
             -gg -scom -sreg -sfrag -srd
-            -xr "redist"
             -var var.StageBinDir
             -out "${_heat_bin_wxs}"
     DEPENDS flashspartan-stage-windows
@@ -153,7 +147,6 @@ set(_candle_common
     -dStageBinDir=${_stage_bin_native}
     -dStageShareDir=${_stage_share_native}
     -dLicenseRtf=${_license_rtf_native}
-    -dUsbPcapInstaller=${_usbpcap_native}
 )
 
 add_custom_command(
@@ -199,9 +192,8 @@ if(WIX_LIT)
     file(TO_NATIVE_PATH "${_msi_output}" _msi_native)
     add_custom_command(
         OUTPUT "${_bundle_wixobj}"
-        COMMAND "${WIX_CANDLE}" -nologo ${WIX_BAL_EXT} ${WIX_UTIL_EXT}
+        COMMAND "${WIX_CANDLE}" -nologo ${WIX_BAL_EXT}
                 -dLicenseRtf=${_license_rtf_native}
-                -dUsbPcapInstaller=${_usbpcap_native}
                 -dFlashSpartanMsi=${_msi_native}
                 -out "${_bundle_wixobj}"
                 "${FLASHSPARTAN_WIX_DIR}/Bundle.wxs"
@@ -212,7 +204,7 @@ if(WIX_LIT)
 
     add_custom_command(
         OUTPUT "${_exe_output}"
-        COMMAND "${WIX_LIGHT}" -nologo ${WIX_BAL_EXT} ${WIX_UTIL_EXT}
+        COMMAND "${WIX_LIGHT}" -nologo ${WIX_BAL_EXT}
                 -out "${_exe_output}"
                 "${_bundle_wixobj}"
         DEPENDS "${_bundle_wixobj}"

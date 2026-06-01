@@ -27,37 +27,9 @@
       <ComponentRef Id="FlashSpartanStartMenuShortcut" />
     </Feature>
 
-    <Feature Id="UsbPcapFeature"
-             Title="USBPcap (BadUSB packet capture)"
-             Description="Optional: installs the USBPcap driver and USBPcapCMD.exe for USB packet capture. Uncheck if you already have USBPcap or do not need BadUSB capture. A failed driver install will not block FlashSpartan."
-             Level="4"
-             Absent="allow">
-      <ComponentRef Id="UsbPcapRedistComponent" />
-    </Feature>
-
-    <CustomAction Id="RunUsbPcapSetup"
-                  Directory="RedistFolder"
-                  Execute="deferred"
-                  Impersonate="no"
-                  ExeCommand="USBPcapSetup.exe /S"
-                  Return="ignore" />
-
-    <InstallExecuteSequence>
-      <Custom Action="RunUsbPcapSetup" After="InstallFiles">
-        NOT REMOVE AND (&amp;UsbPcapFeature = 3) AND NOT USBPCAPCMDEXISTS
-      </Custom>
-    </InstallExecuteSequence>
-
-    <Property Id="USBPCAPCMDEXISTS">
-      <DirectorySearch Id="UsbPcapDirSearch" Path="[ProgramFiles64Folder]USBPcap">
-        <FileSearch Id="SearchUsbPcapCmd" Name="USBPcapCMD.exe" />
-      </DirectorySearch>
-    </Property>
-
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
         <Directory Id="INSTALLFOLDER" Name="FlashSpartan">
-          <Directory Id="RedistFolder" Name="redist" />
           <Directory Id="SHAREFOLDER" Name="share" />
         </Directory>
       </Directory>
@@ -76,14 +48,7 @@
       <RegistryValue Root="HKCU" Key="Software\FlashSpartan" Name="installed" Type="integer" Value="1" KeyPath="yes" />
     </Component>
 
-    <Component Id="UsbPcapRedistComponent" Guid="{D2E3F4A5-B6C7-8901-DEF0-23456789ABCD}" Directory="RedistFolder">
-      <File Id="UsbPcapSetupFile"
-            Name="USBPcapSetup.exe"
-            Source="$(var.UsbPcapInstaller)"
-            KeyPath="yes" />
-    </Component>
-
-    <UIRef Id="WixUI_FeatureTree" />
+    <UIRef Id="WixUI_InstallDir" />
     <UIRef Id="WixUI_Common" />
   </Product>
 </Wix>

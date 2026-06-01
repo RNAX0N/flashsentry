@@ -232,6 +232,9 @@ MainWindow::~MainWindow()
     if (m_deviceMonitor) {
         m_deviceMonitor->stopMonitoring();
     }
+    if (m_usbHostMonitor) {
+        m_usbHostMonitor->stopMonitoring();
+    }
     if (m_hidMonitor) {
         m_hidMonitor->stopMonitoring();
     }
@@ -820,6 +823,9 @@ void MainWindow::initializeBackend()
     m_trayIcon = std::make_unique<TrayIcon>(this);
 
     m_hidMonitor = std::make_unique<HidDeviceMonitor>(this);
+#ifdef Q_OS_WIN
+    m_usbHostMonitor = std::make_unique<UsbHostMonitor>(this);
+#endif
     m_badUsbBaselineStore = std::make_unique<BadUsbBaselineStore>(this);
     m_badUsbBaselineStore->initialize();
     m_usbmonCapture = std::make_unique<UsbmonCapture>(this);
@@ -843,6 +849,32 @@ void MainWindow::connectSignals()
             this, [this](const QString& error) {
                 logMessage(QString("Device monitor error: %1").arg(error), LogLevel::Error);
             });
+
+#ifdef Q_OS_WIN
+    if (m_usbHostMonitor) {
+        connect(m_usbHostMonitor.get(), &UsbHostMonitor::usbHostConnected, this,
+                [this](const UsbHostDeviceInfo& device) {
+                    m_deviceConnectedAt.insert(device.instanceId, QDateTime::currentDateTime());
+                    refreshUsbMonitorHome();
+                    logMessage(QStringLiteral("USB attached: %1 (%2)")
+                                   .arg(device.displayName, device.category),
+                               LogLevel::Info);
+                });
+        connect(m_usbHostMonitor.get(), &UsbHostMonitor::usbHostDisconnected, this,
+                [this](const QString& instanceId) {
+                    m_deviceDisconnectedAt.insert(instanceId, QDateTime::currentDateTime());
+                    refreshUsbMonitorHome();
+                });
+        connect(m_usbHostMonitor.get(), &UsbHostMonitor::usbHostChanged, this,
+                [this](const UsbHostDeviceInfo&) { refreshUsbMonitorHome(); });
+        connect(m_usbHostMonitor.get(), &UsbHostMonitor::initialScanComplete, this,
+                [this](int count) {
+                    logMessage(QStringLiteral("USB host scan complete: %1 device(s)").arg(count),
+                               LogLevel::Info);
+                    refreshUsbMonitorHome();
+                });
+    }
+#endif
 
     connect(m_hidMonitor.get(), &HidDeviceMonitor::hidConnected,
             this, &MainWindow::onHidConnected);
@@ -1218,6 +1250,12 @@ bool MainWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr
                 }
                 if (m_mountManager) {
                     m_mountManager->refreshMountStatus();
+                }
+                if (m_usbHostMonitor) {
+                    m_usbHostMonitor->rescan();
+                }
+                if (m_hidMonitor) {
+                    m_hidMonitor->rescan();
                 }
                 break;
             default:
@@ -2671,22 +2709,28 @@ void MainWindow::refreshUsbMonitorHome()
         return;
     }
 
-    UsbMonitorStats stats;
-    const auto connected = m_deviceMonitor->connectedDevices();
-    stats.connected = connected.size();
-
     int allowed = 0;
     for (const DeviceRecord& rec : m_database->getAllDevices()) {
         if (isRecordCountedAsAllowed(rec)) {
             ++allowed;
         }
     }
-    stats.blocked = BlockedDriveStore::instance().entries().size();
-    stats.events = m_uiEvents.size();
-    m_usbMonitorPage->setStats(stats);
 
     QList<UsbDeviceRow> rows;
-    for (const DeviceInfo& d : connected) {
+    QSet<QString> listedKeys;
+
+    const auto formatCapacity = [](uint64_t sizeBytes) -> QString {
+        const char* units[] = {"B", "KB", "MB", "GB", "TB"};
+        double value = static_cast<double>(sizeBytes);
+        int unit = 0;
+        while (value >= 1024.0 && unit < 4) {
+            value /= 1024.0;
+            ++unit;
+        }
+        return QStringLiteral("%1 %2").arg(value, 0, 'f', unit > 0 ? 2 : 0).arg(units[unit]);
+    };
+
+    for (const DeviceInfo& d : m_deviceMonitor->connectedDevices()) {
         UsbDeviceRow row;
         row.deviceNode = d.deviceNode;
         row.displayName = m_userDeviceNames.value(d.deviceNode, d.displayName());
@@ -2695,7 +2739,7 @@ void MainWindow::refreshUsbMonitorHome()
                 row.displayName = rec->notes;
             }
         }
-        row.type = d.fsType.isEmpty() ? QStringLiteral("USB storage") : d.fsType;
+        row.type = d.fsType.isEmpty() ? QStringLiteral("USB storage volume") : d.fsType;
         if (DeviceCard* card = getDeviceCard(d.deviceNode)) {
             row.status = verificationStatusToString(card->verificationStatus());
         } else if (m_database->hasDevice(d)) {
@@ -2703,22 +2747,77 @@ void MainWindow::refreshUsbMonitorHome()
         } else {
             row.status = QStringLiteral("New");
         }
-                {
-            const char* units[] = {"B", "KB", "MB", "GB", "TB"};
-            double value = static_cast<double>(d.sizeBytes);
-            int unit = 0;
-            while (value >= 1024.0 && unit < 4) {
-                value /= 1024.0;
-                ++unit;
-            }
-            row.capacity = QStringLiteral("%1 %2").arg(value, 0, 'f', unit > 0 ? 2 : 0).arg(units[unit]);
-        }
+        row.capacity = formatCapacity(d.sizeBytes);
         row.vendorModel = QStringLiteral("%1 / %2").arg(d.vendor, d.model);
-        row.connectedAt = m_deviceConnectedAt.value(d.deviceNode).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
-        row.disconnectedAt = m_deviceDisconnectedAt.value(d.deviceNode).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
+        row.connectedAt =
+            m_deviceConnectedAt.value(d.deviceNode).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
+        row.disconnectedAt =
+            m_deviceDisconnectedAt.value(d.deviceNode).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
         row.isConnected = true;
+        listedKeys.insert(QStringLiteral("vol:") + d.deviceNode);
         rows.append(row);
     }
+
+#ifdef Q_OS_WIN
+    if (m_hidMonitor) {
+        for (const HidDeviceInfo& h : m_hidMonitor->connectedDevices()) {
+            const QString key = QStringLiteral("hid:") + h.stableId();
+            if (listedKeys.contains(key)) {
+                continue;
+            }
+            UsbDeviceRow row;
+            row.deviceNode = key;
+            row.displayName = h.displayName();
+            row.type = h.capabilities.isEmpty()
+                           ? QStringLiteral("HID / security key")
+                           : h.capabilities.join(QStringLiteral(", "));
+            row.status = QStringLiteral("Connected");
+            row.capacity = QStringLiteral("—");
+            row.vendorModel = QStringLiteral("%1 / %2")
+                                  .arg(h.manufacturer.isEmpty() ? h.vendorId : h.manufacturer,
+                                       h.product.isEmpty() ? h.productId : h.product);
+            row.connectedAt =
+                m_deviceConnectedAt.value(key).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
+            row.disconnectedAt =
+                m_deviceDisconnectedAt.value(key).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
+            row.isConnected = true;
+            listedKeys.insert(key);
+            rows.append(row);
+        }
+    }
+
+    if (m_usbHostMonitor) {
+        for (const UsbHostDeviceInfo& u : m_usbHostMonitor->connectedDevices()) {
+            const QString key = QStringLiteral("usb:") + u.instanceId;
+            if (listedKeys.contains(key)) {
+                continue;
+            }
+            UsbDeviceRow row;
+            row.deviceNode = key;
+            row.displayName = u.displayName;
+            row.type = u.category;
+            row.status = QStringLiteral("Connected");
+            row.capacity = QStringLiteral("—");
+            row.vendorModel = QStringLiteral("%1 / %2")
+                                  .arg(u.manufacturer.isEmpty() ? u.vendorId : u.manufacturer,
+                                       u.productId.isEmpty() ? QStringLiteral("—") : u.productId);
+            row.connectedAt =
+                m_deviceConnectedAt.value(u.instanceId).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
+            row.disconnectedAt =
+                m_deviceDisconnectedAt.value(u.instanceId).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
+            row.isConnected = true;
+            listedKeys.insert(key);
+            rows.append(row);
+        }
+    }
+#endif
+
+    UsbMonitorStats stats;
+    stats.connected = rows.size();
+    stats.allowed = allowed;
+    stats.blocked = BlockedDriveStore::instance().entries().size();
+    stats.events = m_uiEvents.size();
+    m_usbMonitorPage->setStats(stats);
     m_usbMonitorPage->setDevices(rows);
     m_usbMonitorPage->setEvents(m_uiEvents);
 }
@@ -3073,12 +3172,22 @@ void MainWindow::updateEmptyState()
         return;
     }
     if (m_deviceCards.isEmpty()) {
-        m_emptyStateLabel->setText(
-            "No USB devices connected\n\n"
-            "Connect a USB flash drive or switch to ISO Verify in Settings.\n\n"
-            "Recommended: watch selected folders (fast) or automatic ISO checks — "
-            "full-partition hashing is optional for advanced users."
-        );
+        const QString emptyText =
+#ifdef Q_OS_WIN
+            QStringLiteral(
+                "No USB storage volumes on the home screen\n\n"
+                "Plug in a flash drive (with a drive letter), security key, or other USB device. "
+                "All USB attachments appear on the USB Monitor page.\n\n"
+                "Use ISO Verify for image files, or watch folders for fast change detection.")
+#else
+            QStringLiteral(
+                "No USB devices connected\n\n"
+                "Connect a USB flash drive or switch to ISO Verify in Settings.\n\n"
+                "Recommended: watch selected folders (fast) or automatic ISO checks — "
+                "full-partition hashing is optional for advanced users.")
+#endif
+            ;
+        m_emptyStateLabel->setText(emptyText);
         m_contentStack->setCurrentIndex(1);  // Empty state
     } else {
         m_contentStack->setCurrentIndex(0);  // Device list

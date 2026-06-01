@@ -2,6 +2,7 @@
 #include "AuditLog.h"
 #include "BadUsbAnalyzer.h"
 #include "Platform.h"
+#include "UsbPcapLocator.h"
 
 #include <QDateTime>
 #include <QMessageBox>
@@ -17,19 +18,43 @@ void MainWindow::configureBadUsbMonitoring()
         if (m_badUsbBaselineStore) {
             m_badUsbWidget->setBaselineCount(m_badUsbBaselineStore->allDevices().size());
         }
+#ifdef Q_OS_WIN
+        if (badUsbActive && !UsbPcapLocator::findUsbPcapCmdExecutable().isEmpty()) {
+            m_badUsbWidget->setCaptureStatus(
+                QStringLiteral("USBPcap available for optional packet capture"));
+        } else if (badUsbActive) {
+            m_badUsbWidget->setCaptureStatus(
+                QStringLiteral("USBPcap not installed — HID monitoring works; packet capture is "
+                               "unavailable. Install from https://desowin.org/usbpcap/"));
+        }
+#endif
     }
     if (!m_hidMonitor) {
         return;
     }
+#ifdef Q_OS_WIN
+    if (!m_usbHostMonitor->isMonitoring()) {
+        m_usbHostMonitor->startMonitoring();
+    }
+    if (!m_hidMonitor->isMonitoring()) {
+        m_hidMonitor->startMonitoring();
+    }
+#else
     if (badUsbActive && !m_hidMonitor->isMonitoring()) {
         m_hidMonitor->startMonitoring();
     } else if (!badUsbActive && m_hidMonitor->isMonitoring()) {
         m_hidMonitor->stopMonitoring();
     }
+#endif
 }
 
 void MainWindow::onHidConnected(const HidDeviceInfo& device)
 {
+#ifdef Q_OS_WIN
+    const QString key = QStringLiteral("hid:") + device.stableId();
+    m_deviceConnectedAt.insert(key, QDateTime::currentDateTime());
+    refreshUsbMonitorHome();
+#endif
     processBadUsbDevice(device);
 }
 
@@ -40,6 +65,11 @@ void MainWindow::onHidChanged(const HidDeviceInfo& device)
 
 void MainWindow::onHidDisconnected(const QString& stableId)
 {
+#ifdef Q_OS_WIN
+    const QString key = QStringLiteral("hid:") + stableId;
+    m_deviceDisconnectedAt.insert(key, QDateTime::currentDateTime());
+    refreshUsbMonitorHome();
+#endif
     if (m_badUsbWidget) {
         m_badUsbWidget->removeDevice(stableId);
     }

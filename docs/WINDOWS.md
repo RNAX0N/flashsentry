@@ -11,6 +11,8 @@ udev, UDisks2, and polkit.
 - Watch-manifest verification on mounted paths.
 - USB flash volume detection via `QStorageInfo`, `GetDriveType`, and USB bus type
   (`IOCTL_STORAGE_QUERY_PROPERTY`) so sticks reported as **fixed disks** are included.
+- **All USB attachments** on the USB Monitor page — security keys (HID), hubs, chargers/power,
+  and generic USB devices via SetupAPI enumeration, in addition to storage volumes.
 - Hotplug rescan via `WM_DEVICECHANGE` (volume device interface notifications).
 - **Programmatic safe eject** via `FSCTL_DISMOUNT_VOLUME` / `IOCTL_STORAGE_EJECT_MEDIA`.
 - **Full-disk raw hashing** via `\\.\PhysicalDriveN` with optional **UAC-elevated**
@@ -59,21 +61,20 @@ If opening `\\.\PhysicalDriveN` returns access denied, FlashSpartan launches
 `flashspartan-read-helper.exe` with the **runas** verb. Approve the UAC prompt; the helper writes a
 JSON result file that the app reads (same fields as Linux stdout JSON).
 
-## USB packet capture
+## USB packet capture (optional)
 
-FlashSpartan finds `USBPcapCMD.exe` under `C:\Program Files\USBPcap\` automatically (PATH not required).
+USBPcap is **not** bundled in FlashSpartan installers. Install it separately from https://desowin.org/usbpcap/ if you want BadUSB packet capture.
 
-- **Installer:** set `-DFLASHSPARTAN_USBPCAP_INSTALLER=...\USBPcapSetup.exe` when configuring CMake to
-  bundle USBPcap and prompt during NSIS setup (see `packaging/windows/INSTALLER.md`).
-- **Manual:** install from https://desowin.org/usbpcap/
+FlashSpartan finds `USBPcapCMD.exe` under `C:\Program Files\USBPcap\` automatically (PATH not required). If USBPcap is missing, HID BadUSB monitoring still works; the BadUSB page explains that capture is unavailable.
+
 - **Override:** `FLASHSPARTAN_USBPCAP_CMD` or a custom capture command in settings (`{bus}`, `{out}`, …)
 
 ## Installers (.msi and .exe)
 
-Release builds can produce:
+Release builds produce:
 
-- **`FlashSpartan-x.y.z-x64.msi`** — Windows Installer with an **optional** USBPcap feature (off by default in the feature tree; enable if you want packet capture)
-- **`FlashSpartan-x.y.z-x64-setup.exe`** — WiX Burn bootstrapper with an **Install USBPcap** option (off by default; check to install)
+- **`FlashSpartan-x.y.z-x64.msi`** — Windows Installer (FlashSpartan only)
+- **`FlashSpartan-x.y.z-x64-setup.exe`** — WiX Burn bootstrapper that installs the MSI (no USBPcap step; cannot fail on a missing driver)
 
 See [packaging/windows/INSTALLER.md](../packaging/windows/INSTALLER.md) for build steps.
 

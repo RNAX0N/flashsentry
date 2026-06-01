@@ -4,10 +4,10 @@ FlashSpartan ships two Windows installer formats built with the **WiX Toolset v3
 
 | Artifact | Format | Purpose |
 |----------|--------|---------|
-| `FlashSpartan-x.y.z-x64.msi` | MSI | IT / GPO / `msiexec`; feature tree includes **USBPcap** checkbox |
-| `FlashSpartan-x.y.z-x64-setup.exe` | Burn bundle | End-user bootstrapper; **Options** page checkbox for USBPcap |
+| `FlashSpartan-x.y.z-x64.msi` | MSI | IT / GPO / `msiexec` — installs FlashSpartan only |
+| `FlashSpartan-x.y.z-x64-setup.exe` | Burn bundle | End-user bootstrapper — installs the MSI; **no bundled USBPcap** |
 
-Both require the official **USBPcapSetup.exe** at build time (not committed to git).
+**USBPcap** (optional, for BadUSB packet capture) is installed separately from https://desowin.org/usbpcap/ — the app detects it at runtime and continues without it.
 
 ## Prerequisites
 
@@ -38,16 +38,9 @@ Outputs (under `build/wix-out/`):
 - `FlashSpartan-1.4.2-x64.msi`
 - `FlashSpartan-1.4.2-x64-setup.exe`
 
-## USBPcap behavior
+## USBPcap (optional, not in installer)
 
-| Installer | User control |
-|-----------|----------------|
-| **MSI** | Feature tree: **USBPcap (BadUSB packet capture)** — **off by default**; check to install. A failed USBPcap run does not roll back FlashSpartan. |
-| **setup.exe** | Burn **Options**: **Install USBPcap** — **off by default**; check to install |
-
-When selected, the official `USBPcapSetup.exe /S` runs elevated (driver + `USBPcapCMD.exe`).
-
-FlashSpartan finds `C:\Program Files\USBPcap\USBPcapCMD.exe` without PATH (`UsbPcapLocator`).
+Installers ship **FlashSpartan only**. If you need USB packet capture for BadUSB analysis, install USBPcap manually; FlashSpartan locates `USBPcapCMD.exe` under `C:\Program Files\USBPcap\` and shows a notice in the BadUSB page when it is missing.
 
 ## Legal
 

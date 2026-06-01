@@ -1,5 +1,6 @@
 #include "SettingsDialog.h"
 #include "AutostartManager.h"
+#include "Platform.h"
 #include "SettingsProfiles.h"
 #include "UiIcons.h"
 
@@ -820,10 +821,17 @@ QWidget* SettingsDialog::createAboutTab()
     layout->addWidget(versionLabel);
     
     // Description
-    QLabel* descLabel = new QLabel(
-        "USB Flash Drive Security Monitor\n\n"
-        "Protect your system by tracking and verifying\n"
-        "USB storage devices through cryptographic hashing.");
+    const QString aboutDesc =
+        Platform::isWindows()
+            ? QStringLiteral(
+                  "USB Flash Drive Security Monitor\n\n"
+                  "Track USB storage, security keys, and other USB attachments. "
+                  "Verify images and watch folders for changes.")
+            : QStringLiteral(
+                  "USB Flash Drive Security Monitor\n\n"
+                  "Protect your system by tracking and verifying\n"
+                  "USB storage devices through cryptographic hashing.");
+    QLabel* descLabel = new QLabel(aboutDesc);
     descLabel->setAlignment(Qt::AlignCenter);
     descLabel->setWordWrap(true);
     descLabel->setStyleSheet(QString("color: %1;").arg(

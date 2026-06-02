@@ -4,21 +4,26 @@ All notable changes to FlashSpartan are documented in this file.
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-06-02
+
 ### Added
 
 - **Windows USBPcap download** — BadUSB Monitor → **Download USBPcap** downloads and launches the official installer, polls until `USBPcapCMD.exe` is detected, then enables packet capture without restarting the app.
 
-## [1.5.2] - 2026-05-21
-
 ### Fixed
 
+- **Windows hashing** — no longer ejects the USB drive before verification; dismounts the volume in place when possible, then reads via `\\.\PhysicalDriveN` / UAC helper.
+- **Windows device UI** — Open drive / Eject labels on cards and context menus; Mount removed where it does not apply.
+- **Windows drive identity** — allow/block and multi-partition logic use physical-drive keys (`\\.\PhysicalDriveN`).
+- **Mount status** — volume plug/unplug updates device cards via `mountStatusChanged`.
 - **Windows `setup.exe`** — Burn bundle installs only FlashSpartan (no bundled USBPcap step), so the bootstrapper cannot fail on USBPcap driver install.
 - **Windows USB Monitor** — lists storage volumes, HID/security keys, and other USB devices (hubs, power/chargers, generic USB).
+- **Windows USB detection** — include USB mass-storage volumes reported as fixed disks; hotplug via `WM_DEVICECHANGE`.
 - **Windows copy** — settings/about/autostart strings no longer reference Arch-only setup where inappropriate.
 
 ### Changed
 
-- **USBPcap** — install manually from desowin.org; app detects presence and shows a clear notice when capture is unavailable (install never blocks).
+- **USBPcap** — not bundled in installers; optional in-app download on BadUSB Monitor; app detects presence and shows a clear notice when capture is unavailable.
 
 ## [1.5.1] - 2026-05-21
 

@@ -246,6 +246,14 @@ bool isUsbFlashVolumeRoot(const QString& volumeRoot)
     if (driveType == DRIVE_REMOVABLE) {
         return true;
     }
+    if (driveType == DRIVE_CDROM) {
+        STORAGE_BUS_TYPE busType = BusTypeUnknown;
+        const QString physical = physicalDrivePathForVolume(root);
+        if (physicalDriveBusType(physical, &busType)) {
+            return busType == BusTypeUsb;
+        }
+        return false;
+    }
     if (driveType != DRIVE_FIXED && driveType != DRIVE_UNKNOWN) {
         return false;
     }

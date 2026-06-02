@@ -138,6 +138,28 @@ bool isUsbInstanceId(const QString& instanceId)
 
 } // namespace
 
+bool isUserVisibleInUsbMonitor(const UsbHostDeviceInfo& info)
+{
+    const QString upper = info.instanceId.toUpper();
+    if (upper.contains(QStringLiteral("&MI_"))) {
+        return false;
+    }
+    if (upper.contains(QStringLiteral("ROOT_HUB")) || upper.contains(QStringLiteral("ROOTHUB"))) {
+        return false;
+    }
+    if (upper.startsWith(QStringLiteral("USB\\ROOT"))) {
+        return false;
+    }
+    if (info.category == QStringLiteral("USB hub")) {
+        return false;
+    }
+    if (info.category == QStringLiteral("USB device")
+        || info.category == QStringLiteral("USB attachment")) {
+        return false;
+    }
+    return true;
+}
+
 QList<UsbHostDeviceInfo> enumeratePresentUsbDevices()
 {
     QList<UsbHostDeviceInfo> devices;
@@ -165,7 +187,7 @@ QList<UsbHostDeviceInfo> enumeratePresentUsbDevices()
         }
 
         const std::optional<UsbHostDeviceInfo> info = deviceFromInstanceId(instanceId);
-        if (!info) {
+        if (!info || !isUserVisibleInUsbMonitor(*info)) {
             continue;
         }
 

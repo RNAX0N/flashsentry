@@ -289,6 +289,10 @@ private:
     void refreshVerifyHistoryPanel(const QString& deviceNodeFilter = {});
     void refreshWatchListsPanel();
     void refreshUsbMonitorHome();
+    void scheduleUsbMonitorRefresh();
+#ifdef Q_OS_WIN
+    void scheduleWinDeviceRescan();
+#endif
     void refreshDeviceHistoryPage();
     void refreshAllowBlockListPage();
     void refreshAlertsPage();
@@ -477,6 +481,10 @@ private:
 
     // Timers
     QTimer* m_statusUpdateTimer = nullptr;
+    QTimer* m_usbMonitorRefreshTimer = nullptr;
+#ifdef Q_OS_WIN
+    QTimer* m_winDeviceRescanTimer = nullptr;
+#endif
 
     // Constants
     static constexpr int SIDEBAR_WIDTH = 280;

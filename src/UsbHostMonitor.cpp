@@ -68,12 +68,20 @@ void UsbHostMonitor::run()
         emit initialScanComplete(m_devices.size());
     }
 
+    int idleTicks = 0;
     while (m_running.load()) {
-        if (m_rescanRequested.exchange(false)) {
+        const bool rescanNow = m_rescanRequested.exchange(false);
+        if (rescanNow) {
             scanExistingDevices();
+            idleTicks = 0;
+        } else {
+            ++idleTicks;
+            if (idleTicks * POLL_TIMEOUT_MS >= IDLE_SCAN_INTERVAL_MS) {
+                scanExistingDevices();
+                idleTicks = 0;
+            }
         }
         msleep(POLL_TIMEOUT_MS);
-        scanExistingDevices();
     }
 }
 

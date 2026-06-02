@@ -20,6 +20,9 @@ namespace WinUsbEnumerator {
 
 #ifdef Q_OS_WIN
 QList<UsbHostDeviceInfo> enumeratePresentUsbDevices();
+
+/** Host nodes worth showing in USB Monitor (excludes hubs, composite interfaces, generic controllers). */
+bool isUserVisibleInUsbMonitor(const UsbHostDeviceInfo& info);
 #endif
 
 } // namespace WinUsbEnumerator

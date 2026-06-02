@@ -71,7 +71,11 @@ void UsbMonitorPage::setupUi()
 
     auto* cards = new QGridLayout;
     cards->setSpacing(12);
+#ifdef Q_OS_WIN
+    cards->addWidget(createStatCard(QStringLiteral("Removable storage"), m_connectedValue), 0, 0);
+#else
     cards->addWidget(createStatCard(QStringLiteral("Connected Devices"), m_connectedValue), 0, 0);
+#endif
     cards->addWidget(createStatCard(QStringLiteral("Allowed"), m_allowedValue), 0, 1);
     cards->addWidget(createStatCard(QStringLiteral("Blocked"), m_blockedValue), 0, 2);
     cards->addWidget(createStatCard(QStringLiteral("Events"), m_eventsValue), 0, 3);
@@ -80,7 +84,12 @@ void UsbMonitorPage::setupUi()
     }
     layout->addLayout(cards);
 
+#ifdef Q_OS_WIN
+    auto* devicesLabel =
+        new QLabel(QStringLiteral("Removable storage and other USB devices"));
+#else
     auto* devicesLabel = new QLabel(QStringLiteral("Connected devices"));
+#endif
     devicesLabel->setFont(FSFont(Heading3));
     devicesLabel->setStyleSheet(QString("color: %1;")
                                     .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));

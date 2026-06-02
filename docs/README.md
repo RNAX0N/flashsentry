@@ -4,6 +4,7 @@
 |----------|----------|-------------|
 | [USER_GUIDE.md](USER_GUIDE.md) | **End users** | Step-by-step: ISO verification, watch folders, settings, FAQ |
 | [VERIFICATION.md](VERIFICATION.md) | Users & developers | How Merkle manifests, ISO trust chain, and profiles work |
+| [DIAGNOSTICS.md](DIAGNOSTICS.md) | Users & support | Logs, USB inventory export, crash-report setup |
 | [../README.md](../README.md) | Everyone | Project overview, install, quick start |
 | [../CLAUDE.md](../CLAUDE.md) | **Developers** | Architecture, components, build, signal flows |
 

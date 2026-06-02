@@ -51,6 +51,8 @@ endif()
 set(SOURCES
     src/main.cpp
     src/AppPaths.cpp
+    src/AppDiagnostics.cpp
+    src/CrashReporter.cpp
     src/Platform.cpp
     src/MainWindow.cpp
     src/MainWindow_verify_ext.cpp

@@ -19,6 +19,7 @@ public:
     void setStats(const UsbMonitorStats& stats);
     void setDevices(const QList<UsbDeviceRow>& rows);
     void setEvents(const QList<UiEventEntry>& events);
+    void setInternalUsbNote(int internalCount, const QString& inventoryLogPath);
 
 signals:
     void deviceNameEdited(const QString& deviceNode, const QString& name);
@@ -44,6 +45,7 @@ private:
     QLabel* m_blockedValue = nullptr;
     QLabel* m_eventsValue = nullptr;
 
+    QLabel* m_internalUsbNote = nullptr;
     QTableWidget* m_deviceTable = nullptr;
     QTableWidget* m_eventsTable = nullptr;
 

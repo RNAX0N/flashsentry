@@ -95,6 +95,13 @@ void UsbMonitorPage::setupUi()
                                     .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     layout->addWidget(devicesLabel);
 
+    m_internalUsbNote = new QLabel;
+    m_internalUsbNote->setWordWrap(true);
+    m_internalUsbNote->setStyleSheet(QString("color: %1; font-size: 12px;")
+                                         .arg(FSStyle.colorCss(StyleManager::ColorRole::TextMuted)));
+    m_internalUsbNote->hide();
+    layout->addWidget(m_internalUsbNote);
+
     m_deviceTable = new QTableWidget(0, 9);
     m_deviceTable->setHorizontalHeaderLabels({
         QStringLiteral("Device name"),
@@ -215,6 +222,24 @@ void UsbMonitorPage::applyEventsTableLayout()
     const int minTime = fm.horizontalAdvance(QStringLiteral("2026-05-28 12:34:56")) + 28;
     hdr->setSectionResizeMode(0, QHeaderView::Interactive);
     m_eventsTable->setColumnWidth(0, qMax(minTime * 2, m_eventsTable->columnWidth(0)));
+}
+
+void UsbMonitorPage::setInternalUsbNote(int internalCount, const QString& inventoryLogPath)
+{
+    if (!m_internalUsbNote) {
+        return;
+    }
+    if (internalCount <= 0) {
+        m_internalUsbNote->hide();
+        return;
+    }
+    m_internalUsbNote->setText(
+        QStringLiteral("%1 built-in USB node(s) on this PC are tracked for security but not "
+                       "listed below (hubs, controllers, laptop internals). "
+                       "Full inventory: %2")
+            .arg(internalCount)
+            .arg(inventoryLogPath));
+    m_internalUsbNote->show();
 }
 
 void UsbMonitorPage::setStats(const UsbMonitorStats& stats)

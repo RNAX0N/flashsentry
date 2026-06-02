@@ -36,6 +36,24 @@ QString devPropString(DEVINST devInst, const DEVPROPKEY* key)
     return QString::fromWCharArray(reinterpret_cast<const wchar_t*>(buffer.constData())).trimmed();
 }
 
+std::optional<ULONG> devPropUint32(DEVINST devInst, const DEVPROPKEY* key)
+{
+    DEVPROPTYPE propType = 0;
+    ULONG propSize = 0;
+    if (CM_Get_DevNode_PropertyW(devInst, key, &propType, nullptr, &propSize, 0) != CR_BUFFER_SMALL) {
+        return std::nullopt;
+    }
+    ULONG value = 0;
+    if (CM_Get_DevNode_PropertyW(devInst, key, &propType, reinterpret_cast<PBYTE>(&value), &propSize, 0)
+        != CR_SUCCESS) {
+        return std::nullopt;
+    }
+    if (propType != DEVPROP_TYPE_UINT32) {
+        return std::nullopt;
+    }
+    return value;
+}
+
 QString categoryForInstanceId(const QString& instanceId, const QString& className,
                               const QString& friendlyName)
 {
@@ -93,6 +111,48 @@ void parseVidPid(const QString& instanceId, QString& vendorId, QString& productI
     }
 }
 
+UsbHostTier classifyHostTier(DEVINST devInst, const QString& instanceId, const QString& category)
+{
+    const QString upper = instanceId.toUpper();
+
+    if (upper.contains(QStringLiteral("&MI_"))) {
+        return UsbHostTier::InternalHost;
+    }
+    if (upper.contains(QStringLiteral("ROOT_HUB")) || upper.contains(QStringLiteral("ROOTHUB"))) {
+        return UsbHostTier::InternalHost;
+    }
+    if (upper.startsWith(QStringLiteral("USB\\ROOT"))) {
+        return UsbHostTier::InternalHost;
+    }
+    if (category == QStringLiteral("USB hub")) {
+        return UsbHostTier::InternalHost;
+    }
+    if (category == QStringLiteral("USB device") || category == QStringLiteral("USB attachment")) {
+        return UsbHostTier::InternalHost;
+    }
+    if (category == QStringLiteral("Bluetooth (USB)")) {
+        return UsbHostTier::InternalHost;
+    }
+
+    if (const std::optional<ULONG> removal = devPropUint32(devInst, &DEVPKEY_Device_RemovalPolicy)) {
+        if (*removal == CM_REMOVAL_POLICY_EXPECT_NO_REMOVAL) {
+            return UsbHostTier::InternalHost;
+        }
+    }
+
+    if (category == QStringLiteral("Security key (HID)") || category == QStringLiteral("Portable device")
+        || category == QStringLiteral("USB camera") || category == QStringLiteral("USB network")
+        || category == QStringLiteral("USB power / battery")) {
+        return UsbHostTier::ExternalPeripheral;
+    }
+
+    if (category == QStringLiteral("HID device")) {
+        return UsbHostTier::InternalHost;
+    }
+
+    return UsbHostTier::InternalHost;
+}
+
 std::optional<UsbHostDeviceInfo> deviceFromInstanceId(const QString& instanceId)
 {
     if (instanceId.isEmpty()) {
@@ -119,6 +179,7 @@ std::optional<UsbHostDeviceInfo> deviceFromInstanceId(const QString& instanceId)
 
     const QString className = devPropString(devInst, &DEVPKEY_Device_Class);
     info.category = categoryForInstanceId(instanceId, className, info.displayName);
+    info.tier = classifyHostTier(devInst, instanceId, info.category);
     parseVidPid(instanceId, info.vendorId, info.productId);
 
     if (info.manufacturer.isEmpty() && !info.vendorId.isEmpty()) {
@@ -137,28 +198,6 @@ bool isUsbInstanceId(const QString& instanceId)
 }
 
 } // namespace
-
-bool isUserVisibleInUsbMonitor(const UsbHostDeviceInfo& info)
-{
-    const QString upper = info.instanceId.toUpper();
-    if (upper.contains(QStringLiteral("&MI_"))) {
-        return false;
-    }
-    if (upper.contains(QStringLiteral("ROOT_HUB")) || upper.contains(QStringLiteral("ROOTHUB"))) {
-        return false;
-    }
-    if (upper.startsWith(QStringLiteral("USB\\ROOT"))) {
-        return false;
-    }
-    if (info.category == QStringLiteral("USB hub")) {
-        return false;
-    }
-    if (info.category == QStringLiteral("USB device")
-        || info.category == QStringLiteral("USB attachment")) {
-        return false;
-    }
-    return true;
-}
 
 QList<UsbHostDeviceInfo> enumeratePresentUsbDevices()
 {
@@ -187,7 +226,7 @@ QList<UsbHostDeviceInfo> enumeratePresentUsbDevices()
         }
 
         const std::optional<UsbHostDeviceInfo> info = deviceFromInstanceId(instanceId);
-        if (!info || !isUserVisibleInUsbMonitor(*info)) {
+        if (!info) {
             continue;
         }
 

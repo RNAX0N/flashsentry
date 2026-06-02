@@ -685,6 +685,12 @@ struct AppSettings {
     int deviceHistoryRetentionDays = 0;
     int deviceHistoryMaxEntries = 500;
     AllowedCountMode allowedCountMode = AllowedCountMode::TrustOrHash;
+    /** Write host-usb-inventory.jsonl on each USB host rescan (support / triage). */
+    bool diagnosticLogHostUsbInventory = true;
+    /** Show external USB peripherals (cameras, keys) in USB Monitor table. */
+    bool showExternalUsbPeripherals = true;
+    /** Opt-in automatic crash reports (requires build with Sentry; see docs/DIAGNOSTICS.md). */
+    bool crashReportsEnabled = false;
 
     QJsonObject toJson() const {
         QJsonObject obj;
@@ -733,6 +739,9 @@ struct AppSettings {
         obj["device_history_retention_days"] = deviceHistoryRetentionDays;
         obj["device_history_max_entries"] = deviceHistoryMaxEntries;
         obj["allowed_count_mode"] = allowedCountModeToString(allowedCountMode);
+        obj["diagnostic_log_host_usb_inventory"] = diagnosticLogHostUsbInventory;
+        obj["show_external_usb_peripherals"] = showExternalUsbPeripherals;
+        obj["crash_reports_enabled"] = crashReportsEnabled;
         return obj;
     }
 
@@ -792,6 +801,10 @@ struct AppSettings {
         settings.deviceHistoryMaxEntries = obj["device_history_max_entries"].toInt(500);
         settings.allowedCountMode =
             allowedCountModeFromString(obj["allowed_count_mode"].toString(QStringLiteral("trust_or_hash")));
+        settings.diagnosticLogHostUsbInventory =
+            obj["diagnostic_log_host_usb_inventory"].toBool(true);
+        settings.showExternalUsbPeripherals = obj["show_external_usb_peripherals"].toBool(true);
+        settings.crashReportsEnabled = obj["crash_reports_enabled"].toBool(false);
         return settings;
     }
 };

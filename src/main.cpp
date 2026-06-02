@@ -10,14 +10,14 @@
 #include <QDir>
 #include <QStandardPaths>
 #include <QDebug>
-#include <QFile>
-#include <QDateTime>
-#include <QTextStream>
+#include <QSettings>
 
 #include <iostream>
 #include <csignal>
 
 #include "AppPaths.h"
+#include "AppDiagnostics.h"
+#include "CrashReporter.h"
 #include "MainWindow.h"
 #include "StyleManager.h"
 #include "Types.h"
@@ -27,55 +27,6 @@ using namespace FlashSpartan;
 
 // Global pointer for signal handling
 static MainWindow* g_mainWindow = nullptr;
-
-// Custom message handler for logging
-void messageHandler(QtMsgType type, const QMessageLogContext& /*context*/, const QString& msg)
-{
-    static QFile logFile;
-    static QTextStream logStream;
-    static bool initialized = false;
-    
-    if (!initialized) {
-        QString logDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-        QDir().mkpath(logDir);
-        QString logPath = logDir + "/flashspartan.log";
-        
-        logFile.setFileName(logPath);
-        if (logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-            logStream.setDevice(&logFile);
-            initialized = true;
-        }
-    }
-    
-    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
-    QString level;
-    
-    switch (type) {
-        case QtDebugMsg:    level = "DEBUG"; break;
-        case QtInfoMsg:     level = "INFO"; break;
-        case QtWarningMsg:  level = "WARN"; break;
-        case QtCriticalMsg: level = "ERROR"; break;
-        case QtFatalMsg:    level = "FATAL"; break;
-    }
-    
-    QString logMessage = QString("[%1] [%2] %3")
-        .arg(timestamp)
-        .arg(level, -5)
-        .arg(msg);
-    
-    // Output to stderr
-    std::cerr << logMessage.toStdString() << std::endl;
-    
-    // Output to log file
-    if (initialized) {
-        logStream << logMessage << "\n";
-        logStream.flush();
-    }
-    
-    if (type == QtFatalMsg) {
-        abort();
-    }
-}
 
 // Signal handler for graceful shutdown
 void signalHandler(int signum)
@@ -203,7 +154,7 @@ int main(int argc, char* argv[])
     QApplication app(argc, argv);
     AppPaths::migrateFromLegacyConfigIfNeeded();
     app.setWindowIcon(QIcon(QStringLiteral(":/icons/flashspartan.svg")));
-    qInstallMessageHandler(messageHandler);
+    AppDiagnostics::installQtMessageHandler();
     parser.process(app);
 
     if (parser.isSet(configOption)) {
@@ -293,6 +244,14 @@ int main(int argc, char* argv[])
     StyleManager::instance().initialize();
     StyleManager::instance().applyToApplication();
     
+    AppSettings startupSettings;
+    {
+        QSettings settings(QStringLiteral("flashspartan"), QStringLiteral("FlashSpartan"));
+        startupSettings.crashReportsEnabled =
+            settings.value(QStringLiteral("diagnostics/crashReportsEnabled"), false).toBool();
+    }
+    CrashReporter::tryInstall(startupSettings);
+
     // Create main window
     MainWindow mainWindow;
     g_mainWindow = &mainWindow;

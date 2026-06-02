@@ -32,10 +32,13 @@ struct UsbDeviceRow {
 };
 
 struct UsbMonitorStats {
+    /** Removable storage volumes (flash drives / ISO sticks). */
     int connected = 0;
     int allowed = 0;
     int blocked = 0;
     int events = 0;
+    /** Built-in USB host nodes tracked but not shown in the device table (Windows). */
+    int internalUsbTracked = 0;
 };
 
 } // namespace FlashSpartan

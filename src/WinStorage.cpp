@@ -258,6 +258,33 @@ bool isUsbFlashVolumeRoot(const QString& volumeRoot)
     return busType == BusTypeUsb;
 }
 
+bool dismountVolumeRootInPlace(const QString& volumeRoot, QString* error)
+{
+    const QString volPath = volumeDevicePath(volumeRoot);
+    if (volPath.isEmpty()) {
+        if (error) {
+            *error = QStringLiteral("Invalid volume path");
+        }
+        return false;
+    }
+
+    HANDLE hVol = openDeviceHandle(volPath, GENERIC_READ | GENERIC_WRITE, nullptr);
+    if (hVol == INVALID_HANDLE_VALUE) {
+        hVol = openDeviceHandle(volPath, 0, nullptr);
+    }
+    if (hVol == INVALID_HANDLE_VALUE) {
+        if (error) {
+            *error = QStringLiteral("Cannot open volume: %1").arg(winErrorMessage(GetLastError()));
+        }
+        return false;
+    }
+
+    lockVolume(hVol, nullptr);
+    const bool dismounted = dismountVolumeHandle(hVol, error);
+    CloseHandle(hVol);
+    return dismounted;
+}
+
 bool ejectVolumeRoot(const QString& volumeRoot, bool force, QString* error)
 {
     Q_UNUSED(force)

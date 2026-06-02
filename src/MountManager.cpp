@@ -44,10 +44,22 @@ void MountManager::mount(const QString& deviceNode, const MountOptions& /*option
     MountResult result;
     result.deviceNode = deviceNode;
     result.mountPoint = getMountPoint(deviceNode);
+    if (result.mountPoint.isEmpty()) {
+        const QString normalized = WinStorage::normalizeVolumeRoot(deviceNode);
+        if (WinStorage::isUsbFlashVolumeRoot(normalized)) {
+            result.mountPoint = normalized;
+        }
+    }
     result.success = !result.mountPoint.isEmpty();
     if (!result.success) {
         result.errorMessage = QStringLiteral(
             "Volume is not mounted. Reconnect the drive or assign a letter in Disk Management.");
+    } else {
+        QMutexLocker locker(&m_mutex);
+        m_mountPoints.insert(deviceNode, result.mountPoint);
+        if (result.mountPoint != deviceNode) {
+            m_mountPoints.insert(result.mountPoint, result.mountPoint);
+        }
     }
     QTimer::singleShot(0, this, [this, result]() { emit mountCompleted(result); });
 }

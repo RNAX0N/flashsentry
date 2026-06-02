@@ -26,6 +26,9 @@ bool lockVolume(HANDLE volumeHandle, QString* error);
 bool dismountVolumeHandle(HANDLE volumeHandle, QString* error);
 bool ejectVolumeRoot(const QString& volumeRoot, bool force, QString* error);
 
+/** Lock and dismount a lettered volume without ejecting media (for raw disk reads). */
+bool dismountVolumeRootInPlace(const QString& volumeRoot, QString* error);
+
 /** Removable lettered volume or USB mass-storage (including drives reported as "fixed"). */
 bool isUsbFlashVolumeRoot(const QString& volumeRoot);
 

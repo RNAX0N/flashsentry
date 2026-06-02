@@ -1,4 +1,6 @@
 #include "HashOptionsDialog.h"
+#include "Platform.h"
+
 #include <QCheckBox>
 
 #include <QComboBox>
@@ -37,11 +39,16 @@ HashOptionsDialog::HashOptionsDialog(const DeviceInfo& device,
     auto* scopeGroup = new QGroupBox(QStringLiteral("Target"));
     auto* scopeLayout = new QVBoxLayout(scopeGroup);
 
-    m_partitionRadio = new QRadioButton(
-        QStringLiteral("This partition only (%1)").arg(device.deviceNode));
+    const QString partitionLabel =
+        Platform::isWindows()
+            ? QStringLiteral("This volume (%1)").arg(device.deviceNode)
+            : QStringLiteral("This partition only (%1)").arg(device.deviceNode);
+    m_partitionRadio = new QRadioButton(partitionLabel);
+    const QString parentLabel =
+        device.parentDevice.isEmpty() ? device.deviceNode : device.parentDevice;
     m_wholeDiskRadio = new QRadioButton(
         QStringLiteral("Entire drive (%1) — all %2 partition(s) on this USB stick")
-            .arg(device.parentDevice.isEmpty() ? device.deviceNode : device.parentDevice)
+            .arg(parentLabel)
             .arg(qMax(1, partitionCount)));
 
     scopeLayout->addWidget(m_partitionRadio);

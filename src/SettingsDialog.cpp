@@ -476,7 +476,7 @@ QWidget* SettingsDialog::createVerificationTab()
     }
     m_badUsbUsbmonCheck =
         new QCheckBox(Platform::isWindows()
-                          ? QStringLiteral("Start USBPcap packet capture on anomalies")
+                          ? QStringLiteral("Start USB packet capture on anomalies (requires USBPcap)")
                           : QStringLiteral("Start usbmon/tcpdump capture on anomalies"));
     m_badUsbUsbmonOnAnomalyCheck = new QCheckBox(QStringLiteral("Capture only when an anomaly is detected"));
     connect(m_badUsbUsbmonCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);

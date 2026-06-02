@@ -1,4 +1,5 @@
 #include "DeviceCard.h"
+#include "Platform.h"
 #include "UiIcons.h"
 #include "StyleManager.h"
 
@@ -198,8 +199,16 @@ void DeviceCard::setupUi()
         return btn;
     };
     
-    m_mountBtn = createActionButton("Mount", "Mount this device");
-    m_unmountBtn = createActionButton("Unmount", "Safely unmount this device");
+    m_mountBtn = createActionButton(Platform::isWindows() ? QStringLiteral("Open drive")
+                                                          : QStringLiteral("Mount"),
+                                    Platform::isWindows()
+                                        ? QStringLiteral("Open this drive in File Explorer")
+                                        : QStringLiteral("Mount this device"));
+    m_unmountBtn = createActionButton(Platform::isWindows() ? QStringLiteral("Eject")
+                                                              : QStringLiteral("Unmount"),
+                                    Platform::isWindows()
+                                        ? QStringLiteral("Safely eject this USB drive")
+                                        : QStringLiteral("Safely unmount this device"));
     m_ejectBtn = createActionButton(QStringLiteral("Eject"), "Eject and power off device");
     m_rehashBtn = createActionButton(QStringLiteral("Rehash"), "Recalculate device hash");
     m_watchBtn = createActionButton(QStringLiteral("Watch folder"), "Edit Merkle watch groups");
@@ -645,12 +654,21 @@ void DeviceCard::updateActionButtons()
 {
     bool isMounted = m_device.isMounted;
     const bool isModified = (m_status == VerificationStatus::Modified);
+    const bool hasVolume = !m_device.mountPoint.isEmpty();
 
     m_acceptBtn->setVisible(isModified);
+#ifdef Q_OS_WIN
+    m_mountBtn->setVisible(hasVolume);
+    m_unmountBtn->setVisible(hasVolume);
+    m_openBtn->setVisible(hasVolume);
+#else
     m_mountBtn->setVisible(!isMounted);
     m_unmountBtn->setVisible(isMounted);
     m_openBtn->setVisible(isMounted);
-    m_openBtn->setEnabled(isMounted && !m_device.mountPoint.isEmpty());
+#endif
+    m_openBtn->setEnabled(hasVolume);
+    m_mountBtn->setEnabled(hasVolume);
+    m_unmountBtn->setEnabled(hasVolume);
 
     // Disable rehash while hashing
     m_rehashBtn->setEnabled(m_status != VerificationStatus::Hashing);

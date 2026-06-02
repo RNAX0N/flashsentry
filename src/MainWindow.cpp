@@ -1,5 +1,7 @@
 #include "MainWindow.h"
 #include "AppPaths.h"
+#include "Platform.h"
+#include "WinStorage.h"
 #include "UiIcons.h"
 #include "StyledMessageBox.h"
 #include "AutostartManager.h"
@@ -989,6 +991,19 @@ void MainWindow::connectSignals()
             this, &MainWindow::onUnmountCompleted);
     connect(m_mountManager.get(), &MountManager::powerOffCompleted,
             this, &MainWindow::onPowerOffCompleted);
+    connect(m_mountManager.get(), &MountManager::mountStatusChanged, this,
+            [this](const QString& deviceNode, bool mounted, const QString& mountPoint) {
+                if (auto info = m_deviceMonitor->getDevice(deviceNode)) {
+                    DeviceInfo updated = *info;
+                    updated.isMounted = mounted;
+                    updated.mountPoint = mounted ? mountPoint : QString();
+                    updateDeviceCard(updated);
+                }
+                if (m_deviceMonitor) {
+                    m_deviceMonitor->rescan();
+                }
+                refreshUsbMonitorHome();
+            });
     
     // Database signals
     connect(m_database.get(), &DatabaseManager::databaseLoaded,
@@ -1493,7 +1508,11 @@ QString MainWindow::driveKey(const DeviceInfo& device) const
     if (!device.parentDevice.isEmpty()) {
         return device.parentDevice;
     }
-    return device.deviceNode.section('/', -1);
+#ifdef Q_OS_WIN
+    return QDir::toNativeSeparators(device.deviceNode).trimmed().toUpper();
+#else
+    return device.deviceNode.section(QLatin1Char('/'), -1);
+#endif
 }
 
 bool MainWindow::isDriveKnown(const DeviceInfo& device) const
@@ -1917,6 +1936,19 @@ void MainWindow::onMountRequested(const QString& deviceNode)
         return;
     }
 
+#ifdef Q_OS_WIN
+    if (!deviceInfo->mountPoint.isEmpty()) {
+        onOpenMountPointRequested(deviceInfo->mountPoint);
+        return;
+    }
+    StyledMessageBox::information(
+        this, QStringLiteral("No drive letter"),
+        QStringLiteral(
+            "Windows has not assigned a letter to this volume yet. Use Disk Management to assign "
+            "one, or reconnect the USB drive."));
+    return;
+#endif
+
     DeviceCard* card = getDeviceCard(deviceNode);
     if (card && card->verificationStatus() == VerificationStatus::Verified) {
         m_mountManager->mount(deviceNode);
@@ -1957,14 +1989,15 @@ void MainWindow::onEjectRequested(const QString& deviceNode)
     if (!device) return;
     
     logMessage(QString("Eject requested: %1").arg(device->displayName()));
-    
-    // Unmount first if mounted
+
+#ifdef Q_OS_WIN
+    m_mountManager->unmount(deviceNode);
+#else
     if (device->isMounted) {
         m_mountManager->unmount(deviceNode);
     }
-    
-    // Power off
     m_mountManager->powerOff(deviceNode);
+#endif
 }
 
 void MainWindow::onRehashRequested(const QString& deviceNode)
@@ -2872,8 +2905,40 @@ void MainWindow::refreshUsbMonitorHome()
 
 void MainWindow::showDeviceActionsMenu(const QString& deviceNode)
 {
+    if (deviceNode.startsWith(QStringLiteral("hid:"))
+        || deviceNode.startsWith(QStringLiteral("usb:"))) {
+        QMenu menu(this);
+        menu.setStyleSheet(FSStyle.menuStyleSheet());
+        menu.addAction(QStringLiteral("Refresh list"), [this]() {
+            if (m_deviceMonitor) {
+                m_deviceMonitor->rescan();
+            }
+#ifdef Q_OS_WIN
+            if (m_usbHostMonitor) {
+                m_usbHostMonitor->rescan();
+            }
+            if (m_hidMonitor) {
+                m_hidMonitor->rescan();
+            }
+#endif
+            refreshUsbMonitorHome();
+        });
+        menu.exec(QCursor::pos());
+        return;
+    }
+
     QMenu menu(this);
     menu.setStyleSheet(FSStyle.menuStyleSheet());
+#ifdef Q_OS_WIN
+    menu.addAction(QStringLiteral("Open drive"), [this, deviceNode]() { onMountRequested(deviceNode); });
+    menu.addAction(QStringLiteral("Open folder"), [this, deviceNode]() {
+        if (auto info = m_deviceMonitor->getDevice(deviceNode)) {
+            if (!info->mountPoint.isEmpty()) {
+                onOpenMountPointRequested(info->mountPoint);
+            }
+        }
+    });
+#else
     menu.addAction(QStringLiteral("Mount"), [this, deviceNode]() { onMountRequested(deviceNode); });
     menu.addAction(QStringLiteral("Unmount"), [this, deviceNode]() { onUnmountRequested(deviceNode); });
     menu.addAction(QStringLiteral("Open folder"), [this, deviceNode]() {
@@ -2883,10 +2948,13 @@ void MainWindow::showDeviceActionsMenu(const QString& deviceNode)
             }
         }
     });
+#endif
     menu.addAction(QStringLiteral("Watch folders…"), [this, deviceNode]() { onWatchListRequested(deviceNode); });
     menu.addAction(QStringLiteral("Rehash"), [this, deviceNode]() { onRehashRequested(deviceNode); });
     menu.addSeparator();
-    menu.addAction(QStringLiteral("Eject"), [this, deviceNode]() { onEjectRequested(deviceNode); });
+    menu.addAction(Platform::isWindows() ? QStringLiteral("Eject drive")
+                                         : QStringLiteral("Eject"),
+                     [this, deviceNode]() { onEjectRequested(deviceNode); });
     menu.exec(QCursor::pos());
 }
 
@@ -3053,6 +3121,7 @@ void MainWindow::startHashJob(const QString& uiDeviceNode, const QString& hashDe
     if (!m_unmountBeforeHash.contains(uiDeviceNode)) {
         const bool mounted = deviceInfo->isMounted
             || !m_mountManager->getMountPoint(uiDeviceNode).isEmpty();
+#ifndef Q_OS_WIN
         if (mounted && hashDeviceNode == uiDeviceNode) {
             logMessage(QString("Unmounting %1 before hash verification").arg(uiDeviceNode));
             m_unmountBeforeHash.insert(uiDeviceNode);
@@ -3060,6 +3129,22 @@ void MainWindow::startHashJob(const QString& uiDeviceNode, const QString& hashDe
             m_mountManager->unmount(uiDeviceNode);
             return;
         }
+#else
+        Q_UNUSED(mounted);
+        if (scope == HashScope::Partition && mounted && !deviceInfo->mountPoint.isEmpty()) {
+            QString dismountError;
+            if (WinStorage::dismountVolumeRootInPlace(deviceInfo->mountPoint, &dismountError)) {
+                logMessage(QStringLiteral("Dismounted %1 in place for hashing (drive letter kept)")
+                               .arg(deviceInfo->mountPoint),
+                           LogLevel::Info);
+            } else if (!dismountError.isEmpty()) {
+                logMessage(QStringLiteral("Could not dismount %1 before hash: %2 — trying read with "
+                                          "elevation if needed")
+                               .arg(deviceInfo->mountPoint, dismountError),
+                           LogLevel::Warning);
+            }
+        }
+#endif
     }
 
     HashWorker::HashJob job;

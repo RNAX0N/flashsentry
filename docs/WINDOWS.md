@@ -65,7 +65,7 @@ JSON result file that the app reads (same fields as Linux stdout JSON).
 
 USBPcap is **not** bundled in FlashSpartan installers. Install it separately from https://desowin.org/usbpcap/ if you want BadUSB packet capture.
 
-FlashSpartan finds `USBPcapCMD.exe` under `C:\Program Files\USBPcap\` automatically (PATH not required). If USBPcap is missing, HID BadUSB monitoring still works; the BadUSB page explains that capture is unavailable.
+FlashSpartan finds `USBPcapCMD.exe` under `C:\Program Files\USBPcap\` automatically (PATH not required). If USBPcap is missing, HID BadUSB monitoring still works; on **BadUSB Monitor** use **Download USBPcap** to fetch and run the official installer — FlashSpartan polls until capture is ready (no app restart).
 
 - **Override:** `FLASHSPARTAN_USBPCAP_CMD` or a custom capture command in settings (`{bus}`, `{out}`, …)
 

@@ -47,6 +47,7 @@
 #include "HidDeviceMonitor.h"
 #include "UsbHostMonitor.h"
 #include "UsbmonCapture.h"
+#include "UsbPcapInstaller.h"
 
 namespace FlashSpartan {
 
@@ -154,6 +155,7 @@ private slots:
     void onHidChanged(const HidDeviceInfo& device);
     void onBadUsbTrustRequested(const QString& stableId);
     void onBadUsbCaptureRequested(const QString& stableId);
+    void refreshUsbPcapIntegration();
 
     // Settings
     void onThemeChanged(StyleManager::Theme theme);
@@ -372,6 +374,7 @@ private:
     std::unique_ptr<UsbHostMonitor> m_usbHostMonitor;
     std::unique_ptr<BadUsbBaselineStore> m_badUsbBaselineStore;
     std::unique_ptr<UsbmonCapture> m_usbmonCapture;
+    std::unique_ptr<UsbPcapInstaller> m_usbPcapInstaller;
 
     // Settings
     AppSettings m_settings;

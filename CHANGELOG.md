@@ -4,6 +4,10 @@ All notable changes to FlashSpartan are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Windows USBPcap download** — BadUSB Monitor → **Download USBPcap** downloads and launches the official installer, polls until `USBPcapCMD.exe` is detected, then enables packet capture without restarting the app.
+
 ## [1.5.2] - 2026-05-21
 
 ### Fixed

@@ -1,7 +1,9 @@
 #include "BadUsbWidget.h"
 #include "BadUsbAnalyzer.h"
+#include "Platform.h"
 
 #include <QDesktopServices>
+#include <QGroupBox>
 #include <QHeaderView>
 #include <QLabel>
 #include <QListWidget>
@@ -54,9 +56,30 @@ void BadUsbWidget::setupUi()
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     layout->addWidget(m_table, 1);
 
+    m_packetCapturePanel = new QGroupBox(QStringLiteral("USB packet capture"));
+    auto* captureLayout = new QVBoxLayout(m_packetCapturePanel);
+
+    m_usbPcapStatusLabel = new QLabel;
+    m_usbPcapStatusLabel->setWordWrap(true);
+    captureLayout->addWidget(m_usbPcapStatusLabel);
+
+    auto* usbPcapBtnRow = new QHBoxLayout;
+    m_downloadUsbPcapBtn = new QPushButton(QStringLiteral("Download USBPcap"));
+    m_openUsbPcapPageBtn = new QPushButton(QStringLiteral("Open download page"));
+    usbPcapBtnRow->addWidget(m_downloadUsbPcapBtn);
+    usbPcapBtnRow->addWidget(m_openUsbPcapPageBtn);
+    usbPcapBtnRow->addStretch();
+    captureLayout->addLayout(usbPcapBtnRow);
+
+    m_captureLabel = new QLabel(QStringLiteral("Capture: idle"));
+    captureLayout->addWidget(m_captureLabel);
+
+    layout->addWidget(m_packetCapturePanel);
+
     auto* buttonRow = new QHBoxLayout;
     m_trustBtn = new QPushButton(QStringLiteral("Trust / add to baseline"));
-    m_captureBtn = new QPushButton(QStringLiteral("Start usbmon capture"));
+    m_captureBtn = new QPushButton(Platform::isWindows() ? QStringLiteral("Start packet capture")
+                                                         : QStringLiteral("Start usbmon capture"));
     m_refreshBtn = new QPushButton(QStringLiteral("Refresh HID devices"));
     m_openCaptureBtn = new QPushButton(QStringLiteral("Open capture folder"));
     buttonRow->addWidget(m_trustBtn);
@@ -65,9 +88,6 @@ void BadUsbWidget::setupUi()
     buttonRow->addWidget(m_openCaptureBtn);
     buttonRow->addStretch();
     layout->addLayout(buttonRow);
-
-    m_captureLabel = new QLabel(QStringLiteral("Capture: idle"));
-    layout->addWidget(m_captureLabel);
 
     auto* anomalyTitle = new QLabel(QStringLiteral("Anomaly log"));
     anomalyTitle->setFont(titleFont);
@@ -84,14 +104,67 @@ void BadUsbWidget::setupUi()
     });
     connect(m_captureBtn, &QPushButton::clicked, this, [this]() {
         const QString id = selectedStableId();
-        if (!id.isEmpty()) {
-            emit captureRequested(id);
+        if (id.isEmpty()) {
+            return;
         }
+#ifdef Q_OS_WIN
+        if (!m_usbPcapInstalled) {
+            emit downloadUsbPcapRequested();
+            return;
+        }
+#endif
+        emit captureRequested(id);
     });
     connect(m_refreshBtn, &QPushButton::clicked, this, &BadUsbWidget::refreshRequested);
     connect(m_openCaptureBtn, &QPushButton::clicked, this, &BadUsbWidget::openCaptureFolderRequested);
+    connect(m_downloadUsbPcapBtn, &QPushButton::clicked, this, &BadUsbWidget::downloadUsbPcapRequested);
+    connect(m_openUsbPcapPageBtn, &QPushButton::clicked, this, &BadUsbWidget::openUsbPcapPageRequested);
 
+    if (!Platform::isWindows()) {
+        m_packetCapturePanel->setTitle(QStringLiteral("USB packet capture (usbmon)"));
+        m_downloadUsbPcapBtn->setVisible(false);
+        m_openUsbPcapPageBtn->setText(QStringLiteral("usbmon / tcpdump help"));
+    }
+
+    setPacketCaptureState(false, false, QString());
     refreshSummary();
+}
+
+void BadUsbWidget::setPacketCaptureState(bool usbPcapInstalled, bool installPending,
+                                        const QString& statusMessage)
+{
+    m_usbPcapInstalled = usbPcapInstalled;
+
+    if (Platform::isWindows()) {
+        m_downloadUsbPcapBtn->setVisible(!usbPcapInstalled);
+        m_openUsbPcapPageBtn->setVisible(!usbPcapInstalled);
+        m_captureBtn->setEnabled(usbPcapInstalled);
+        m_captureBtn->setToolTip(usbPcapInstalled
+                                     ? QStringLiteral("Capture USB traffic for the selected HID device")
+                                     : QStringLiteral("Install USBPcap first (Download USBPcap button above)"));
+    } else {
+        m_captureBtn->setEnabled(true);
+    }
+
+    QString status = statusMessage;
+    if (status.isEmpty()) {
+        if (usbPcapInstalled) {
+            status = Platform::isWindows()
+                         ? QStringLiteral("USBPcap is installed. Select a device and start packet capture.")
+                         : QStringLiteral("Use tcpdump/usbmon via Settings when capture is enabled.");
+        } else if (installPending) {
+            status = QStringLiteral(
+                "Finish the USBPcap installer, then return here — FlashSpartan will detect it automatically.");
+        } else if (Platform::isWindows()) {
+            status = QStringLiteral(
+                "Packet capture needs the free USBPcap driver. Click Download USBPcap, complete setup, "
+                "then capture will work without restarting FlashSpartan.");
+        } else {
+            status = QStringLiteral(
+                "Install usbmon and tcpdump; configure the capture command under Settings → BadUSB.");
+        }
+    }
+    m_usbPcapStatusLabel->setText(status);
 }
 
 void BadUsbWidget::setMonitoringEnabled(bool enabled)

@@ -205,7 +205,16 @@ MainWindow::MainWindow(QWidget* parent)
     // Start device monitoring
     m_deviceMonitor->startMonitoring();
     configureBadUsbMonitoring();
-    
+
+#ifdef Q_OS_WIN
+    connect(qApp, &QGuiApplication::applicationStateChanged, this,
+            [this](Qt::ApplicationState state) {
+                if (state == Qt::ApplicationActive) {
+                    refreshUsbPcapIntegration();
+                }
+            });
+#endif
+
     // Show tray icon
     if (TrayIcon::isSystemTrayAvailable()) {
         m_trayIcon->show();
@@ -437,6 +446,15 @@ void MainWindow::setupUi()
             m_hidMonitor->rescan();
         }
     });
+    connect(m_badUsbWidget, &BadUsbWidget::downloadUsbPcapRequested, this, [this]() {
+        if (m_usbPcapInstaller) {
+            m_usbPcapInstaller->startDownloadAndInstall();
+        }
+    });
+    connect(m_badUsbWidget, &BadUsbWidget::openUsbPcapPageRequested, this, []() {
+        UsbPcapInstaller::openInstallPage();
+    });
+
     connect(m_badUsbWidget, &BadUsbWidget::openCaptureFolderRequested, this, [this]() {
         if (m_usbmonCapture) {
             QDesktopServices::openUrl(QUrl::fromLocalFile(m_usbmonCapture->outputDirectory()));
@@ -829,9 +847,36 @@ void MainWindow::initializeBackend()
     m_badUsbBaselineStore = std::make_unique<BadUsbBaselineStore>(this);
     m_badUsbBaselineStore->initialize();
     m_usbmonCapture = std::make_unique<UsbmonCapture>(this);
+    m_usbPcapInstaller = std::make_unique<UsbPcapInstaller>(this);
+    connect(m_usbPcapInstaller.get(), &UsbPcapInstaller::stateChanged, this,
+            [this](bool installed, const QString& status, const QString& path) {
+                if (m_badUsbWidget) {
+                    m_badUsbWidget->setPacketCaptureState(
+                        installed, m_usbPcapInstaller && m_usbPcapInstaller->isWaitingForInstall(),
+                        status);
+                }
+                if (installed && !path.isEmpty()) {
+                    logMessage(QStringLiteral("USBPcap ready: %1").arg(path), LogLevel::Info);
+                }
+            });
+    connect(m_usbPcapInstaller.get(), &UsbPcapInstaller::installFlowMessage, this,
+            [this](const QString& message) {
+                logMessage(message, LogLevel::Info);
+                if (m_badUsbWidget) {
+                    m_badUsbWidget->setCaptureStatus(message);
+                }
+            });
+    connect(m_usbPcapInstaller.get(), &UsbPcapInstaller::installFlowFailed, this,
+            [this](const QString& error) {
+                logMessage(error, LogLevel::Warning);
+                if (m_badUsbWidget) {
+                    m_badUsbWidget->setCaptureStatus(error);
+                }
+            });
     if (m_badUsbWidget) {
         m_badUsbWidget->setBaselineCount(m_badUsbBaselineStore->allDevices().size());
     }
+    refreshUsbPcapIntegration();
 }
 
 void MainWindow::connectSignals()
@@ -2268,6 +2313,9 @@ void MainWindow::onNavPageSelected(AppPage page)
     }
     if (page == AppPage::About) {
         refreshAboutPage();
+    }
+    if (page == AppPage::BadUsbMonitor) {
+        refreshUsbPcapIntegration();
     }
 }
 

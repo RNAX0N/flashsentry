@@ -55,6 +55,7 @@ set(SOURCES
     src/MainWindow.cpp
     src/MainWindow_verify_ext.cpp
     src/MainWindow_badusb_ext.cpp
+    src/MainWindow_usbpcap_ext.cpp
     src/DeviceMonitor.cpp
     src/HidDeviceMonitor.cpp
     src/HashWorker.cpp
@@ -79,6 +80,7 @@ set(SOURCES
     src/BadUsbWidget.cpp
     src/UsbmonCapture.cpp
     src/UsbPcapLocator.cpp
+    src/UsbPcapInstaller.cpp
     src/VerifyCli.cpp
     src/IsoVerifySettingsLoader.cpp
     src/SettingsProfiles.cpp
@@ -161,6 +163,7 @@ set(HEADERS
     include/BadUsbWidget.h
     include/UsbmonCapture.h
     include/UsbPcapLocator.h
+    include/UsbPcapInstaller.h
     include/VerifyCli.h
     include/IsoVerifySettingsLoader.h
     include/SettingsProfiles.h

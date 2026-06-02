@@ -83,8 +83,8 @@ bool UsbmonCapture::startCapture(const HidDeviceInfo& device,
     }
     if (!QFileInfo::exists(program)) {
         emit captureFailed(QStringLiteral(
-            "USBPcapCMD.exe was not found. Re-run the FlashSpartan installer and enable "
-            "\"Install USBPcap\", or install from https://desowin.org/usbpcap/ "
+            "USBPcapCMD.exe was not found. On the BadUSB Monitor page, use Download USBPcap, "
+            "or install from https://desowin.org/usbpcap/ "
             "(standard path: C:\\Program Files\\USBPcap\\USBPcapCMD.exe)."));
         return false;
     }

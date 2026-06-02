@@ -474,17 +474,31 @@ QWidget* SettingsDialog::createVerificationTab()
         connect(box, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
         badUsbForm->addRow(QStringLiteral(""), box);
     }
-    m_badUsbUsbmonCheck = new QCheckBox(QStringLiteral("Start usbmon/tcpdump capture on anomalies"));
+    m_badUsbUsbmonCheck =
+        new QCheckBox(Platform::isWindows()
+                          ? QStringLiteral("Start USBPcap packet capture on anomalies")
+                          : QStringLiteral("Start usbmon/tcpdump capture on anomalies"));
     m_badUsbUsbmonOnAnomalyCheck = new QCheckBox(QStringLiteral("Capture only when an anomaly is detected"));
     connect(m_badUsbUsbmonCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     connect(m_badUsbUsbmonOnAnomalyCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     badUsbForm->addRow(QStringLiteral(""), m_badUsbUsbmonCheck);
     badUsbForm->addRow(QStringLiteral(""), m_badUsbUsbmonOnAnomalyCheck);
     m_badUsbUsbmonCommandEdit = new QLineEdit;
-    m_badUsbUsbmonCommandEdit->setPlaceholderText(QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1"));
+    m_badUsbUsbmonCommandEdit->setPlaceholderText(
+        Platform::isWindows()
+            ? QStringLiteral("USBPcapCMD.exe -d \\\\.\\USBPcap{bus} -o \"{out}\" -A")
+            : QStringLiteral("tcpdump -i usbmon{bus} -w {out} -G 30 -W 1"));
     m_badUsbUsbmonCommandEdit->setToolTip(QStringLiteral("Template variables: {bus}, {out}, {stable_id}, {rule_id}"));
     connect(m_badUsbUsbmonCommandEdit, &QLineEdit::textChanged, this, &SettingsDialog::onSettingChanged);
     badUsbForm->addRow(QStringLiteral("Capture command:"), m_badUsbUsbmonCommandEdit);
+    if (Platform::isWindows()) {
+        auto* usbPcapHint = new QLabel(QStringLiteral(
+            "Packet capture requires USBPcap. Use BadUSB Monitor → Download USBPcap; "
+            "FlashSpartan detects it automatically after install."));
+        usbPcapHint->setWordWrap(true);
+        usbPcapHint->setStyleSheet(QStringLiteral("color: palette(mid);"));
+        badUsbForm->addRow(QStringLiteral(""), usbPcapHint);
+    }
     layout->addWidget(badUsbGroup);
 
     layout->addStretch();

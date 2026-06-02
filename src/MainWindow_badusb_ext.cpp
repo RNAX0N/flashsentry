@@ -2,7 +2,6 @@
 #include "AuditLog.h"
 #include "BadUsbAnalyzer.h"
 #include "Platform.h"
-#include "UsbPcapLocator.h"
 
 #include <QDateTime>
 #include <QMessageBox>
@@ -18,16 +17,6 @@ void MainWindow::configureBadUsbMonitoring()
         if (m_badUsbBaselineStore) {
             m_badUsbWidget->setBaselineCount(m_badUsbBaselineStore->allDevices().size());
         }
-#ifdef Q_OS_WIN
-        if (badUsbActive && !UsbPcapLocator::findUsbPcapCmdExecutable().isEmpty()) {
-            m_badUsbWidget->setCaptureStatus(
-                QStringLiteral("USBPcap available for optional packet capture"));
-        } else if (badUsbActive) {
-            m_badUsbWidget->setCaptureStatus(
-                QStringLiteral("USBPcap not installed — HID monitoring works; packet capture is "
-                               "unavailable. Install from https://desowin.org/usbpcap/"));
-        }
-#endif
     }
     if (!m_hidMonitor) {
         return;
@@ -46,6 +35,8 @@ void MainWindow::configureBadUsbMonitoring()
         m_hidMonitor->stopMonitoring();
     }
 #endif
+
+    refreshUsbPcapIntegration();
 }
 
 void MainWindow::onHidConnected(const HidDeviceInfo& device)

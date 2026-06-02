@@ -68,4 +68,15 @@ inline int showStyledCritical(QWidget* parent, const QString& title, const QStri
     return box.exec();
 }
 
+inline void showStyledInformation(QWidget* parent, const QString& title, const QString& text)
+{
+    QMessageBox box(parent);
+    box.setWindowTitle(title);
+    box.setText(text);
+    box.setIcon(QMessageBox::Information);
+    box.setStandardButtons(QMessageBox::Ok);
+    applyDialogStyle(box);
+    box.exec();
+}
+
 } // namespace FlashSpartan

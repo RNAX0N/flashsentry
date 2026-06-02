@@ -176,7 +176,6 @@ QList<UsbHostDeviceInfo> enumeratePresentUsbDevices()
     return devices;
 }
 
-} // namespace WinUsbEnumerator
-} // namespace FlashSpartan
+} // namespace FlashSpartan::WinUsbEnumerator
 
 #endif

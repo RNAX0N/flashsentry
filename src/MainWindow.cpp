@@ -1941,7 +1941,7 @@ void MainWindow::onMountRequested(const QString& deviceNode)
         onOpenMountPointRequested(deviceInfo->mountPoint);
         return;
     }
-    StyledMessageBox::information(
+    showStyledInformation(
         this, QStringLiteral("No drive letter"),
         QStringLiteral(
             "Windows has not assigned a letter to this volume yet. Use Disk Management to assign "

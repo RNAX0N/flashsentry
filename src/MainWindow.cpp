@@ -443,7 +443,6 @@ void MainWindow::setupUi()
         QDesktopServices::openUrl(
             QUrl(QStringLiteral("https://github.com/RNAX0N/flashsentry/blob/main/docs/USER_GUIDE.md")));
     });
-    m_pageStack->addWidget(m_aboutPage);
 
     m_isoWidget = new IsoVerifierWidget;
     connect(m_isoWidget, &IsoVerifierWidget::logMessageRequested,
@@ -541,6 +540,7 @@ void MainWindow::setupUi()
         updateSidebarStats();
     });
     m_pageStack->addWidget(m_settingsPage);
+    m_pageStack->addWidget(m_aboutPage);
 
     shell->addWidget(m_pageStack, 1);
     m_mainLayout->addLayout(shell, 1);
@@ -2370,7 +2370,7 @@ void MainWindow::onNavPageSelected(AppPage page)
     if (!m_pageStack) {
         return;
     }
-    const int index = static_cast<int>(page);
+    const int index = appPageStackIndex(page);
     if (index >= 0 && index < m_pageStack->count()) {
         m_pageStack->setCurrentIndex(index);
     }

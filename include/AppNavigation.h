@@ -17,6 +17,12 @@ enum class AppPage {
     About,
 };
 
+/** Index in MainWindow::m_pageStack; addWidget order must match AppPage numeric order. */
+inline int appPageStackIndex(AppPage page)
+{
+    return static_cast<int>(page);
+}
+
 inline QString appPageLabel(AppPage page)
 {
     switch (page) {

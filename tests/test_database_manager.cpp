@@ -26,6 +26,8 @@ class TestDatabaseManager : public QObject {
 private slots:
     void partitionAwareLookupAndMigration();
     void verifyHashUsesLegacyId();
+    void getDeviceReturnsLegacyRecord();
+    void updateLastSeenOnLegacyId();
     void importMergeAndReplace();
 };
 
@@ -85,6 +87,65 @@ void TestDatabaseManager::verifyHashUsesLegacyId()
 
     QVERIFY(db.verifyHash(info, "0123abcd"));
     QVERIFY(!db.verifyHash(info, "ffff"));
+}
+
+void TestDatabaseManager::getDeviceReturnsLegacyRecord()
+{
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+    installIsolatedPolicy(tempDir.path());
+
+    DatabaseManager db;
+    QVERIFY(db.initialize());
+
+    DeviceInfo info;
+    info.serial = "SER003";
+    info.vendor = "Vendor";
+    info.model = "Model";
+    info.deviceNode = "/dev/sde2";
+
+    DeviceRecord legacy;
+    legacy.uniqueId = info.legacyUniqueId();
+    legacy.hash = "deadbeef";
+    legacy.hashAlgorithm = "SHA256";
+    legacy.firstSeen = QDateTime::currentDateTimeUtc();
+    legacy.lastSeen = legacy.firstSeen;
+    QVERIFY(db.addDevice(legacy));
+
+    const auto record = db.getDevice(info);
+    QVERIFY(record.has_value());
+    QCOMPARE(record->uniqueId, legacy.uniqueId);
+    QCOMPARE(record->hash, legacy.hash);
+}
+
+void TestDatabaseManager::updateLastSeenOnLegacyId()
+{
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+    installIsolatedPolicy(tempDir.path());
+
+    DatabaseManager db;
+    QVERIFY(db.initialize());
+
+    DeviceInfo info;
+    info.serial = "SER004";
+    info.vendor = "Vendor";
+    info.model = "Model";
+    info.deviceNode = "/dev/sdf3";
+
+    DeviceRecord legacy;
+    legacy.uniqueId = info.legacyUniqueId();
+    legacy.hash = "abc123";
+    legacy.hashAlgorithm = "SHA256";
+    legacy.firstSeen = QDateTime::currentDateTimeUtc().addDays(-1);
+    legacy.lastSeen = legacy.firstSeen;
+    QVERIFY(db.addDevice(legacy));
+
+    const QDateTime before = QDateTime::currentDateTimeUtc();
+    QVERIFY(db.updateLastSeen(db.canonicalUniqueId(info)));
+    const auto record = db.getDevice(info);
+    QVERIFY(record.has_value());
+    QVERIFY(record->lastSeen >= before);
 }
 
 void TestDatabaseManager::importMergeAndReplace()

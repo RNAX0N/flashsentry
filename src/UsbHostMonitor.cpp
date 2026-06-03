@@ -4,6 +4,7 @@
 
 #include "WinUsbEnumerator.h"
 
+#include <QDebug>
 #include <QMutexLocker>
 
 namespace FlashSpartan {
@@ -34,8 +35,7 @@ void UsbHostMonitor::stopMonitoring()
     }
     m_running.store(false);
     if (!wait(5000)) {
-        terminate();
-        wait();
+        qWarning() << "UsbHostMonitor: thread did not stop within timeout";
     }
 }
 

@@ -1383,6 +1383,12 @@ void MainWindow::onDeviceConnected(const DeviceInfo& device)
         if (record) {
             handleKnownDevice(device, *record);
             m_trayIcon->notifyDeviceConnected(device, true);
+        } else {
+            logMessage(QStringLiteral("Whitelist entry could not be resolved for %1 — treating as new")
+                           .arg(device.displayName()),
+                       LogLevel::Warning, device.deviceNode);
+            handleNewDevice(device);
+            m_trayIcon->notifyDeviceConnected(device, false);
         }
     } else {
         handleNewDevice(device);
@@ -1441,10 +1447,8 @@ void MainWindow::onDeviceDisconnected(const QString& deviceNode)
             }
         }
         if (!driveStillPresent) {
-            for (const DeviceInfo& d : m_deviceMonitor->connectedDevices()) {
-                if (driveKey(d) == drive) {
-                    unblockDriveForDevice(d);
-                }
+            if (card) {
+                unblockDriveForDevice(card->device());
             }
             m_drivePromptInProgress.remove(drive);
         }
@@ -1726,7 +1730,11 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
     const HashJobContext ctx = m_hashJobContext.value(jobId);
     m_hashJobContext.remove(jobId);
     const QString deviceId = ctx.storageId.isEmpty() ? canonicalDeviceId(*deviceInfo) : ctx.storageId;
-    auto record = m_database->getDevice(deviceId);
+    auto record = m_database->getDevice(*deviceInfo);
+    if (!record) {
+        record = m_database->getDevice(deviceId);
+    }
+    const QString storageId = record ? record->uniqueId : deviceId;
     
     auto finishVerified = [&]() {
         if (pending == PendingHashAction::UnmountAfterVerify) {
@@ -1744,7 +1752,7 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
     };
     
     if (record && !record->hash.isEmpty()) {
-        if (m_database->verifyHash(canonicalDeviceId(*deviceInfo), result.hash)) {
+        if (m_database->verifyHash(*deviceInfo, result.hash)) {
             logMessage(QString("Verified: %1 - hash matches").arg(deviceInfo->displayName()));
             
             if (card) {
@@ -1797,7 +1805,7 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             }
         }
     } else {
-        m_database->updateHash(deviceId, result.hash, result.algorithm, result.durationMs,
+        m_database->updateHash(storageId, result.hash, result.algorithm, result.durationMs,
                                result.hashScopeLabel, result.scanModeLabel);
         logMessage(QString("Hash stored for %1").arg(deviceInfo->displayName()));
         {
@@ -2413,6 +2421,9 @@ void MainWindow::onNavPageSelected(AppPage page)
     }
     if (page == AppPage::BadUsbMonitor) {
         refreshUsbPcapIntegration();
+    }
+    if (page == AppPage::IsoVerifier && m_isoWidget) {
+        m_isoWidget->refreshCatalogStatus();
     }
 }
 

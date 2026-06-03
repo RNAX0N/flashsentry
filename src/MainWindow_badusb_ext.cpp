@@ -22,7 +22,7 @@ void MainWindow::configureBadUsbMonitoring()
         return;
     }
 #ifdef Q_OS_WIN
-    if (!m_usbHostMonitor->isMonitoring()) {
+    if (m_usbHostMonitor && !m_usbHostMonitor->isMonitoring()) {
         m_usbHostMonitor->startMonitoring();
     }
     if (!m_hidMonitor->isMonitoring()) {

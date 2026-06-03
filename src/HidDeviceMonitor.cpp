@@ -101,9 +101,7 @@ void HidDeviceMonitor::stopMonitoring()
         [[maybe_unused]] const auto ret = write(m_wakeupPipe[1], &c, 1);
     }
     if (!wait(5000)) {
-        qWarning() << "HidDeviceMonitor: Thread did not stop gracefully, terminating";
-        terminate();
-        wait();
+        qWarning() << "HidDeviceMonitor: thread did not stop within timeout";
     }
 }
 

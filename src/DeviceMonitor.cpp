@@ -37,8 +37,7 @@ void DeviceMonitor::stopMonitoring()
     }
     m_running.store(false);
     if (!wait(5000)) {
-        terminate();
-        wait();
+        qWarning() << "DeviceMonitor: thread did not stop within timeout";
     }
 }
 
@@ -245,11 +244,8 @@ void DeviceMonitor::stopMonitoring()
         [[maybe_unused]] auto ret = write(m_wakeupPipe[1], &c, 1);
     }
     
-    // Wait for thread to finish
     if (!wait(5000)) {
-        qWarning() << "DeviceMonitor: Thread did not stop gracefully, terminating";
-        terminate();
-        wait();
+        qWarning() << "DeviceMonitor: thread did not stop within timeout";
     }
 }
 

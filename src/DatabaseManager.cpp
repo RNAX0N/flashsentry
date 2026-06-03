@@ -17,6 +17,38 @@
 
 namespace FlashSpartan {
 
+namespace {
+
+std::optional<QString> resolveStoredId(const QHash<QString, DeviceRecord>& devices,
+                                     const QString& uniqueId)
+{
+    if (devices.contains(uniqueId)) {
+        return uniqueId;
+    }
+
+    const int sep = uniqueId.lastIndexOf(QLatin1Char('_'));
+    if (sep <= 0) {
+        return std::nullopt;
+    }
+
+    const QString tail = uniqueId.mid(sep + 1);
+    const bool linuxBlockSuffix = tail.startsWith(QLatin1String("sd"))
+                                  || tail.startsWith(QLatin1String("mmcblk"))
+                                  || tail.startsWith(QLatin1String("nvme"));
+    const bool windowsDriveSuffix = (tail.size() == 1 && tail.at(0).isLetter());
+
+    if (linuxBlockSuffix || windowsDriveSuffix) {
+        const QString legacy = uniqueId.left(sep);
+        if (devices.contains(legacy)) {
+            return legacy;
+        }
+    }
+
+    return std::nullopt;
+}
+
+} // namespace
+
 DatabaseManager::DatabaseManager(QObject* parent)
     : QObject(parent)
 {
@@ -31,7 +63,12 @@ DatabaseManager::~DatabaseManager()
 
 bool DatabaseManager::initialize(const QString& path)
 {
-    Q_UNUSED(path);
+    if (!path.isEmpty()) {
+        const QFileInfo info(path);
+        const QString configDir = info.isDir() ? info.absoluteFilePath() : info.absolutePath();
+        qputenv("FLASHSPARTAN_POLICY_CONFIG", QDir::toNativeSeparators(configDir).toUtf8());
+    }
+
     if (!Policy::PolicyServiceLocator::hasGateway()) {
         Policy::PolicyServiceLocator::install(Policy::PolicyGateway::createDefault());
     }
@@ -114,33 +151,17 @@ QString DatabaseManager::databasePath() const
 bool DatabaseManager::hasDevice(const QString& uniqueId) const
 {
     QReadLocker locker(&m_lock);
-    if (m_devices.contains(uniqueId)) {
-        return true;
-    }
-
-    // Partition-aware id (SERIAL_Vendor_Model_sdb1) may match a legacy record
-    // stored without the partition suffix (SERIAL_Vendor_Model).
-    const int sep = uniqueId.lastIndexOf(QLatin1Char('_'));
-    if (sep > 0) {
-        const QString tail = uniqueId.mid(sep + 1);
-        if (tail.startsWith(QLatin1String("sd"))
-            || tail.startsWith(QLatin1String("mmcblk"))
-            || tail.startsWith(QLatin1String("nvme"))) {
-            return m_devices.contains(uniqueId.left(sep));
-        }
-    }
-
-    return false;
+    return resolveStoredId(m_devices, uniqueId).has_value();
 }
 
 std::optional<DeviceRecord> DatabaseManager::getDevice(const QString& uniqueId) const
 {
     QReadLocker locker(&m_lock);
-    auto it = m_devices.find(uniqueId);
-    if (it != m_devices.end()) {
-        return *it;
+    const std::optional<QString> storedId = resolveStoredId(m_devices, uniqueId);
+    if (!storedId) {
+        return std::nullopt;
     }
-    return std::nullopt;
+    return m_devices.value(*storedId);
 }
 
 QList<DeviceRecord> DatabaseManager::getAllDevices() const
@@ -259,10 +280,9 @@ int DatabaseManager::removeDevices(const QStringList& uniqueIds)
 
     Policy::PolicyGateway* gate = Policy::PolicyServiceLocator::gateway();
     for (const auto& id : actuallyRemoved) {
-        if (gate) {
-            gate->removeDevice(id, policyActor(), QStringLiteral("bulk_remove"));
+        if (gate && gate->removeDevice(id, policyActor(), QStringLiteral("bulk_remove"))) {
+            ++removed;
         }
-        ++removed;
     }
 
     if (removed > 0) {
@@ -303,78 +323,98 @@ bool DatabaseManager::updateHash(const QString& uniqueId, const QString& hash,
                                   const QString& hashScope,
                                   const QString& hashScanMode)
 {
+    DeviceRecord rec;
+    QString storedId;
     {
         QWriteLocker locker(&m_lock);
-        
-        auto it = m_devices.find(uniqueId);
-        if (it == m_devices.end()) {
+
+        const std::optional<QString> resolved = resolveStoredId(m_devices, uniqueId);
+        if (!resolved) {
             return false;
         }
-        
-        it->hash = hash;
-        it->hashAlgorithm = algorithm;
-        it->hashDurationMs = durationMs;
+        storedId = *resolved;
+
+        DeviceRecord& record = m_devices[storedId];
+        record.hash = hash;
+        record.hashAlgorithm = algorithm;
+        record.hashDurationMs = durationMs;
         if (!hashScope.isEmpty()) {
-            it->hashScope = hashScope;
+            record.hashScope = hashScope;
         }
         if (!hashScanMode.isEmpty()) {
-            it->hashScanMode = hashScanMode;
+            record.hashScanMode = hashScanMode;
         }
-        it->lastHashed = QDateTime::currentDateTime();
+        record.lastHashed = QDateTime::currentDateTime();
+        rec = record;
     }
-    persistRecordById(uniqueId, QStringLiteral("update_hash"));
+    if (!persistDevice(rec, QStringLiteral("update_hash"))) {
+        return false;
+    }
     {
         QWriteLocker locker(&m_lock);
         syncFromPolicyGateway();
         m_modified = false;
     }
-    emit deviceUpdated(uniqueId);
+    emit deviceUpdated(storedId);
     return true;
 }
 
 std::optional<QString> DatabaseManager::getHash(const QString& uniqueId) const
 {
     QReadLocker locker(&m_lock);
-    
-    auto it = m_devices.find(uniqueId);
-    if (it != m_devices.end() && !it->hash.isEmpty()) {
-        return it->hash;
+
+    const std::optional<QString> storedId = resolveStoredId(m_devices, uniqueId);
+    if (!storedId) {
+        return std::nullopt;
     }
-    
+
+    const DeviceRecord& rec = m_devices.value(*storedId);
+    if (!rec.hash.isEmpty()) {
+        return rec.hash;
+    }
+
     return std::nullopt;
 }
 
 bool DatabaseManager::verifyHash(const QString& uniqueId, const QString& hash) const
 {
     QReadLocker locker(&m_lock);
-    
-    auto it = m_devices.find(uniqueId);
-    if (it == m_devices.end()) {
+
+    const std::optional<QString> storedId = resolveStoredId(m_devices, uniqueId);
+    if (!storedId) {
         return false;
     }
-    
-    bool matches = (it->hash.compare(hash, Qt::CaseInsensitive) == 0);
-    
-    if (!matches && !it->hash.isEmpty()) {
-        // Use const_cast to emit from const method, or use mutable
-        const_cast<DatabaseManager*>(this)->emit hashMismatch(
-            uniqueId, it->hash, hash);
+
+    const DeviceRecord& rec = m_devices.value(*storedId);
+    const bool matches = (rec.hash.compare(hash, Qt::CaseInsensitive) == 0);
+
+    if (!matches && !rec.hash.isEmpty()) {
+        const_cast<DatabaseManager*>(this)->emit hashMismatch(*storedId, rec.hash, hash);
     }
-    
+
     return matches;
 }
 
 bool DatabaseManager::verifyHash(const DeviceInfo& device, const QString& hash) const
 {
     QReadLocker locker(&m_lock);
-    auto it = m_devices.find(device.uniqueId());
-    if (it == m_devices.end()) {
-        it = m_devices.find(canonicalUniqueId(device));
+
+    std::optional<QString> storedId = resolveStoredId(m_devices, device.uniqueId());
+    if (!storedId) {
+        storedId = resolveStoredId(m_devices, device.partitionUniqueId());
     }
-    if (it == m_devices.end()) {
+    if (!storedId) {
         return false;
     }
-    return verifyHash(it->uniqueId, hash);
+
+    const DeviceRecord& rec = m_devices.value(*storedId);
+    const bool matches = (rec.hash.compare(hash, Qt::CaseInsensitive) == 0);
+
+    if (!matches && !rec.hash.isEmpty()) {
+        const_cast<DatabaseManager*>(this)->emit hashMismatch(*storedId, rec.hash, hash);
+    }
+
+    return matches;
 }
 
 bool DatabaseManager::setTrustLevel(const QString& uniqueId, int level)
@@ -423,18 +463,25 @@ bool DatabaseManager::setAutoMount(const QString& uniqueId, bool autoMount)
 
 bool DatabaseManager::updateLastSeen(const QString& uniqueId)
 {
-    QWriteLocker locker(&m_lock);
-    
-    auto it = m_devices.find(uniqueId);
-    if (it == m_devices.end()) {
+    DeviceRecord rec;
+    {
+        QWriteLocker locker(&m_lock);
+        const std::optional<QString> storedId = resolveStoredId(m_devices, uniqueId);
+        if (!storedId) {
+            return false;
+        }
+        m_devices[*storedId].lastSeen = QDateTime::currentDateTime();
+        rec = m_devices.value(*storedId);
+    }
+
+    if (!persistDevice(rec, QStringLiteral("last_seen"))) {
         return false;
     }
-    
-    it->lastSeen = QDateTime::currentDateTime();
-    const bool ok = persistRecordById(uniqueId, QStringLiteral("last_seen"));
+
+    QWriteLocker locker(&m_lock);
     syncFromPolicyGateway();
     m_modified = false;
-    return ok;
+    return true;
 }
 
 bool DatabaseManager::save()
@@ -804,6 +851,9 @@ QString DatabaseManager::canonicalUniqueId(const DeviceInfo& device) const
 
 std::optional<DeviceRecord> DatabaseManager::getDevice(const DeviceInfo& device) const
 {
+    if (auto rec = getDevice(device.uniqueId())) {
+        return rec;
+    }
     return getDevice(canonicalUniqueId(device));
 }
 
@@ -811,30 +861,58 @@ std::optional<DeviceRecord> DatabaseManager::getDevice(const DeviceInfo& device)
 
 bool DatabaseManager::updateWatchManifest(const QString& uniqueId, const WatchManifest& manifest)
 {
-    QWriteLocker locker(&m_lock);
-    auto it = m_devices.find(uniqueId);
-    if (it == m_devices.end()) return false;
-    it->watchManifest = manifest;
-    it->lastManifestRoot = manifest.manifestRoot;
-    persistRecordById(uniqueId, QStringLiteral("watch_manifest"));
-    syncFromPolicyGateway();
-    m_modified = false;
-    emit deviceUpdated(uniqueId);
+    DeviceRecord rec;
+    QString storedId;
+    {
+        QWriteLocker locker(&m_lock);
+        const std::optional<QString> resolved = resolveStoredId(m_devices, uniqueId);
+        if (!resolved) {
+            return false;
+        }
+        storedId = *resolved;
+        m_devices[storedId].watchManifest = manifest;
+        m_devices[storedId].lastManifestRoot = manifest.manifestRoot;
+        rec = m_devices.value(storedId);
+    }
+
+    if (!persistDevice(rec, QStringLiteral("watch_manifest"))) {
+        return false;
+    }
+
+    {
+        QWriteLocker locker(&m_lock);
+        syncFromPolicyGateway();
+        m_modified = false;
+    }
+    emit deviceUpdated(storedId);
     return true;
 }
 
 bool DatabaseManager::setVerificationProfile(const QString& uniqueId, VerificationProfile profile)
 {
-    QWriteLocker locker(&m_lock);
-    auto it = m_devices.find(uniqueId);
-    if (it == m_devices.end()) {
+    DeviceRecord rec;
+    QString storedId;
+    {
+        QWriteLocker locker(&m_lock);
+        const std::optional<QString> resolved = resolveStoredId(m_devices, uniqueId);
+        if (!resolved) {
+            return false;
+        }
+        storedId = *resolved;
+        m_devices[storedId].verificationProfile = profile;
+        rec = m_devices.value(storedId);
+    }
+
+    if (!persistDevice(rec, QStringLiteral("verification_profile"))) {
         return false;
     }
-    it->verificationProfile = profile;
-    persistRecordById(uniqueId, QStringLiteral("verification_profile"));
-    syncFromPolicyGateway();
-    m_modified = false;
-    emit deviceUpdated(uniqueId);
+
+    {
+        QWriteLocker locker(&m_lock);
+        syncFromPolicyGateway();
+        m_modified = false;
+    }
+    emit deviceUpdated(storedId);
     return true;
 }
 

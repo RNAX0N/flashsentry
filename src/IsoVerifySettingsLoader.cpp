@@ -20,7 +20,7 @@ IsoVerifyOptions IsoVerifySettingsLoader::load(const QString& configFilePath)
         return opt;
     }
 
-    QSettings settings;
+    QSettings settings(QStringLiteral("flashspartan"), QStringLiteral("FlashSpartan"));
     opt.maxParallel = qMax(1, settings.value(QStringLiteral("iso/verifyParallel"), 2).toInt());
     opt.verifyDecompressed = settings.value(QStringLiteral("iso/verifyDecompressed"), false).toBool();
     opt.preferOfflineSidecars =

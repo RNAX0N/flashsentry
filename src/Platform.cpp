@@ -9,7 +9,7 @@ PlatformCapabilities Platform::capabilities()
     PlatformCapabilities caps;
 #if defined(Q_OS_WIN)
     caps.platformName = QStringLiteral("Windows");
-    caps.programmaticMount = true;
+    caps.programmaticMount = false;
     caps.rawPartitionHash = true;
     caps.privilegedReadHelper = true;
     caps.udevMonitoring = false;

@@ -148,8 +148,8 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
 
 AppSettings SettingsDialog::getSettings() const
 {
-    AppSettings settings;
-    
+    AppSettings settings = m_originalSettings;
+
     // General
     settings.startMinimized = m_startMinimizedCheck->isChecked();
     settings.minimizeToTray = m_minimizeToTrayCheck->isChecked();

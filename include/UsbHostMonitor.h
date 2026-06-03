@@ -53,6 +53,7 @@ private:
     std::atomic<bool> m_rescanRequested{false};
 
     static constexpr int POLL_TIMEOUT_MS = 500;
+    static constexpr int IDLE_SCAN_INTERVAL_MS = 5000;
 };
 
 } // namespace FlashSpartan

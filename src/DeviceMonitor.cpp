@@ -37,8 +37,7 @@ void DeviceMonitor::stopMonitoring()
     }
     m_running.store(false);
     if (!wait(5000)) {
-        terminate();
-        wait();
+        qWarning() << "DeviceMonitor: thread did not stop within timeout";
     }
 }
 
@@ -70,12 +69,20 @@ void DeviceMonitor::run()
         QMutexLocker locker(&m_devicesMutex);
         emit initialScanComplete(m_devices.size());
     }
+    int idleTicks = 0;
     while (m_running.load()) {
-        if (m_rescanRequested.exchange(false)) {
+        const bool rescanNow = m_rescanRequested.exchange(false);
+        if (rescanNow) {
             scanExistingDevices();
+            idleTicks = 0;
+        } else {
+            ++idleTicks;
+            if (idleTicks * POLL_TIMEOUT_MS >= 5000) {
+                scanExistingDevices();
+                idleTicks = 0;
+            }
         }
         msleep(POLL_TIMEOUT_MS);
-        scanExistingDevices();
     }
 }
 
@@ -92,7 +99,7 @@ void DeviceMonitor::scanExistingDevices()
 {
     QHash<QString, DeviceInfo> detected;
     for (const QStorageInfo& storage : QStorageInfo::mountedVolumes()) {
-        if (!storage.isValid() || !storage.isReady()
+        if (!storage.isValid()
             || !WinStorage::isUsbFlashVolumeRoot(storage.rootPath())) {
             continue;
         }
@@ -103,11 +110,20 @@ void DeviceMonitor::scanExistingDevices()
         info.label = storage.displayName();
         info.model = storage.name();
         info.vendor = QStringLiteral("USB storage volume");
-        info.fsType = QString::fromUtf8(storage.fileSystemType());
+        if (storage.isReady()) {
+            info.fsType = QString::fromUtf8(storage.fileSystemType());
+            info.sizeBytes = static_cast<uint64_t>(storage.bytesTotal());
+            info.isMounted = true;
+        } else {
+            info.fsType = QStringLiteral("Mounting");
+            info.sizeBytes = 0;
+            info.isMounted = false;
+            if (info.label.isEmpty()) {
+                info.label = QStringLiteral("USB drive (preparing)");
+            }
+        }
         info.mountPoint = storage.rootPath();
-        info.sizeBytes = static_cast<uint64_t>(storage.bytesTotal());
         info.isRemovable = true;
-        info.isMounted = true;
         detected.insert(info.deviceNode, info);
     }
 
@@ -228,11 +244,8 @@ void DeviceMonitor::stopMonitoring()
         [[maybe_unused]] auto ret = write(m_wakeupPipe[1], &c, 1);
     }
     
-    // Wait for thread to finish
     if (!wait(5000)) {
-        qWarning() << "DeviceMonitor: Thread did not stop gracefully, terminating";
-        terminate();
-        wait();
+        qWarning() << "DeviceMonitor: thread did not stop within timeout";
     }
 }
 

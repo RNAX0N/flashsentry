@@ -22,7 +22,7 @@ void MainWindow::configureBadUsbMonitoring()
         return;
     }
 #ifdef Q_OS_WIN
-    if (!m_usbHostMonitor->isMonitoring()) {
+    if (m_usbHostMonitor && !m_usbHostMonitor->isMonitoring()) {
         m_usbHostMonitor->startMonitoring();
     }
     if (!m_hidMonitor->isMonitoring()) {
@@ -44,7 +44,7 @@ void MainWindow::onHidConnected(const HidDeviceInfo& device)
 #ifdef Q_OS_WIN
     const QString key = QStringLiteral("hid:") + device.stableId();
     m_deviceConnectedAt.insert(key, QDateTime::currentDateTime());
-    refreshUsbMonitorHome();
+    scheduleUsbMonitorRefresh();
 #endif
     processBadUsbDevice(device);
 }
@@ -59,7 +59,7 @@ void MainWindow::onHidDisconnected(const QString& stableId)
 #ifdef Q_OS_WIN
     const QString key = QStringLiteral("hid:") + stableId;
     m_deviceDisconnectedAt.insert(key, QDateTime::currentDateTime());
-    refreshUsbMonitorHome();
+    scheduleUsbMonitorRefresh();
 #endif
     if (m_badUsbWidget) {
         m_badUsbWidget->removeDevice(stableId);

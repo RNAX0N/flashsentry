@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "AppPaths.h"
+#include "AppDiagnostics.h"
 #include "Platform.h"
 #include "WinStorage.h"
 #include "UiIcons.h"
@@ -203,6 +204,32 @@ MainWindow::MainWindow(QWidget* parent)
     m_statusUpdateTimer->setInterval(STATUS_UPDATE_INTERVAL_MS);
     connect(m_statusUpdateTimer, &QTimer::timeout, this, &MainWindow::updateStatusBar);
     m_statusUpdateTimer->start();
+
+    m_usbMonitorRefreshTimer = new QTimer(this);
+    m_usbMonitorRefreshTimer->setSingleShot(true);
+    m_usbMonitorRefreshTimer->setInterval(400);
+    connect(m_usbMonitorRefreshTimer, &QTimer::timeout, this, &MainWindow::refreshUsbMonitorHome);
+
+#ifdef Q_OS_WIN
+    m_winDeviceRescanTimer = new QTimer(this);
+    m_winDeviceRescanTimer->setSingleShot(true);
+    m_winDeviceRescanTimer->setInterval(400);
+    connect(m_winDeviceRescanTimer, &QTimer::timeout, this, [this]() {
+        if (m_deviceMonitor) {
+            m_deviceMonitor->rescan();
+        }
+        if (m_mountManager) {
+            m_mountManager->refreshMountStatus();
+        }
+        if (m_usbHostMonitor) {
+            m_usbHostMonitor->rescan();
+        }
+        if (m_hidMonitor) {
+            m_hidMonitor->rescan();
+        }
+        scheduleUsbMonitorRefresh();
+    });
+#endif
     
     // Start device monitoring
     m_deviceMonitor->startMonitoring();
@@ -417,7 +444,6 @@ void MainWindow::setupUi()
         QDesktopServices::openUrl(
             QUrl(QStringLiteral("https://github.com/RNAX0N/flashsentry/blob/main/docs/USER_GUIDE.md")));
     });
-    m_pageStack->addWidget(m_aboutPage);
 
     m_isoWidget = new IsoVerifierWidget;
     connect(m_isoWidget, &IsoVerifierWidget::logMessageRequested,
@@ -515,6 +541,7 @@ void MainWindow::setupUi()
         updateSidebarStats();
     });
     m_pageStack->addWidget(m_settingsPage);
+    m_pageStack->addWidget(m_aboutPage);
 
     shell->addWidget(m_pageStack, 1);
     m_mainLayout->addLayout(shell, 1);
@@ -902,7 +929,7 @@ void MainWindow::connectSignals()
         connect(m_usbHostMonitor.get(), &UsbHostMonitor::usbHostConnected, this,
                 [this](const UsbHostDeviceInfo& device) {
                     m_deviceConnectedAt.insert(device.instanceId, QDateTime::currentDateTime());
-                    refreshUsbMonitorHome();
+                    scheduleUsbMonitorRefresh();
                     logMessage(QStringLiteral("USB attached: %1 (%2)")
                                    .arg(device.displayName, device.category),
                                LogLevel::Info);
@@ -910,15 +937,19 @@ void MainWindow::connectSignals()
         connect(m_usbHostMonitor.get(), &UsbHostMonitor::usbHostDisconnected, this,
                 [this](const QString& instanceId) {
                     m_deviceDisconnectedAt.insert(instanceId, QDateTime::currentDateTime());
-                    refreshUsbMonitorHome();
+                    scheduleUsbMonitorRefresh();
                 });
         connect(m_usbHostMonitor.get(), &UsbHostMonitor::usbHostChanged, this,
-                [this](const UsbHostDeviceInfo&) { refreshUsbMonitorHome(); });
+                [this](const UsbHostDeviceInfo&) { scheduleUsbMonitorRefresh(); });
         connect(m_usbHostMonitor.get(), &UsbHostMonitor::initialScanComplete, this,
                 [this](int count) {
                     logMessage(QStringLiteral("USB host scan complete: %1 device(s)").arg(count),
                                LogLevel::Info);
-                    refreshUsbMonitorHome();
+                    if (m_settings.diagnosticLogHostUsbInventory) {
+                        AppDiagnostics::appendHostUsbInventorySnapshot(
+                            m_usbHostMonitor->connectedDevices(), QStringLiteral("initial_scan"));
+                    }
+                    scheduleUsbMonitorRefresh();
                 });
     }
 #endif
@@ -1081,6 +1112,12 @@ void MainWindow::loadSettings()
             .toInt();
     m_settings.allowedCountMode = allowedCountModeFromString(
         m_qsettings->value("security/allowedCountMode", QStringLiteral("trust_or_hash")).toString());
+    m_settings.diagnosticLogHostUsbInventory =
+        m_qsettings->value("diagnostics/logHostUsbInventory", true).toBool();
+    m_settings.showExternalUsbPeripherals =
+        m_qsettings->value("diagnostics/showExternalUsbPeripherals", true).toBool();
+    m_settings.crashReportsEnabled =
+        m_qsettings->value("diagnostics/crashReportsEnabled", false).toBool();
     m_settings.defaultTrustLevel =
         m_qsettings->value("security/defaultTrustLevel", m_settings.defaultTrustLevel).toInt();
     m_maxUiEvents = qMax(20, m_settings.recentEventsLimit);
@@ -1187,6 +1224,9 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("ui/recentEventsLimit", m_settings.recentEventsLimit);
     m_qsettings->setValue("ui/deviceHistoryRetentionDays", m_settings.deviceHistoryRetentionDays);
     m_qsettings->setValue("ui/deviceHistoryMaxEntries", m_settings.deviceHistoryMaxEntries);
+    m_qsettings->setValue("diagnostics/logHostUsbInventory", m_settings.diagnosticLogHostUsbInventory);
+    m_qsettings->setValue("diagnostics/showExternalUsbPeripherals", m_settings.showExternalUsbPeripherals);
+    m_qsettings->setValue("diagnostics/crashReportsEnabled", m_settings.crashReportsEnabled);
     m_qsettings->setValue("appearance/theme", FSStyle.themeName(FSStyle.currentTheme()));
     m_qsettings->setValue("window/geometry", saveGeometry());
     
@@ -1296,6 +1336,13 @@ void MainWindow::hideEvent(QHideEvent* event)
 }
 
 #ifdef Q_OS_WIN
+void MainWindow::scheduleWinDeviceRescan()
+{
+    if (m_winDeviceRescanTimer) {
+        m_winDeviceRescanTimer->start();
+    }
+}
+
 bool MainWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
 {
     if (eventType == "windows_generic_MSG" || eventType == "windows_dispatcher_MSG") {
@@ -1305,18 +1352,7 @@ bool MainWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr
             case DBT_DEVICEARRIVAL:
             case DBT_DEVICEREMOVECOMPLETE:
             case DBT_DEVNODES_CHANGED:
-                if (m_deviceMonitor) {
-                    m_deviceMonitor->rescan();
-                }
-                if (m_mountManager) {
-                    m_mountManager->refreshMountStatus();
-                }
-                if (m_usbHostMonitor) {
-                    m_usbHostMonitor->rescan();
-                }
-                if (m_hidMonitor) {
-                    m_hidMonitor->rescan();
-                }
+                scheduleWinDeviceRescan();
                 break;
             default:
                 break;
@@ -1347,6 +1383,12 @@ void MainWindow::onDeviceConnected(const DeviceInfo& device)
         if (record) {
             handleKnownDevice(device, *record);
             m_trayIcon->notifyDeviceConnected(device, true);
+        } else {
+            logMessage(QStringLiteral("Whitelist entry could not be resolved for %1 — treating as new")
+                           .arg(device.displayName()),
+                       LogLevel::Warning, device.deviceNode);
+            handleNewDevice(device);
+            m_trayIcon->notifyDeviceConnected(device, false);
         }
     } else {
         handleNewDevice(device);
@@ -1356,7 +1398,16 @@ void MainWindow::onDeviceConnected(const DeviceInfo& device)
     updateSidebarStats();
     updateEmptyState();
     m_trayIcon->updateDeviceList(m_deviceMonitor->connectedDevices());
+#ifdef Q_OS_WIN
+    QTimer::singleShot(600, this, [this, deviceNode = device.deviceNode]() {
+        if (auto info = m_deviceMonitor->getDevice(deviceNode)) {
+            maybeTriggerIsoVerifyForMountedDevice(*info);
+        }
+    });
+#else
     maybeTriggerIsoVerifyForMountedDevice(device);
+#endif
+    scheduleUsbMonitorRefresh();
     refreshAllowBlockListPage();
 }
 
@@ -1396,10 +1447,8 @@ void MainWindow::onDeviceDisconnected(const QString& deviceNode)
             }
         }
         if (!driveStillPresent) {
-            for (const DeviceInfo& d : m_deviceMonitor->connectedDevices()) {
-                if (driveKey(d) == drive) {
-                    unblockDriveForDevice(d);
-                }
+            if (card) {
+                unblockDriveForDevice(card->device());
             }
             m_drivePromptInProgress.remove(drive);
         }
@@ -1410,13 +1459,23 @@ void MainWindow::onDeviceDisconnected(const QString& deviceNode)
     
     m_trayIcon->notifyDeviceDisconnected(deviceName);
     m_trayIcon->updateDeviceList(m_deviceMonitor->connectedDevices());
+    scheduleUsbMonitorRefresh();
     refreshAllowBlockListPage();
 }
 
 void MainWindow::onDeviceChanged(const DeviceInfo& device)
 {
     updateDeviceCard(device);
+#ifdef Q_OS_WIN
+    QTimer::singleShot(600, this, [this, deviceNode = device.deviceNode]() {
+        if (auto info = m_deviceMonitor->getDevice(deviceNode)) {
+            maybeTriggerIsoVerifyForMountedDevice(*info);
+        }
+    });
+#else
     maybeTriggerIsoVerifyForMountedDevice(device);
+#endif
+    scheduleUsbMonitorRefresh();
 }
 
 void MainWindow::onInitialScanComplete(int deviceCount)
@@ -1424,8 +1483,17 @@ void MainWindow::onInitialScanComplete(int deviceCount)
     logMessage(QString("Initial scan complete: %1 device(s) found").arg(deviceCount), LogLevel::Info);
     updateSidebarStats();
     updateEmptyState();
+    scheduleUsbMonitorRefresh();
     for (const DeviceInfo& device : m_deviceMonitor->connectedDevices()) {
+#ifdef Q_OS_WIN
+        QTimer::singleShot(600, this, [this, deviceNode = device.deviceNode]() {
+            if (auto info = m_deviceMonitor->getDevice(deviceNode)) {
+                maybeTriggerIsoVerifyForMountedDevice(*info);
+            }
+        });
+#else
         maybeTriggerIsoVerifyForMountedDevice(device);
+#endif
     }
 }
 
@@ -1662,7 +1730,11 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
     const HashJobContext ctx = m_hashJobContext.value(jobId);
     m_hashJobContext.remove(jobId);
     const QString deviceId = ctx.storageId.isEmpty() ? canonicalDeviceId(*deviceInfo) : ctx.storageId;
-    auto record = m_database->getDevice(deviceId);
+    auto record = m_database->getDevice(*deviceInfo);
+    if (!record) {
+        record = m_database->getDevice(deviceId);
+    }
+    const QString storageId = record ? record->uniqueId : deviceId;
     
     auto finishVerified = [&]() {
         if (pending == PendingHashAction::UnmountAfterVerify) {
@@ -1680,7 +1752,7 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
     };
     
     if (record && !record->hash.isEmpty()) {
-        if (m_database->verifyHash(canonicalDeviceId(*deviceInfo), result.hash)) {
+        if (m_database->verifyHash(*deviceInfo, result.hash)) {
             logMessage(QString("Verified: %1 - hash matches").arg(deviceInfo->displayName()));
             
             if (card) {
@@ -1733,7 +1805,7 @@ void MainWindow::onHashCompleted(const QString& jobId, const HashResult& result)
             }
         }
     } else {
-        m_database->updateHash(deviceId, result.hash, result.algorithm, result.durationMs,
+        m_database->updateHash(storageId, result.hash, result.algorithm, result.durationMs,
                                result.hashScopeLabel, result.scanModeLabel);
         logMessage(QString("Hash stored for %1").arg(deviceInfo->displayName()));
         {
@@ -2320,7 +2392,7 @@ void MainWindow::onNavPageSelected(AppPage page)
     if (!m_pageStack) {
         return;
     }
-    const int index = static_cast<int>(page);
+    const int index = appPageStackIndex(page);
     if (index >= 0 && index < m_pageStack->count()) {
         m_pageStack->setCurrentIndex(index);
     }
@@ -2349,6 +2421,9 @@ void MainWindow::onNavPageSelected(AppPage page)
     }
     if (page == AppPage::BadUsbMonitor) {
         refreshUsbPcapIntegration();
+    }
+    if (page == AppPage::IsoVerifier && m_isoWidget) {
+        m_isoWidget->refreshCatalogStatus();
     }
 }
 
@@ -2784,6 +2859,13 @@ void MainWindow::refreshAboutPage()
     m_aboutPage->setRuntimeInfo(QString::fromUtf8(qVersion()), QSysInfo::prettyProductName());
 }
 
+void MainWindow::scheduleUsbMonitorRefresh()
+{
+    if (m_usbMonitorRefreshTimer) {
+        m_usbMonitorRefreshTimer->start();
+    }
+}
+
 void MainWindow::refreshUsbMonitorHome()
 {
     if (!m_usbMonitorPage || !m_deviceMonitor) {
@@ -2867,8 +2949,16 @@ void MainWindow::refreshUsbMonitorHome()
         }
     }
 
+    int internalUsbTracked = 0;
     if (m_usbHostMonitor) {
         for (const UsbHostDeviceInfo& u : m_usbHostMonitor->connectedDevices()) {
+            if (u.isInternalHost()) {
+                ++internalUsbTracked;
+                continue;
+            }
+            if (!m_settings.showExternalUsbPeripherals) {
+                continue;
+            }
             const QString key = QStringLiteral("usb:") + u.instanceId;
             if (listedKeys.contains(key)) {
                 continue;
@@ -2887,6 +2977,7 @@ void MainWindow::refreshUsbMonitorHome()
             row.disconnectedAt =
                 m_deviceDisconnectedAt.value(u.instanceId).toString(QStringLiteral("yyyy-MM-dd hh:mm:ss"));
             row.isConnected = true;
+            row.nameEditable = false;
             listedKeys.insert(key);
             rows.append(row);
         }
@@ -2894,12 +2985,18 @@ void MainWindow::refreshUsbMonitorHome()
 #endif
 
     UsbMonitorStats stats;
-    stats.connected = rows.size();
+    stats.connected = m_deviceMonitor->connectedDevices().size();
     stats.allowed = allowed;
     stats.blocked = BlockedDriveStore::instance().entries().size();
     stats.events = m_uiEvents.size();
+#ifdef Q_OS_WIN
+    stats.internalUsbTracked = internalUsbTracked;
+#endif
     m_usbMonitorPage->setStats(stats);
     m_usbMonitorPage->setDevices(rows);
+#ifdef Q_OS_WIN
+    m_usbMonitorPage->setInternalUsbNote(stats.internalUsbTracked, AppDiagnostics::hostUsbInventoryPath());
+#endif
     m_usbMonitorPage->setEvents(m_uiEvents);
 }
 
@@ -2923,6 +3020,15 @@ void MainWindow::showDeviceActionsMenu(const QString& deviceNode)
 #endif
             refreshUsbMonitorHome();
         });
+#ifdef Q_OS_WIN
+        menu.addAction(QStringLiteral("Export USB inventory log…"), [this]() {
+            if (m_usbHostMonitor && m_settings.diagnosticLogHostUsbInventory) {
+                AppDiagnostics::appendHostUsbInventorySnapshot(
+                    m_usbHostMonitor->connectedDevices(), QStringLiteral("manual_export"));
+            }
+            QDesktopServices::openUrl(QUrl::fromLocalFile(AppDiagnostics::logsDir()));
+        });
+#endif
         menu.exec(QCursor::pos());
         return;
     }

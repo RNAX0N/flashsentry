@@ -113,7 +113,7 @@ void TestIsoVerifyIntegration::userTofuHashPass()
     iso.close();
 
     const QString hash =
-        QStringLiteral("8fb83f7d50c8e4e41ea2e67fcbd5a94e9284c88837b4a7dacb93d64f28af43aa");
+        QStringLiteral("78a5b9e1fcbfa9415b5d3424fec4f4915cd7a623fcf8e1eeae4fd2fb16ce06ab");
     QVERIFY(IsoCatalogManifest::trustUserHash(QStringLiteral("my-custom-build.iso"), hash));
 
     IsoCatalogManifest::reload();

@@ -92,6 +92,8 @@ public slots:
 
     void showSettingsDialog();
 
+    /** Headless/doc capture: populate demo UI state and save PNGs for each nav page. */
+    int captureDocumentationScreenshots(const QString& outputDir);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -308,6 +310,7 @@ private:
     void applySettingsPage(const AppSettings& settings);
     void applyLiveSettings(const AppSettings& settings);
     void refreshShellStyles();
+    void seedDocumentationDemoState();
     bool isRecordCountedAsAllowed(const DeviceRecord& record) const;
     bool isDriveBlocked(const DeviceInfo& device) const;
     void blockDriveForDevice(const DeviceInfo& device, const QString& label = {});

@@ -1,167 +1,156 @@
 # FlashSpartan
 
 <p align="center">
-  <img src="resources/icons/flashspartan.svg" alt="FlashSpartan Logo" width="128" height="128">
+  <img src="resources/icons/flashspartan.svg" alt="FlashSpartan" width="96" height="96">
 </p>
 
 <p align="center">
-  <strong>USB flash drive security monitor for Linux and Windows</strong>
+  <strong>USB storage security monitor for Linux and Windows</strong>
 </p>
 
 <p align="center">
+  <a href="#screenshots">Screenshots</a> •
   <a href="#features">Features</a> •
-  <a href="#application-ui">UI</a> •
   <a href="#installation">Installation</a> •
   <a href="#windows">Windows</a> •
   <a href="#usage">Usage</a> •
-  <a href="#configuration">Configuration</a> •
-  <a href="#building">Building</a>
+  <a href="#documentation">Docs</a>
 </p>
+
+FlashSpartan watches USB storage, keeps a signed trust store of known devices, verifies Linux ISOs on removable media, and alerts you when fingerprints or watched folders change. It is built with **Qt 6** and **OpenSSL**.
+
+| Platform | Status | Highlights |
+|----------|--------|------------|
+| **Linux (Arch primary)** | Full | libudev hotplug, UDisks2 + polkit mounts, optional `flashspartan-policyd`, raw-disk hashing |
+| **Windows 10/11** | Supported | Volume + USB host detection, ISO verify, BadUSB HID, optional USBPcap, UAC raw read helper |
+
+**Current version:** 1.5.4 — see [CHANGELOG.md](CHANGELOG.md)
+
+Repository: [github.com/RNAX0N/flashsentry](https://github.com/RNAX0N/flashsentry) (product name **FlashSpartan**; legacy tags used **FlashSentry**)
 
 ---
 
-FlashSpartan monitors USB storage, maintains a cryptographic whitelist of trusted devices, verifies Linux ISOs on mounted sticks, and alerts you when content changes. It is built with Qt6 and OpenSSL.
+## Screenshots
 
-- **Linux (Arch, primary):** libudev device events, UDisks2 mounts, polkit, optional `flashspartan-policyd` and raw-disk hashing.
-- **Windows 10/11:** USB storage volumes (including fixed-disk USB sticks), security keys/HID, and other USB attachments; ISO verify; watch manifests; policy store; optional USBPcap for packet capture. See [docs/WINDOWS.md](docs/WINDOWS.md).
+Captured from the shipping UI (Cyber Dark). Regenerate after UI changes:
 
-**Current version:** 1.5.2 (see [CHANGELOG.md](CHANGELOG.md))
+```bash
+cmake --build build --target flashspartan
+xvfb-run -a ./build/flashspartan --capture-screenshots=docs/images --no-tray --force
+```
+
+| USB Monitor | ISO Verifier |
+|:---:|:---:|
+| ![USB Monitor](docs/images/usb-monitor.png) | ![ISO Verifier](docs/images/iso-verifier.png) |
+
+| Settings | About |
+|:---:|:---:|
+| ![Settings](docs/images/settings.png) | ![About](docs/images/about.png) |
+
+More: [Allow/Block list](docs/images/allow-block-list.png) · [Reports](docs/images/reports.png) · [BadUSB Monitor](docs/images/badusb-monitor.png)
+
+---
 
 ## Features
 
-### Recommended for most users
+### For most users
 
-| Feature | What it does |
-|--------|----------------|
-| **Automatic ISO verification** | Finds `.iso` files on mounted USB volumes, downloads official checksums/signatures, verifies hashes and OpenPGP where configured |
-| **Watch-folder verification** | You choose paths on a drive; FlashSpartan builds a Merkle baseline and alerts when watched files change — without reading every sector |
-| **Left-nav shell** | Dedicated pages for USB monitoring, device history, allow/block lists, alerts, reports, ISO verify, BadUSB, settings, and about |
+- **Automatic ISO verification** — finds `.iso` files on mounted USB volumes, checks publisher checksums and OpenPGP where configured
+- **Watch-folder verification** — Merkle baseline on paths you choose; alerts when watched files change without hashing every sector
+- **USB Monitor** — removable storage, recent events, allow/block stats; built-in USB host nodes tracked separately on Windows (not counted as “drives”)
+- **Left navigation** — USB Monitor, device history, allow/block, alerts, reports, ISO Verifier, BadUSB, settings, about
 
-### USB monitoring
+### USB & trust
 
-- **Real-time detection** — libudev on Linux; volume + USB host enumeration on Windows
-- **Whitelist & trust levels** — remember devices; prompt on unknown or modified content
-- **Allow / block list** — block drives by key or device ID; list persists in the signed policy store
-- **Secure mounting** — UDisks2 + polkit; default options include `noexec`, `nosuid`, `nodev`
-- **System tray** — background operation with optional desktop notifications (`libnotify`)
-- **Smarter hashing** — partition vs whole-disk target, quick sample vs full read, cancel + ETA, resume checkpoints
-- **Themes** — Cyber Dark, Neon Purple, Matrix Green, Blade Runner, Ghost White
+- Real-time detection (libudev on Linux; volumes + SetupAPI on Windows)
+- Signed policy store (`policy.store`) with allow/block list and audit log
+- Trust levels, prompts for new or modified devices, optional block-on-mismatch
+- Secure mount defaults on Linux (`noexec`, `nosuid`, `nodev`) via UDisks2
+- System tray and desktop notifications (Linux: `libnotify`)
+- Partition vs whole-disk hashing, quick sample mode, cancel/ETA, resume checkpoints
+- Five themes: Cyber Dark, Neon Purple, Matrix Green, Blade Runner, Ghost White
 
 ### Security & reporting
 
-| Feature | What it does |
-|--------|----------------|
-| **Alerts page** | Security-relevant session events (warnings, mismatches, blocks) plus failed verifications from history |
-| **Reports page** | Verification history table, verification audit log (`audit.log`), policy mutation log (`policy-audit.log`) |
-| **Policy daemon** | `flashspartan-policyd` owns the signed trust/block store; the GUI talks to it over a local socket (in-process fallback if the daemon is unavailable) |
-| **BadUSB monitor** | HID baseline and anomaly detection (optional usbmon capture) |
+- **Alerts** — session security events and failed verifications
+- **Reports** — verification history, `audit.log`, `policy-audit.log`
+- **BadUSB** — HID baseline and anomaly detection; optional usbmon (Linux) or USBPcap (Windows, separate install)
 
-### Advanced (optional)
+### Advanced
 
-| Feature | What it does |
-|--------|----------------|
-| **Full partition hash** | Raw SHA-256 / SHA-512 / BLAKE2b over the block device — slow, byte-level tamper detection |
-| **Hybrid profile** | Watch folders first, then optional full partition hash |
+- Full partition hash (SHA-256 / SHA-512 / BLAKE2b) over block devices
+- Hybrid profile: watch folders first, optional full-disk hash
+- CLI: `flashspartan --verify-iso`, `--verify-mount`, `--verify-dir`, `--export-report`
 
-## Application UI
-
-The main window uses a **left navigation rail** and a **page stack**:
-
-| Page | Purpose |
-|------|---------|
-| **USB Monitor** | Connected devices, stats, recent events |
-| **Device History** | Per-device timeline (events + verification history) |
-| **Allow/Block List** | Manage trusted and blocked drives |
-| **Alerts** | Filtered security warnings and verification failures |
-| **Reports** | Verification history and audit log tails |
-| **ISO Verifier** | Manual and automatic ISO checks |
-| **BadUSB Monitor** | HID baselines and anomalies |
-| **Settings** | Full settings UI (live apply for many options) |
-| **About** | Version, policy store path, links |
-
-Legacy header tabs may still switch between USB-focused and ISO-focused layouts depending on settings; see [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
-
-## Who is this for?
-
-- Anyone who puts Linux or Windows images on USB (`dd`, Rufus, copy, multiboot sticks) and wants a clear pass/fail report
-- Users who care about specific folders on a stick without hashing every sector
-- Power users who want full-disk fingerprints, custom hash algorithms, or BadUSB HID monitoring
-
-If you only need “is every byte on this partition the same as last time?”, enable full-partition hashing in **Settings → Security**.
-
-## Screenshots
-
-| CyberDark Theme | Device Detection |
-|:---:|:---:|
-| ![Main Window](docs/images/main-window.png) |
-
-More UI reference images: [`docs/images/`](docs/images/). Capture guidance: [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
-
-After install, user docs are under `/usr/share/doc/flashspartan/` (including [docs/USER_GUIDE.md](docs/USER_GUIDE.md)).
+---
 
 ## Installation
 
-### From AUR (recommended)
+### Linux — Arch (AUR)
 
 ```bash
 yay -S flashspartan
-# or
-paru -S flashspartan
+# or: paru -S flashspartan
 ```
 
-### From source (Arch)
+### Linux — from source
 
 ```bash
 git clone https://github.com/RNAX0N/flashsentry.git
-cd flashspartan/packaging
+cd flashsentry/packaging
 ./build-package.sh -si
 ```
 
-This builds and installs `flashspartan`, `flashspartan-policyd`, and `flashspartan-read-helper` via CMake.
+Installs `flashspartan`, `flashspartan-policyd`, and `flashspartan-read-helper`.
 
-### Post-installation setup
+### Linux — post-install
 
 ```bash
-# Raw partition hashing (recommended)
-sudo usermod -aG storage $USER
+# Raw partition hashing
+sudo usermod -aG storage "$USER"
 
-# Optional: autostart minimized to tray
+# Optional autostart (user service)
 systemctl --user enable --now flashspartan.service
 
-# Recommended: disable the desktop environment's automount so FlashSpartan controls mounts
-# GNOME:
+# Recommended: disable DE automount so FlashSpartan controls mounts (example: GNOME)
 gsettings set org.gnome.desktop.media-handling automount false
-# KDE: System Settings → Removable Storage → disable automount
 ```
 
-Log out and back in after adding yourself to the `storage` group.
+Log out and back in after adding the `storage` group.
+
+---
 
 ## Windows
 
-Windows builds are supported at the **preview** level: the app runs with the same navigation shell, policy store, ISO verifier, alerts/reports, and watch-folder verification on mounted drive letters (`E:\`, etc.).
+Windows builds use the same navigation shell, policy store, ISO verifier, alerts/reports, and watch-folder checks on drive letters (`E:\`, etc.).
 
-Not yet on Windows (stubs return clear errors):
+| Capability | Windows |
+|------------|---------|
+| USB flash / ISO-stick volumes | Yes (including fixed-disk USB reported by Windows) |
+| ISO verification & catalog | Yes |
+| BadUSB HID monitoring | Yes |
+| Safe eject / open folder | Yes |
+| Full-disk raw hash (`\\.\PhysicalDriveN`) | Yes (UAC helper) |
+| Optional USBPcap capture | Yes ([download](https://desowin.org/usbpcap/) or in-app **Download USBPcap**) |
+| `flashspartan-policyd` | Built; in-process fallback available |
+| Programmatic mount (new letter) | No — Explorer assigns letters; app discovers mounts |
+| libudev / UDisks2 | N/A |
 
-- Programmatic mount/eject (Explorer handles removable volumes)
-- Full-partition raw hashing (`\\.\PhysicalDriveN`)
-- BadUSB HID monitoring and usbmon capture
-- `flashspartan-policyd` / `flashspartan-read-helper` (policy runs in-process)
+### Download
 
-### Download (installers)
+Installers are on **[GitHub Releases](https://github.com/RNAX0N/flashsentry/releases/latest)**:
 
-Official Windows builds are attached to **[GitHub Releases](https://github.com/RNAX0N/flashsentry/releases/latest)**:
+| Asset | Use |
+|-------|-----|
+| `FlashSpartan-*-x64-setup.exe` | Recommended graphical installer |
+| `FlashSpartan-*-x64.msi` | MSI / enterprise |
+| `FlashSpartan-*-x64-portable.zip` | Portable, no installer |
 
-| Asset | Purpose |
-|-------|---------|
-| `FlashSpartan-*-x64-setup.exe` | **Recommended** — graphical installer (optional USBPcap driver) |
-| `FlashSpartan-*-x64.msi` | MSI for IT / `msiexec` |
-| `FlashSpartan-*-x64-portable.zip` | Unzip and run (no installer) |
+Upgrading from FlashSentry? [docs/MIGRATION-FROM-FLASHSENTRY.md](docs/MIGRATION-FROM-FLASHSENTRY.md)
 
-New releases are published when a version tag is pushed (for example `v1.5.0`). See [packaging/windows/INSTALLER.md](packaging/windows/INSTALLER.md).
+Details: [docs/WINDOWS.md](docs/WINDOWS.md) · [packaging/windows/INSTALLER.md](packaging/windows/INSTALLER.md)
 
-**Note:** Release **v1.5.0+** uses the **FlashSpartan** name and includes Windows `.msi` / `setup.exe` assets. Older GitHub releases (through **v1.1.4**) are the last **FlashSentry**-branded tags. Upgrading? See [docs/MIGRATION-FROM-FLASHSENTRY.md](docs/MIGRATION-FROM-FLASHSENTRY.md).
-
-**Build from source:** Qt 6, MSVC, OpenSSL — [docs/WINDOWS.md](docs/WINDOWS.md).
+### Build (Windows)
 
 ```powershell
 cmake -B build -G "Visual Studio 17 2022" -A x64 `
@@ -172,176 +161,92 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-## Usage
+---
 
-### Starting FlashSpartan
+## Usage
 
 ```bash
 flashspartan                  # normal start
-flashspartan --minimized      # start in the system tray
-flashspartan --debug          # verbose Qt logging
-flashspartan --no-tray        # disable tray icon
-flashspartan --help           # all options
+flashspartan --minimized      # tray only
+flashspartan --debug          # verbose log (see docs/DIAGNOSTICS.md)
+flashspartan --settings       # open settings on launch
+flashspartan --help
 ```
 
-On Linux, the policy daemon is started automatically when needed (`flashspartan-policyd`). On Windows, policy always runs in-process.
+**Typical flow:** connect drive → trust or block → verify (hash / manifest / ISO) → mount or open → eject (optional re-hash).
 
-For tests or development without the daemon (Linux):
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+R` | Refresh devices |
+| `Ctrl+,` | Settings |
+| `Ctrl+Q` | Quit |
+| `Escape` | Minimize to tray (if enabled) |
+
+Linux policy daemon starts automatically when installed; override for development:
 
 ```bash
 export FLASHSPARTAN_POLICY_IN_PROCESS=1
 flashspartan
 ```
 
-### Typical USB workflow
-
-1. **Connect a USB device** — FlashSpartan detects it (udev on Linux, volume polling on Windows).
-2. **New device?** — You are prompted to trust it (whitelist / watch folders / hash).
-3. **Known device?** — Verification runs according to its profile (watch manifest, hash, or both).
-4. **Hash or manifest matches** — Mount proceeds (subject to your settings).
-5. **Mismatch** — Security alert; mounting can be blocked if configured.
-6. **Eject** — Optional re-hash before removal.
-
-### Keyboard shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+R` | Refresh device list |
-| `Ctrl+,` | Open settings |
-| `Ctrl+Q` | Quit |
-| `Escape` | Minimize to tray (when tray is enabled) |
+---
 
 ## Configuration
 
-### Application settings
+**Settings file:** `~/.config/FlashSpartan/FlashSpartan.conf` (Windows: `%AppData%\FlashSpartan\FlashSpartan.conf`)
 
-Primary settings file:
+| Key area | Examples |
+|----------|----------|
+| Security | Auto-hash on connect/eject, block modified, confirm new devices |
+| Hashing | SHA256 / SHA512 / BLAKE2b, buffer size, mmap, scope & scan mode |
+| ISO | Auto-verify on scan/mount, parallel jobs, offline sidecars |
+| Diagnostics | Host USB inventory log, external peripherals in USB table — see [docs/DIAGNOSTICS.md](docs/DIAGNOSTICS.md) |
 
-`~/.config/FlashSpartan/FlashSpartan.conf`
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Auto-hash on connect | off (preset-dependent) | Verify on plug-in |
-| Auto-hash on eject | varies | Re-hash before eject |
-| Block modified devices | off | Refuse mount on mismatch |
-| Hash algorithm | SHA256 | SHA256, SHA512, or BLAKE2b |
-| Buffer size | 1024 KB | Read buffer (64–16384 KB) |
-| Use memory mapping | on | mmap for faster hashing |
-| Allowed-count mode | configurable | What counts as “allowed” in stats (trust / hash / either) |
-
-System-wide defaults (optional): `/etc/flashspartan/config.json` — see packaging `config.json.default`.
-
-### Data and audit files
+### Data files
 
 | Path | Purpose |
 |------|---------|
-| `~/.config/FlashSpartan/policy.store` | Signed trust list and block list (authoritative) |
-| `~/.config/FlashSpartan/policy.key` | HMAC key for `policy.store` (mode 600) |
-| `~/.config/FlashSpartan/policy-audit.log` | Append-only policy mutations |
-| `~/.config/FlashSpartan/verify-history.json` | Verification history (hash / manifest / ISO) |
-| `~/.config/FlashSpartan/audit.log` | ISO and BadUSB audit events (JSON lines) |
-| `~/.config/FlashSpartan/hash-checkpoints.json` | Resume data for long full-disk hashes |
-| `~/.config/FlashSpartan/blocked-drives.json.migrated` | Legacy block list (after migration only) |
-| `~/.config/FlashSpartan/flashspartan/devices.json.migrated` | Legacy device JSON (after migration only) |
+| `policy.store` / `policy.key` | Signed trust & block list |
+| `policy-audit.log` | Policy mutations |
+| `verify-history.json` | Verification history |
+| `audit.log` | ISO / BadUSB audit (JSON lines) |
+| `cache/logs/flashspartan.log` | Qt application log |
+| `cache/logs/host-usb-inventory.jsonl` | Windows USB host inventory (support) |
 
-JSON export/import in **Settings** is for backup and interchange only; the policy store is the source of truth.
+---
 
-### Themes
+## Building & tests
 
-- **Cyber Dark** (default) — cyan on dark
-- **Neon Purple** — magenta / purple
-- **Matrix Green** — green terminal aesthetic
-- **Blade Runner** — warm amber
-- **Ghost White** — light theme
-
-## Building from source
-
-### Linux (Arch)
+### Linux
 
 ```bash
 sudo pacman -S qt6-base qt6-tools cmake base-devel openssl pkgconf
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Debug -DFLASHSPARTAN_BUILD_TESTS=ON ..
-cmake --build . -j"$(nproc)"
-./flashspartan
-```
-
-### Windows
-
-See [docs/WINDOWS.md](docs/WINDOWS.md). Output executable: `FlashSpartan.exe`.
-
-### Tests
-
-```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLASHSPARTAN_BUILD_TESTS=ON
+cmake --build build -j"$(nproc)"
 ctest --test-dir build --output-on-failure
+sudo cmake --install build --prefix /usr
 ```
 
-### Release install
+### Documentation screenshots
 
 ```bash
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . -j"$(nproc)"
-sudo cmake --install . --prefix /usr
+./build/flashspartan --capture-screenshots=docs/images --no-tray --force
 ```
 
-Installed binaries include `flashspartan`, `flashspartan-policyd`, and `flashspartan-read-helper` (privileged raw read helper).
+Requires a display or `xvfb-run` on headless CI.
 
-## Kernel compatibility
-
-Works with standard Arch kernels that provide udev and USB mass storage:
-
-- `linux`, `linux-lts`, `linux-zen`, `linux-hardened`
-- Custom kernels with normal block-device support
+---
 
 ## Troubleshooting
 
-### Device not detected
+| Issue | Linux | Windows |
+|-------|-------|---------|
+| Device not detected | `udevadm monitor --subsystem-match=block` | Check Explorer assigns a drive letter; see [DIAGNOSTICS.md](docs/DIAGNOSTICS.md) |
+| Hash permission denied | `groups` → add `storage`, re-login | Approve UAC for read helper |
+| Mount fails | `systemctl status udisks2`, polkit agent | Use Explorer; app uses existing mount |
+| Policy errors | `flashspartan-policyd`, `policy-audit.log` | `FLASHSPARTAN_POLICY_IN_PROCESS=1` |
 
-```bash
-udevadm monitor --property --udev --subsystem-match=block
-udevadm control --reload-rules && udevadm trigger
-```
-
-### Permission denied when hashing
-
-```bash
-groups | grep storage
-sudo usermod -aG storage "$USER"
-# log out and back in
-```
-
-### Mount operations fail
-
-```bash
-systemctl status udisks2.service
-pgrep -f polkit
-```
-
-### Policy / trust store errors
-
-```bash
-# Check daemon socket and logs
-ls -la "${XDG_RUNTIME_DIR:-/tmp}/flashspartan-policy.sock"
-tail -20 ~/.config/FlashSpartan/policy-audit.log
-```
-
-### Hash speed is slow
-
-1. Enable memory mapping in settings.
-2. Increase buffer size (e.g. 4096 KB).
-3. Prefer watch-folder verification over full-disk hash when possible.
-4. Use a USB 3 port.
-
-## Security
-
-- **No continuous root** — polkit escalates mount and helper operations.
-- **Signed policy store** — HMAC-protected `policy.store`; mutations logged.
-- **Split process** — `flashspartan-policyd` can hold policy state separately from the GUI.
-- **Secure mount defaults** — `noexec`, `nosuid`, `nodev` where supported.
-- **Tamper detection** — Cryptographic hashes and Merkle manifests on watched paths.
-- **User confirmation** — Prompts for unknown or modified devices (configurable).
-
-**Practices:** enable “block modified devices” in sensitive environments; review the allow/block list; keep verification audit logs; use SHA-512 or BLAKE2b if you need stronger hashes.
+---
 
 ## Documentation
 
@@ -349,25 +254,28 @@ tail -20 ~/.config/FlashSpartan/policy-audit.log
 |----------|-------------|
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Day-to-day workflows |
 | [docs/VERIFICATION.md](docs/VERIFICATION.md) | Verification internals |
-| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows build, limits, packaging |
+| [docs/WINDOWS.md](docs/WINDOWS.md) | Windows build & limits |
+| [docs/DIAGNOSTICS.md](docs/DIAGNOSTICS.md) | Logs, USB inventory, crash reports |
+| [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) | Capture screenshots for docs |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
-| [CLAUDE.md](CLAUDE.md) | Developer / architecture notes |
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and feature requests: [GitHub Issues](https://github.com/RNAX0N/flashsentry/issues).
-
-## License
-
-MIT License — see [LICENSE](LICENSE).
-
-## Acknowledgments
-
-- Qt Project, OpenSSL, freedesktop.org (UDisks2, polkit)
-- Arch Linux community
+| [CLAUDE.md](CLAUDE.md) | Architecture (developers) |
 
 ---
 
-<p align="center">
-  Made for the Arch Linux community
-</p>
+## Security
+
+- No continuous root — polkit (Linux) or UAC helper (Windows) for privileged operations
+- HMAC-protected policy store with append-only audit
+- Optional separate `flashspartan-policyd` process
+- Cryptographic hashes and Merkle manifests for tamper detection
+- User-configurable prompts and block rules
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Issues: [GitHub Issues](https://github.com/RNAX0N/flashsentry/issues).
+
+## License
+
+MIT — see [LICENSE](LICENSE).

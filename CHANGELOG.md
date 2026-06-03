@@ -4,6 +4,11 @@ All notable changes to FlashSpartan are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **`--capture-screenshots`** — export real UI PNGs for documentation (`docs/images/`).
+- **README** — rewritten for v1.5.4 accuracy; screenshots from the live app.
+
 ## [1.5.2] - 2026-06-02
 
 ### Added

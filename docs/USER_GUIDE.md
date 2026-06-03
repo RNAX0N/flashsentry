@@ -276,11 +276,11 @@ Publisher mirrors and keys are defined in the application; see [VERIFICATION.md]
 
 ## Screenshots
 
-| USB monitor | ISO verification |
-|-------------|------------------|
-| ![Main window](../docs/images/main-window.png) | ![ISO verify report](../docs/images/iso-verify-report.png) |
+| USB Monitor | ISO Verifier |
+|-------------|----------------|
+| ![USB Monitor](../docs/images/usb-monitor.png) | ![ISO Verifier](../docs/images/iso-verifier.png) |
 
-Watch folder setup: ![Watch lists](../docs/images/watch-lists.png)
+Settings: ![Settings](../docs/images/settings.png) — regenerate all captures with `flashspartan --capture-screenshots=docs/images` (see [SCREENSHOTS.md](SCREENSHOTS.md)).
 
 ## Command-line verification (1.2.0+)
 

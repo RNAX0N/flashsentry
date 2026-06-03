@@ -1,14 +1,50 @@
-# Capturing real screenshots for FlashSpartan
+# Capturing documentation screenshots
 
-The files under `docs/images/` are reference mockups. For documentation that matches the shipping UI:
+Screenshots in `docs/images/` are generated from the **real application UI**, not mockups.
 
-1. Build and run FlashSpartan on Arch with a test USB stick or loop device.
-2. Use **Cyber Dark** (Settings → Appearance) unless documenting another theme.
-3. Capture at **1100×700** or higher (window default size).
-4. Suggested scenes:
-   - **Main window** — one connected device card, sidebar statistics, verify history entries, activity log.
-   - **ISO verify** — USB devices | ISO verify tab with summary chips and report table.
-   - **Security alert** — hash mismatch or ISO failure dialog (use a test stick with a known-good hash, then change one byte).
-5. Avoid real serial numbers, hostnames, or personal paths in filenames committed to git.
+## Quick capture
 
-Replace or add files in `docs/images/` and point `README.md` at them.
+From a Release build:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target flashspartan
+
+# Local display
+./build/flashspartan --capture-screenshots=docs/images --no-tray --force
+
+# Headless CI / SSH
+xvfb-run -a -s "-screen 0 1280x900x24" \
+  ./build/flashspartan --capture-screenshots=docs/images --no-tray --force
+```
+
+This writes:
+
+| File | Page |
+|------|------|
+| `usb-monitor.png` | USB Monitor (demo device + events) |
+| `iso-verifier.png` | ISO Verifier |
+| `allow-block-list.png` | Allow/Block List |
+| `reports.png` | Reports |
+| `settings.png` | Settings |
+| `about.png` | About |
+| `badusb-monitor.png` | BadUSB Monitor |
+
+Legacy aliases (copies for older doc links): `main-window.png`, `iso-verify-report.png`, `watch-lists.png`.
+
+## Tips
+
+1. Use **Cyber Dark** (default) unless documenting another theme.
+2. Window size is **1280×820** during capture.
+3. Demo data uses fictional “Demo USB Drive” labels — safe to commit.
+4. Do not commit screenshots with real serial numbers, hostnames, or personal paths.
+5. After UI changes, re-run capture and commit updated PNGs with the PR.
+
+## Manual capture
+
+If you prefer a live session:
+
+1. Build and run FlashSpartan with a test USB stick or loop device.
+2. Set appearance to Cyber Dark.
+3. Capture each nav page at ≥1280 px width.
+4. Replace files in `docs/images/` and update `README.md` if you add new views.

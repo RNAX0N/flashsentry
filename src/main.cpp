@@ -137,6 +137,10 @@ int main(int argc, char* argv[])
     QCommandLineOption trustHashOption(QStringLiteral("trust-hash"), QStringLiteral("Save user-trusted SHA-256 for a filename (TOFU)"), QStringLiteral("file:hash"));
     QCommandLineOption jsonOption(QStringLiteral("json"), QStringLiteral("Machine-readable JSON on stdout (verify/export commands)"));
     QCommandLineOption quietOption(QStringLiteral("quiet"), QStringLiteral("Print summary only (no per-file report body)"));
+    QCommandLineOption captureScreenshotsOption(
+        QStringLiteral("capture-screenshots"),
+        QStringLiteral("Save documentation PNG screenshots of each nav page and exit"),
+        QStringLiteral("directory"));
     parser.addOption(verifyIsoOption);
     parser.addOption(verifyMountOption);
     parser.addOption(verifyDirOption);
@@ -147,6 +151,7 @@ int main(int argc, char* argv[])
     parser.addOption(trustHashOption);
     parser.addOption(jsonOption);
     parser.addOption(quietOption);
+    parser.addOption(captureScreenshotsOption);
 
     QApplication::setHighDpiScaleFactorRoundingPolicy(
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
@@ -195,6 +200,14 @@ int main(int argc, char* argv[])
         const QString path = parser.value(exportReportOption);
         const QString fmt = parser.value(reportFormatOption);
         return VerifyCli::runExportReport(path, fmt);
+    }
+
+    if (parser.isSet(captureScreenshotsOption)) {
+        qputenv("FLASHSPARTAN_SKIP_REMOTE_CATALOG", "1");
+        StyleManager::instance().initialize();
+        StyleManager::instance().applyToApplication();
+        MainWindow mainWindow;
+        return mainWindow.captureDocumentationScreenshots(parser.value(captureScreenshotsOption));
     }
 
     if (parser.isSet(debugOption)) {

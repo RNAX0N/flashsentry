@@ -55,6 +55,7 @@ set(SOURCES
     src/CrashReporter.cpp
     src/Platform.cpp
     src/MainWindow.cpp
+    src/MainWindow_doc_capture.cpp
     src/MainWindow_verify_ext.cpp
     src/MainWindow_badusb_ext.cpp
     src/MainWindow_usbpcap_ext.cpp

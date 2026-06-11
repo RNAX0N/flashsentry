@@ -4,6 +4,7 @@
 #include "IsoCatalogManifest.h"
 #include "IsoScanRules.h"
 #include "IsoVerifyReport.h"
+#include "IsoVerifyUi.h"
 #include "SettingsProfiles.h"
 #include "StyleManager.h"
 
@@ -81,13 +82,17 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
     profileRow->addWidget(m_profileCombo, 1);
     layout->addLayout(profileRow);
 
-    m_introLabel = new QLabel(
-        QStringLiteral("Verify <code>.iso</code>, <code>.img.xz</code>, and related images on any USB "
-                       "volume — whether you used <code>dd</code>, Rufus, a file copy, or another "
-                       "tool. Publisher checksums and signatures are checked automatically."));
+    m_introLabel = new QLabel(IsoVerifyUi::introHtml());
     m_introLabel->setWordWrap(true);
+    m_introLabel->setTextFormat(Qt::RichText);
     m_introLabel->setObjectName(QStringLiteral("IsoIntroLabel"));
     layout->addWidget(m_introLabel);
+
+    m_legendLabel = new QLabel(IsoVerifyUi::legendHtml());
+    m_legendLabel->setWordWrap(true);
+    m_legendLabel->setTextFormat(Qt::RichText);
+    m_legendLabel->setObjectName(QStringLiteral("IsoLegendLabel"));
+    layout->addWidget(m_legendLabel);
 
     m_multibootBadge = new QLabel;
     m_multibootBadge->setWordWrap(true);
@@ -110,6 +115,12 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
     m_summaryStrip->setVisible(false);
     layout->addWidget(m_summaryStrip);
 
+    m_hintLabel = new QLabel;
+    m_hintLabel->setWordWrap(true);
+    m_hintLabel->setVisible(false);
+    m_hintLabel->setObjectName(QStringLiteral("IsoHintLabel"));
+    layout->addWidget(m_hintLabel);
+
     m_pageStack = new QStackedWidget;
     m_pageStack->addWidget(buildEmptyStatePage());
     m_pageStack->addWidget(buildMainPage());
@@ -122,6 +133,9 @@ IsoVerifierWidget::IsoVerifierWidget(QWidget* parent)
         m_progress->setValue(0);
         m_verifyBtn->setEnabled(false);
         m_summaryStrip->setVisible(false);
+        if (m_hintLabel) {
+            m_hintLabel->setVisible(false);
+        }
     });
     connect(m_worker, &IsoVerifierWorker::verificationFileProgress, this,
             [this](int current, int total, const QString& file) {
@@ -176,9 +190,9 @@ QWidget* IsoVerifierWidget::buildEmptyStatePage()
     layout->addWidget(title);
 
     auto* body = new QLabel(
-        QStringLiteral("FlashSpartan will verify image files on the mounted volume, or you can "
-                       "pick a folder manually.\nWorks with any copy method — not tied to one "
-                       "multiboot tool."));
+        QStringLiteral("FlashSpartan checks Linux install images on the stick automatically when you plug "
+                       "it in, or you can choose any folder.\nWorks with dd, Rufus, Ventoy, and plain file "
+                       "copies."));
     body->setWordWrap(true);
     body->setAlignment(Qt::AlignCenter);
     body->setMaximumWidth(480);
@@ -215,7 +229,7 @@ QWidget* IsoVerifierWidget::buildMainPage()
     auto* dirRow = new QHBoxLayout;
     m_dirEdit = new QLineEdit;
     m_dirEdit->setPlaceholderText(
-        QStringLiteral("/run/media/you/USB — filled when a removable drive mounts"));
+        QStringLiteral("/run/media/you/USB — filled automatically when a flash drive mounts"));
     connect(m_dirEdit, &QLineEdit::textChanged, this, &IsoVerifierWidget::onScanPathEdited);
     auto* browseBtn = new QPushButton(QStringLiteral("Browse…"));
     browseBtn->setCursor(Qt::PointingHandCursor);
@@ -261,7 +275,7 @@ QWidget* IsoVerifierWidget::buildMainPage()
     m_progress->setTextVisible(true);
     layout->addWidget(m_progress);
 
-    m_summaryLabel = new QLabel(QStringLiteral("Ready to verify."));
+    m_summaryLabel = new QLabel(QStringLiteral("Choose a folder or plug in a USB drive, then click Verify images."));
     m_summaryLabel->setWordWrap(true);
     layout->addWidget(m_summaryLabel);
 
@@ -272,11 +286,16 @@ QWidget* IsoVerifierWidget::buildMainPage()
     m_table->setHorizontalHeaderLabels({
         QStringLiteral("Image"),
         QStringLiteral("Publisher"),
-        QStringLiteral("SHA-256"),
-        QStringLiteral("PGP"),
-        QStringLiteral("Key"),
-        QStringLiteral("Result"),
+        QStringLiteral("Checksum"),
+        QStringLiteral("Signature"),
+        QStringLiteral("Signing key"),
+        QStringLiteral("Status"),
     });
+    for (int col = 0; col < 6; ++col) {
+        if (QTableWidgetItem* header = m_table->horizontalHeaderItem(col)) {
+            header->setToolTip(IsoVerifyUi::tableHeaderTooltip(col));
+        }
+    }
     m_table->horizontalHeader()->setStretchLastSection(true);
     m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -289,7 +308,7 @@ QWidget* IsoVerifierWidget::buildMainPage()
     m_reportView = new QTextEdit;
     m_reportView->setReadOnly(true);
     m_reportView->setPlaceholderText(
-        QStringLiteral("Click a table row to jump to that image in the report…"));
+        QStringLiteral("Detailed report for each image appears here. Click a table row to jump to that file."));
     m_splitter->addWidget(m_reportView);
     m_splitter->setSizes({320, 160});
 
@@ -306,7 +325,10 @@ void IsoVerifierWidget::applyChromeStyles()
 
     setStyleSheet(QStringLiteral(
                       "#IsoPathGroup { background-color: %1; border: 1px solid %2; border-radius: 8px; }"
-                      "#IsoIntroLabel { color: %3; }"
+                      "#IsoIntroLabel, #IsoLegendLabel { color: %3; }"
+                      "#IsoLegendLabel { background-color: %1; border: 1px solid %2; border-radius: 8px; "
+                      "padding: 10px 12px; }"
+                      "#IsoHintLabel { color: %3; font-style: italic; padding: 0 4px; }"
                       "#IsoMultibootBadge { background-color: rgba(0, 180, 220, 0.12); color: %4; "
                       "padding: 8px 10px; border-radius: 6px; border: 1px solid %4; }"
                       "#PrimaryButton { font-weight: 600; min-width: 140px; }")
@@ -458,7 +480,7 @@ void IsoVerifierWidget::updateMultibootBadge()
     m_multibootBadge->show();
 }
 
-void IsoVerifierWidget::updateSummaryStrip(int passed, int total, int needsSidecar)
+void IsoVerifierWidget::updateSummaryStrip(int passed, int total, int notVerified)
 {
     if (!m_summaryStrip) {
         return;
@@ -467,20 +489,39 @@ void IsoVerifierWidget::updateSummaryStrip(int passed, int total, int needsSidec
         m_summaryStrip->setVisible(false);
         return;
     }
-    const int failed = total - passed - needsSidecar;
-    m_passChip->setText(QStringLiteral("✓ %1 passed").arg(passed));
+    const int failed = total - passed - notVerified;
+    m_passChip->setText(IsoVerifyUi::verifiedChipText(passed));
     m_passChip->setStyleSheet(chipStyle(FSColor(Verified).lighter(160), FSColor(Verified)));
     m_passChip->setVisible(passed > 0);
 
-    m_failChip->setText(QStringLiteral("✗ %1 failed").arg(qMax(0, failed)));
+    m_failChip->setText(IsoVerifyUi::failedChipText(qMax(0, failed)));
     m_failChip->setStyleSheet(chipStyle(FSColor(Modified).lighter(170), FSColor(Modified)));
     m_failChip->setVisible(failed > 0);
 
-    m_sidecarChip->setText(QStringLiteral("? %1 need sidecar").arg(needsSidecar));
+    m_sidecarChip->setText(IsoVerifyUi::notVerifiedChipText(notVerified));
     m_sidecarChip->setStyleSheet(chipStyle(FSColor(Warning).lighter(170), FSColor(Warning)));
-    m_sidecarChip->setVisible(needsSidecar > 0);
+    m_sidecarChip->setVisible(notVerified > 0);
 
     m_summaryStrip->setVisible(true);
+}
+
+void IsoVerifierWidget::updateResultHint(const QList<IsoVerifyResult>& results)
+{
+    if (!m_hintLabel) {
+        return;
+    }
+    for (const IsoVerifyResult& r : results) {
+        if (r.inconclusive() || !r.passed()) {
+            const QString hint = IsoVerifyUi::nextStepHint(r);
+            if (!hint.isEmpty()) {
+                m_hintLabel->setText(QStringLiteral("Tip: %1").arg(hint));
+                m_hintLabel->setVisible(true);
+                return;
+            }
+        }
+    }
+    m_hintLabel->clear();
+    m_hintLabel->setVisible(false);
 }
 
 void IsoVerifierWidget::styleResultRow(int row, bool passed, bool inconclusive)
@@ -627,9 +668,10 @@ void IsoVerifierWidget::updateCatalogIntegrityBanner()
         m_catalogBanner->setVisible(false);
         return;
     }
+    m_catalogBanner->setTextFormat(Qt::RichText);
     m_catalogBanner->setText(
-        QStringLiteral("<b>Catalog integrity warning</b> — %1 Use <b>More → Update catalog</b> "
-                       "or reinstall if this persists.")
+        QStringLiteral("<b>Publisher list may be outdated</b> — %1 Try <b>More → Update catalog</b> "
+                       "or reinstall FlashSpartan if this keeps appearing.")
             .arg(IsoCatalogManifest::integrityStatusText()));
     m_catalogBanner->setStyleSheet(
         QStringLiteral("background-color: rgba(255, 180, 0, 0.15); color: #e6a700; padding: 10px; "
@@ -682,34 +724,14 @@ void IsoVerifierWidget::setResults(const QList<IsoVerifyResult>& results)
             r.publisherName.isEmpty() ? QStringLiteral("—")
                                       : r.publisherName + QLatin1Char(' ') + r.releaseLabel));
 
-        QString hashCol = r.hashChecked
-                              ? (r.expectedSha256.isEmpty()
-                                     ? QStringLiteral("computed")
-                                     : (r.hashMatches ? QStringLiteral("OK") : QStringLiteral("MISMATCH")))
-                              : QStringLiteral("—");
-        m_table->setItem(i, 2, new QTableWidgetItem(hashCol));
-
-        QString pgp = QStringLiteral("—");
-        if (r.pgpChecked) {
-            pgp = r.pgpValid ? QStringLiteral("valid") : QStringLiteral("FAIL");
-        }
-        m_table->setItem(i, 3, new QTableWidgetItem(pgp));
-
-        QString fp = QStringLiteral("—");
-        if (r.pgpChecked) {
-            fp = r.fingerprintTrusted ? QStringLiteral("trusted") : QStringLiteral("unknown");
-        }
-        m_table->setItem(i, 4, new QTableWidgetItem(fp));
+        m_table->setItem(i, 2, new QTableWidgetItem(IsoVerifyUi::hashColumnText(r)));
+        m_table->setItem(i, 3, new QTableWidgetItem(IsoVerifyUi::pgpColumnText(r)));
+        m_table->setItem(i, 4, new QTableWidgetItem(IsoVerifyUi::keyColumnText(r)));
 
         const bool pass = r.passed();
         const bool inconclusive = r.inconclusive();
-        QString status = inconclusive ? QStringLiteral("INCONCLUSIVE")
-                       : pass         ? QStringLiteral("PASS")
-                                      : QStringLiteral("FAIL");
-        if (!r.errorMessage.isEmpty()) {
-            status += QLatin1String(": ") + r.errorMessage.left(60);
-        }
-        auto* statusItem = new QTableWidgetItem(status);
+        auto* statusItem = new QTableWidgetItem(IsoVerifyUi::outcomeLabel(r));
+        statusItem->setToolTip(IsoVerifyUi::outcomeExplanation(r));
         statusItem->setFont(FSFont(Label));
         m_table->setItem(i, 5, statusItem);
 
@@ -721,8 +743,10 @@ void IsoVerifierWidget::setResults(const QList<IsoVerifyResult>& results)
     }
 
     updateSummaryStrip(counts.passed, counts.total, counts.needsSidecar);
-    m_summaryLabel->setText(IsoVerifyReport::summaryLine(results));
-    emit logMessageRequested(QStringLiteral("ISO verify: %1").arg(IsoVerifyReport::summaryLine(results)));
+    updateResultHint(results);
+    const QString summary = IsoVerifyUi::summaryLine(results);
+    m_summaryLabel->setText(summary);
+    emit logMessageRequested(QStringLiteral("Image verify: %1").arg(summary));
 
     if (!results.isEmpty()) {
         m_table->selectRow(0);

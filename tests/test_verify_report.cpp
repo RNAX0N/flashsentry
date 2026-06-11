@@ -32,8 +32,8 @@ void TestVerifyReport::summaryCountsSidecarNeeded()
     needs.source = IsoVerifySource::ComputedOnly;
 
     const QString s = IsoVerifyReport::summaryLine({fail, needs});
-    QVERIFY(s.contains(QStringLiteral("1/2")));
-    QVERIFY(s.contains(QStringLiteral("sidecar")));
+    QVERIFY(s.contains(QStringLiteral("1 of 2")));
+    QVERIFY(s.contains(QStringLiteral("could not be verified")));
 }
 
 void TestVerifyReport::csvContainsHeader()
@@ -56,7 +56,7 @@ void TestVerifyReport::countSummaryMatchesSummaryLine()
     QCOMPARE(counts.passed, 1);
     QCOMPARE(counts.total, 1);
     QCOMPARE(counts.needsSidecar, 0);
-    QVERIFY(IsoVerifyReport::summaryLine(results).contains(QStringLiteral("1/1")));
+    QVERIFY(IsoVerifyReport::summaryLine(results).contains(QStringLiteral("1 image verified")));
 }
 
 void TestVerifyReport::jsonContainsSummaryAndResults()

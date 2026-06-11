@@ -7,6 +7,7 @@
 #include "IsoChecksum.h"
 #include "IsoHttpClient.h"
 #include "IsoVerifyCache.h"
+#include "IsoVerifyUi.h"
 
 #include <openssl/evp.h>
 
@@ -420,11 +421,18 @@ QString buildReport(const IsoVerifyResult& r)
         if (!r.pgpSummary.isEmpty()) lines << r.pgpSummary;
     }
     if (!r.checksumUrl.isEmpty()) lines << QStringLiteral("Checksums: %1").arg(r.checksumUrl);
-    const QString resultLabel = r.inconclusive() ? QStringLiteral("INCONCLUSIVE")
-                               : r.passed()      ? QStringLiteral("PASS")
-                                                 : QStringLiteral("FAIL");
-    lines << QStringLiteral("Result: %1").arg(resultLabel);
-    if (!r.errorMessage.isEmpty()) lines << QStringLiteral("Note: %1").arg(r.errorMessage);
+    lines << QStringLiteral("Status: %1").arg(IsoVerifyUi::outcomeLabel(r));
+    const QString explanation = IsoVerifyUi::outcomeExplanation(r);
+    if (!explanation.isEmpty()) {
+        lines << QStringLiteral("What this means: %1").arg(explanation);
+    }
+    const QString hint = IsoVerifyUi::nextStepHint(r);
+    if (!hint.isEmpty()) {
+        lines << QStringLiteral("What you can do: %1").arg(hint);
+    }
+    if (!r.errorMessage.isEmpty() && explanation != r.errorMessage) {
+        lines << QStringLiteral("Details: %1").arg(r.errorMessage);
+    }
     return lines.join(QLatin1Char('\n'));
 }
 

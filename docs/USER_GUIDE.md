@@ -58,21 +58,29 @@ Open **Settings → Verification → Mode**.
    - **Activity log** (USB mode), or
    - **ISO Verify** table and report (ISO mode / **Full report** button)
 
-### What “PASS” means
+### What the status labels mean
 
-- Your file’s hash matches the publisher’s published hash, **and**
-- The checksum file’s signature is valid, **and**
+| Status | Meaning |
+|--------|---------|
+| **Verified** | The file matches the publisher checksum (and signature when checked) |
+| **Failed** | Checksum mismatch, invalid signature, or untrusted signing key |
+| **Not verified** | FlashSpartan computed a hash but had no publisher checksum to compare — add a `.sha256` file or use **More → Trust hash** |
+
+**Verified** requires all of the following when applicable:
+
+- Your file’s hash matches the publisher’s published hash
+- The checksum file’s signature is valid
 - The signing key fingerprint matches FlashSpartan’s trusted list for that distro
 
 ### What if verification fails?
 
-| Message | Likely cause |
-|---------|----------------|
-| Hash mismatch | Corrupt download, wrong file, or incomplete copy |
-| PGP failed | Missing `gpg`, bad signature file, or tampered checksums |
-| Untrusted fingerprint | Key not in FlashSpartan’s list (report upstream) |
-| Unknown publisher | Unsupported filename; add `.sha256` / `.asc` sidecars manually |
-| No ISO found | Stick was written with `dd` as a live image — see below |
+| What you see | Likely cause |
+|--------------|----------------|
+| Checksum **Mismatch** | Corrupt download, wrong file, or incomplete copy |
+| Signature **Invalid** | Missing `gpg`, bad signature file, or tampered checksums |
+| Signing key **Unknown** | Key not in FlashSpartan’s list (report upstream or update catalog) |
+| **Not verified** | Unsupported filename or missing checksum file — add `.sha256` / `.asc` next to the image |
+| No images found | Stick was written with `dd` as a live image — see below |
 
 ### Offline / sidecar files
 

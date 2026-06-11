@@ -76,6 +76,7 @@ set(SOURCES
     src/IsoChecksum.cpp
     src/IsoVerifyCache.cpp
     src/IsoVerifyReport.cpp
+    src/IsoVerifyUi.cpp
     src/AuditLog.cpp
     src/BadUsbBaselineStore.cpp
     src/BadUsbAnalyzer.cpp
@@ -167,6 +168,7 @@ set(HEADERS
     include/IsoVerifyOptions.h
     include/IsoVerifyCache.h
     include/IsoVerifyReport.h
+    include/IsoVerifyUi.h
     include/AuditLog.h
     include/BadUsbBaselineStore.h
     include/BadUsbAnalyzer.h

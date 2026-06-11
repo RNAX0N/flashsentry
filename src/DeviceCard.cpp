@@ -344,7 +344,7 @@ void DeviceCard::setIsoVerifySummary(const QString& summary)
         m_isoSummaryLabel->setVisible(false);
         return;
     }
-    m_isoSummaryLabel->setText(QStringLiteral("Images: %1").arg(summary));
+    m_isoSummaryLabel->setText(QStringLiteral("Image check: %1").arg(summary));
     m_isoSummaryLabel->setStyleSheet(QString("color: %1;")
                                          .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     m_isoSummaryLabel->setVisible(true);

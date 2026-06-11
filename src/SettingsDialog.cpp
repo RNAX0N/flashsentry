@@ -424,24 +424,25 @@ QWidget* SettingsDialog::createVerificationTab()
     profileForm->addRow(QStringLiteral("Default:"), m_defaultProfileCombo);
     layout->addWidget(profileGroup);
 
-    QGroupBox* isoGroup = new QGroupBox(QStringLiteral("ISO verification module"));
+    QGroupBox* isoGroup = new QGroupBox(QStringLiteral("Image verification (ISO module)"));
     QFormLayout* isoForm = new QFormLayout(isoGroup);
     m_isoDirEdit = new QLineEdit;
     m_isoDirEdit->setPlaceholderText(QStringLiteral("~/Downloads"));
     connect(m_isoDirEdit, &QLineEdit::textChanged, this, &SettingsDialog::onSettingChanged);
     isoForm->addRow(QStringLiteral("Scan folder:"), m_isoDirEdit);
-    m_isoAutoVerifyCheck = new QCheckBox(QStringLiteral("Verify ISOs automatically after scan"));
+    m_isoAutoVerifyCheck = new QCheckBox(QStringLiteral("Verify images automatically after scanning a folder"));
     m_isoAutoVerifyOnUsbMountCheck = new QCheckBox(
-        QStringLiteral("Automatically verify images when a USB drive is mounted"));
+        QStringLiteral("Verify images automatically when a USB drive is mounted"));
     m_isoAutoVerifyOnUsbMountCheck->setToolTip(
-        QStringLiteral("Works with desktop automount: verifies the existing mount without remounting. "
-                       "Skips boot-loader and multiboot config folders (EFI, vendor trees)."));
+        QStringLiteral("When your desktop mounts a flash drive, FlashSpartan scans install images (.iso, .img.xz) "
+                       "and compares them to publisher checksums. Skips boot-loader folders (EFI, Ventoy, etc.)."));
     m_isoAutoVerifyOnUsbMountCheck->setChecked(true);
     connect(m_isoAutoVerifyOnUsbMountCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     connect(m_isoAutoVerifyCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     isoForm->addRow(QStringLiteral(""), m_isoAutoVerifyCheck);
     isoForm->addRow(QStringLiteral(""), m_isoAutoVerifyOnUsbMountCheck);
-    m_blockMountOnIsoFailCheck = new QCheckBox(QStringLiteral("Block mount when any image on the stick fails verification"));
+    m_blockMountOnIsoFailCheck = new QCheckBox(
+        QStringLiteral("Block mounting when any image on the stick fails verification"));
     connect(m_blockMountOnIsoFailCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     isoForm->addRow(QStringLiteral(""), m_blockMountOnIsoFailCheck);
     m_isoParallelSpin = new QSpinBox;
@@ -452,7 +453,8 @@ QWidget* SettingsDialog::createVerificationTab()
     m_isoVerifyDecompressedCheck = new QCheckBox(QStringLiteral("Verify decompressed .img.xz payload (requires xz)"));
     connect(m_isoVerifyDecompressedCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     isoForm->addRow(QStringLiteral(""), m_isoVerifyDecompressedCheck);
-    m_isoPreferOfflineCheck = new QCheckBox(QStringLiteral("Prefer local .sha256 sidecars before downloading checksums"));
+    m_isoPreferOfflineCheck = new QCheckBox(
+        QStringLiteral("Prefer local .sha256 checksum files before downloading from the publisher"));
     connect(m_isoPreferOfflineCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     isoForm->addRow(QStringLiteral(""), m_isoPreferOfflineCheck);
     layout->addWidget(isoGroup);

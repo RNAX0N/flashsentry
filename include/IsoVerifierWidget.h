@@ -71,7 +71,8 @@ private:
     void appendReport(const QString& text);
     void updateCatalogIntegrityBanner();
     void updateMultibootBadge();
-    void updateSummaryStrip(int passed, int total, int needsSidecar);
+    void updateSummaryStrip(int passed, int total, int notVerified);
+    void updateResultHint(const QList<IsoVerifyResult>& results);
     void updatePageVisibility();
     void scrollReportToRow(int row);
     void applyChromeStyles();
@@ -87,6 +88,8 @@ private:
     QLabel* m_passChip = nullptr;
     QLabel* m_failChip = nullptr;
     QLabel* m_sidecarChip = nullptr;
+    QLabel* m_legendLabel = nullptr;
+    QLabel* m_hintLabel = nullptr;
     QLineEdit* m_dirEdit = nullptr;
     QPushButton* m_verifyBtn = nullptr;
     QToolButton* m_toolsBtn = nullptr;

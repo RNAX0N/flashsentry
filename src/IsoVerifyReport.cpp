@@ -1,4 +1,5 @@
 #include "IsoVerifyReport.h"
+#include "IsoVerifyUi.h"
 
 #include <QFileInfo>
 #include <QJsonArray>
@@ -29,13 +30,7 @@ IsoVerifyReport::SummaryCounts IsoVerifyReport::countSummary(const QList<IsoVeri
 QString IsoVerifyReport::summaryLine(const QList<IsoVerifyResult>& results)
 {
     const SummaryCounts counts = countSummary(results);
-    if (counts.needsSidecar > 0) {
-        return QStringLiteral("%1/%2 passed (%3 need checksum/sidecar)")
-            .arg(counts.passed)
-            .arg(counts.total)
-            .arg(counts.needsSidecar);
-    }
-    return QStringLiteral("%1/%2 passed").arg(counts.passed).arg(counts.total);
+    return IsoVerifyUi::summaryLine(counts.passed, counts.total, counts.needsSidecar);
 }
 
 QString IsoVerifyReport::buildPlainText(const QList<IsoVerifyResult>& results)
@@ -131,19 +126,9 @@ QString IsoVerifyReport::buildHtml(const QList<IsoVerifyResult>& results)
                 .arg(summaryLine(results).toHtmlEscaped());
     for (const IsoVerifyResult& r : results) {
         const QString file = r.isoPath.isEmpty() ? r.layoutNote : QFileInfo(r.isoPath).fileName();
-        const QString hashCol = r.hashChecked
-                                    ? (r.expectedSha256.isEmpty()
-                                           ? QStringLiteral("computed only")
-                                           : (r.hashMatches ? QStringLiteral("OK")
-                                                            : QStringLiteral("MISMATCH")))
-                                    : QStringLiteral("—");
-        QString pgp = QStringLiteral("—");
-        if (r.pgpChecked) {
-            pgp = r.pgpValid ? QStringLiteral("valid") : QStringLiteral("FAIL");
-        }
-        const QString statusLabel = r.inconclusive() ? QStringLiteral("INCONCLUSIVE")
-                                    : r.passed()      ? QStringLiteral("PASS")
-                                                      : QStringLiteral("FAIL");
+        const QString hashCol = IsoVerifyUi::hashColumnText(r);
+        const QString pgp = IsoVerifyUi::pgpColumnText(r);
+        const QString statusLabel = IsoVerifyUi::outcomeLabel(r);
         const QString rowClass = r.inconclusive() ? QStringLiteral(" class=\"inconclusive\"")
                                  : r.passed()     ? QString()
                                                   : QStringLiteral(" class=\"fail\"");

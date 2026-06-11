@@ -14,6 +14,7 @@ All notable changes to FlashSpartan are documented in this file.
 
 ### Changed
 
+- **ISO verification UX** — plain-language status labels (Verified / Failed / Not verified), result legend, column tooltips, next-step hints, and friendlier summaries in the tab, tray, device cards, and exported reports.
 - **DatabaseManager** — removed unused legacy JSON read/write helpers; integrity checks run at startup for hash-based profiles.
 - **Version metadata** — README and PKGBUILD aligned with `VERSION` (1.5.4).
 

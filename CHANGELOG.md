@@ -22,6 +22,8 @@ All notable changes to FlashSpartan are documented in this file.
 - **Weak USB identity** — warnings in trust dialogs and device cards when no serial is reported; documented in USER_GUIDE.
 - **DeviceWhitelistService** — shared helper for building whitelist records (incremental MainWindow refactor).
 - **Tests** — `test_device_whitelist_service`, `test_manifest_worker`, `test_hash_worker`.
+- **Device trust flow** — `DeviceDriveUtil`, `DeviceTrustCoordinator`, and `MountOptionsUtil` extracted from MainWindow/MountManager; additional unit tests.
+- **Packaging** — `packaging/sync-pkgver.sh` keeps PKGBUILD `pkgver` aligned with `VERSION`.
 
 ## [1.5.2] - 2026-06-02
 

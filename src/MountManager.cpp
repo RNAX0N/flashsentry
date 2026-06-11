@@ -1,4 +1,5 @@
 #include "MountManager.h"
+#include "MountOptionsUtil.h"
 
 #ifdef Q_OS_WIN
 
@@ -276,7 +277,7 @@ void MountManager::mount(const QString& deviceNode, const MountOptions& options)
         return;
     }
     
-    QVariantMap mountOptions = mountOptionsToVariant(options);
+    QVariantMap mountOptions = MountOptionsUtil::toUdisksMountOptions(options);
     
     QDBusPendingCall pendingCall = fsInterface->asyncCall("Mount", mountOptions);
     QDBusPendingCallWatcher* watcher = new QDBusPendingCallWatcher(pendingCall, this);
@@ -308,7 +309,7 @@ void MountManager::unmount(const QString& deviceNode, const UnmountOptions& opti
         return;
     }
     
-    QVariantMap unmountOptions = unmountOptionsToVariant(options);
+    QVariantMap unmountOptions = MountOptionsUtil::toUdisksUnmountOptions(options);
     
     QDBusPendingCall pendingCall = fsInterface->asyncCall("Unmount", unmountOptions);
     QDBusPendingCallWatcher* watcher = new QDBusPendingCallWatcher(pendingCall, this);
@@ -664,52 +665,6 @@ std::unique_ptr<QDBusInterface> MountManager::createDriveInterface(const QString
     }
     
     return interface;
-}
-
-QVariantMap MountManager::mountOptionsToVariant(const MountOptions& options) const
-{
-    QVariantMap map;
-    
-    QStringList optionsList;
-    
-    if (options.readOnly) {
-        optionsList << "ro";
-    }
-    
-    if (options.noExec) {
-        optionsList << "noexec";
-    }
-    
-    if (options.noSuid) {
-        optionsList << "nosuid";
-    }
-    
-    if (options.sync) {
-        optionsList << "sync";
-    }
-    
-    optionsList << options.extraOptions;
-    
-    if (!optionsList.isEmpty()) {
-        map["options"] = optionsList.join(",");
-    }
-    
-    if (!options.filesystem.isEmpty()) {
-        map["fstype"] = options.filesystem;
-    }
-    
-    return map;
-}
-
-QVariantMap MountManager::unmountOptionsToVariant(const UnmountOptions& options) const
-{
-    QVariantMap map;
-    
-    if (options.force) {
-        map["force"] = true;
-    }
-    
-    return map;
 }
 
 QString MountManager::extractErrorMessage(const QDBusError& error) const

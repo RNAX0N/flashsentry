@@ -109,6 +109,9 @@ set(SOURCES
     src/IsoVerifierWidget.cpp
     src/DatabaseManager.cpp
     src/DeviceWhitelistService.cpp
+    src/DeviceDriveUtil.cpp
+    src/DeviceTrustCoordinator.cpp
+    src/MountOptionsUtil.cpp
     src/policy/PolicyPaths.cpp
     src/policy/PolicySocketAuth.cpp
     src/policy/PolicyBlobCodec.cpp

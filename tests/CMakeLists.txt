@@ -68,6 +68,45 @@ target_include_directories(test_device_whitelist_service PRIVATE ${OPENSSL_INCLU
 target_link_libraries(test_device_whitelist_service PRIVATE Qt6::Test Qt6::Core Qt6::Network ${OPENSSL_LIBRARIES})
 add_test(NAME test_device_whitelist_service COMMAND test_device_whitelist_service)
 
+set(DEVICE_TRUST_TEST_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/DeviceDriveUtil.cpp
+    ${CMAKE_SOURCE_DIR}/src/DeviceTrustCoordinator.cpp
+    ${CMAKE_SOURCE_DIR}/src/DeviceWhitelistService.cpp
+    ${CMAKE_SOURCE_DIR}/src/BlockedDriveStore.cpp
+)
+
+add_executable(test_device_drive_util
+    test_device_drive_util.cpp
+    ${DEVICE_TRUST_TEST_SOURCES}
+    ${CMAKE_SOURCE_DIR}/src/DatabaseManager.cpp
+    ${CMAKE_SOURCE_DIR}/include/DatabaseManager.h
+    ${FLASHSPARTAN_POLICY_SOURCES}
+)
+target_include_directories(test_device_drive_util PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(test_device_drive_util PRIVATE ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_device_drive_util PRIVATE Qt6::Test Qt6::Core Qt6::Network ${OPENSSL_LIBRARIES})
+add_test(NAME test_device_drive_util COMMAND test_device_drive_util)
+
+add_executable(test_device_trust_coordinator
+    test_device_trust_coordinator.cpp
+    ${DEVICE_TRUST_TEST_SOURCES}
+    ${CMAKE_SOURCE_DIR}/src/DatabaseManager.cpp
+    ${CMAKE_SOURCE_DIR}/include/DatabaseManager.h
+    ${FLASHSPARTAN_POLICY_SOURCES}
+)
+target_include_directories(test_device_trust_coordinator PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(test_device_trust_coordinator PRIVATE ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_device_trust_coordinator PRIVATE Qt6::Test Qt6::Core Qt6::Network ${OPENSSL_LIBRARIES})
+add_test(NAME test_device_trust_coordinator COMMAND test_device_trust_coordinator)
+
+add_executable(test_mount_options
+    test_mount_options.cpp
+    ${CMAKE_SOURCE_DIR}/src/MountOptionsUtil.cpp
+)
+target_include_directories(test_mount_options PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_mount_options PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_mount_options COMMAND test_mount_options)
+
 add_executable(test_manifest_worker
     test_manifest_worker.cpp
     ${CMAKE_SOURCE_DIR}/src/ManifestWorker.cpp

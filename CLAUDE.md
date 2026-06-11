@@ -106,6 +106,12 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md) for algorithms.
 - `m_appModeStack`: USB splitter vs `IsoVerifierWidget`
 - `startDeviceVerification()` routes by `VerificationProfile`
 - `applyAppModule()` switches stacked UI
+- USB trust UI delegates drive grouping to `DeviceDriveUtil` / `DeviceTrustCoordinator`
+
+### Device trust helpers
+- `DeviceDriveUtil` — `driveKey()`, partition grouping, block-list lookup
+- `DeviceTrustCoordinator` — new-device flow plans and drive-wide whitelist mutations
+- `DeviceWhitelistService` — builds `DeviceRecord` with canonical IDs
 
 ## Policy store (authoritative)
 

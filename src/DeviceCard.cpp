@@ -277,6 +277,14 @@ void DeviceCard::setDevice(const DeviceInfo& device)
     updateDisplay();
 }
 
+QString DeviceCard::deviceId() const
+{
+    if (!m_record.uniqueId.isEmpty()) {
+        return m_record.uniqueId;
+    }
+    return m_device.partitionUniqueId();
+}
+
 void DeviceCard::setDeviceRecord(const DeviceRecord& record)
 {
     m_record = record;

@@ -1436,6 +1436,16 @@ void MainWindow::onDeviceDisconnected(const QString& deviceNode)
             break;
         }
     }
+
+    for (auto it = m_manifestJobDevices.begin(); it != m_manifestJobDevices.end();) {
+        if (it.value() == deviceNode) {
+            m_manifestWorker->cancelJob(it.key());
+            it = m_manifestJobDevices.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    m_manifestWorker->cancelJobsForDevice(deviceNode);
     
     removeDeviceCard(deviceNode);
     m_pendingHashActions.remove(deviceNode);

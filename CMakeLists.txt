@@ -24,10 +24,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(MSVC)
-    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG /W4")
     set(CMAKE_CXX_FLAGS_DEBUG "/Zi /Od /W4")
 else()
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -Wall -Wextra")
     set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -Wpedantic")
 endif()
 
@@ -112,6 +112,9 @@ set(SOURCES
     src/DeviceDriveUtil.cpp
     src/DeviceTrustCoordinator.cpp
     src/MountOptionsUtil.cpp
+    src/MountDBusUtil.cpp
+    src/DeviceIdUtil.cpp
+    src/DeviceVerificationPlanner.cpp
     src/policy/PolicyPaths.cpp
     src/policy/PolicySocketAuth.cpp
     src/policy/PolicyBlobCodec.cpp

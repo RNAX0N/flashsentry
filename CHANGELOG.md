@@ -23,7 +23,12 @@ All notable changes to FlashSpartan are documented in this file.
 - **DeviceWhitelistService** — shared helper for building whitelist records (incremental MainWindow refactor).
 - **Tests** — `test_device_whitelist_service`, `test_manifest_worker`, `test_hash_worker`.
 - **Device trust flow** — `DeviceDriveUtil`, `DeviceTrustCoordinator`, and `MountOptionsUtil` extracted from MainWindow/MountManager; additional unit tests.
-- **Packaging** — `packaging/sync-pkgver.sh` keeps PKGBUILD `pkgver` aligned with `VERSION`.
+- **Packaging** — `packaging/sync-pkgver.sh` keeps PKGBUILD `pkgver` aligned with `VERSION`; `update-release-checksums.sh` for release tarball `sha256sums`.
+- **Device verification** — `DeviceVerificationPlanner` extracted from MainWindow; manifest jobs cancelled on USB disconnect.
+- **Device IDs** — `DeviceIdUtil` shared lookup; device cards report canonical stored ID when known.
+- **Mount errors** — `MountDBusUtil` for user-facing UDisks messages (unit tested).
+- **DatabaseManager** — `reportHashMismatch()` replaces direct `const_cast` emit from `verifyHash()`.
+- **Build** — MSVC Release `/W4`; GCC Release `-Wall -Wextra`.
 
 ## [1.5.2] - 2026-06-02
 

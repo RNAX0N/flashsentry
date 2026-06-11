@@ -167,4 +167,17 @@ void ManifestWorker::cancelAll()
     }
 }
 
+int ManifestWorker::cancelJobsForDevice(const QString& deviceNode)
+{
+    QMutexLocker lock(&m_mutex);
+    int cancelled = 0;
+    for (auto it = m_jobs.begin(); it != m_jobs.end(); ++it) {
+        if (it.value()->config.deviceNode == deviceNode) {
+            it.value()->cancelled.store(true);
+            ++cancelled;
+        }
+    }
+    return cancelled;
+}
+
 } // namespace FlashSpartan

@@ -35,6 +35,7 @@ public:
 
     bool cancelJob(const QString& jobId);
     void cancelAll();
+    int cancelJobsForDevice(const QString& deviceNode);
 
 signals:
     void manifestStarted(const QString& jobId, const QString& deviceNode);

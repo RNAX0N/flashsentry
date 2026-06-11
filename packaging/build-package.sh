@@ -3,6 +3,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+if [ -x ./sync-pkgver.sh ]; then
+    ./sync-pkgver.sh
+fi
+
 if ! command -v makepkg >/dev/null 2>&1; then
     echo "makepkg not found. Install base-devel on Arch: sudo pacman -S base-devel" >&2
     echo "Or install without makepkg: ./install-local.sh" >&2

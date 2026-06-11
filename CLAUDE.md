@@ -112,6 +112,9 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md) for algorithms.
 - `DeviceDriveUtil` — `driveKey()`, partition grouping, block-list lookup
 - `DeviceTrustCoordinator` — new-device flow plans and drive-wide whitelist mutations
 - `DeviceWhitelistService` — builds `DeviceRecord` with canonical IDs
+- `DeviceIdUtil` — partition-aware ID resolution / legacy fallback
+- `DeviceVerificationPlanner` — manifest vs full-hash vs mount-first routing
+- `MountOptionsUtil` / `MountDBusUtil` — UDisks mount maps and error text
 
 ## Policy store (authoritative)
 

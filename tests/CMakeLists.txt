@@ -27,6 +27,7 @@ set(FLASHSPARTAN_POLICY_SOURCES
 add_executable(test_database_manager
     test_database_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/DatabaseManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/DeviceIdUtil.cpp
     ${CMAKE_SOURCE_DIR}/include/DatabaseManager.h
     ${FLASHSPARTAN_POLICY_SOURCES}
 )
@@ -59,6 +60,7 @@ set_tests_properties(test_policy_daemon PROPERTIES
 add_executable(test_device_whitelist_service
     test_device_whitelist_service.cpp
     ${CMAKE_SOURCE_DIR}/src/DeviceWhitelistService.cpp
+    ${CMAKE_SOURCE_DIR}/src/DeviceIdUtil.cpp
     ${CMAKE_SOURCE_DIR}/src/DatabaseManager.cpp
     ${CMAKE_SOURCE_DIR}/include/DatabaseManager.h
     ${FLASHSPARTAN_POLICY_SOURCES}
@@ -72,6 +74,7 @@ set(DEVICE_TRUST_TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/DeviceDriveUtil.cpp
     ${CMAKE_SOURCE_DIR}/src/DeviceTrustCoordinator.cpp
     ${CMAKE_SOURCE_DIR}/src/DeviceWhitelistService.cpp
+    ${CMAKE_SOURCE_DIR}/src/DeviceIdUtil.cpp
     ${CMAKE_SOURCE_DIR}/src/BlockedDriveStore.cpp
 )
 
@@ -106,6 +109,30 @@ add_executable(test_mount_options
 target_include_directories(test_mount_options PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(test_mount_options PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME test_mount_options COMMAND test_mount_options)
+
+add_executable(test_mount_dbus_util
+    test_mount_dbus_util.cpp
+    ${CMAKE_SOURCE_DIR}/src/MountDBusUtil.cpp
+)
+target_include_directories(test_mount_dbus_util PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_mount_dbus_util PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_mount_dbus_util COMMAND test_mount_dbus_util)
+
+add_executable(test_device_id_util
+    test_device_id_util.cpp
+    ${CMAKE_SOURCE_DIR}/src/DeviceIdUtil.cpp
+)
+target_include_directories(test_device_id_util PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_device_id_util PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_device_id_util COMMAND test_device_id_util)
+
+add_executable(test_device_verification_planner
+    test_device_verification_planner.cpp
+    ${CMAKE_SOURCE_DIR}/src/DeviceVerificationPlanner.cpp
+)
+target_include_directories(test_device_verification_planner PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_device_verification_planner PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_device_verification_planner COMMAND test_device_verification_planner)
 
 add_executable(test_manifest_worker
     test_manifest_worker.cpp

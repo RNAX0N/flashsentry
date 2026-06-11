@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "DeviceVerificationPlanner.h"
 #include "WatchListDialog.h"
 #include "IsoVerifier.h"
 #include "IsoVerifyReport.h"
@@ -41,20 +42,23 @@ void MainWindow::startDeviceVerification(const QString& deviceNode)
         profile = record->verificationProfile;
     }
 
-    if (profile == VerificationProfile::FullPartition) {
+    const auto plan = DeviceVerificationPlanner::planForDevice(
+        profile, deviceInfo->mountPoint.isEmpty(), deviceInfo->isMounted);
+
+    switch (plan.action) {
+    case DeviceVerificationPlanner::StartAction::StartFullPartitionHash:
         promptAndStartHash(deviceNode, false);
         return;
-    }
-
-    if (deviceInfo->mountPoint.isEmpty()) {
+    case DeviceVerificationPlanner::StartAction::MountThenVerify:
         m_pendingHashActions[deviceNode] = PendingHashAction::MountAfterVerify;
         if (!deviceInfo->isMounted) {
             m_mountManager->mount(deviceNode);
         }
         return;
+    case DeviceVerificationPlanner::StartAction::StartManifestVerification:
+        startManifestVerification(deviceNode);
+        return;
     }
-
-    startManifestVerification(deviceNode);
 }
 
 void MainWindow::startManifestVerification(const QString& deviceNode)

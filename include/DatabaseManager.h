@@ -326,6 +326,8 @@ private:
     bool persistDevice(const DeviceRecord& record, const QString& reason);
     bool persistRecordById(const QString& uniqueId, const QString& reason);
     QString policyActor() const;
+    void reportHashMismatch(const QString& uniqueId, const QString& expected,
+                            const QString& actual);
 
     // Database file path
     QString m_databasePath;

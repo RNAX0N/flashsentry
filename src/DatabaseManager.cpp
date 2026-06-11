@@ -1,4 +1,5 @@
 #include "DatabaseManager.h"
+#include "DeviceIdUtil.h"
 #include "policy/PolicyGateway.h"
 #include "policy/PolicyPaths.h"
 #include "policy/PolicyServiceLocator.h"
@@ -16,38 +17,6 @@
 #include <QDateTime>
 
 namespace FlashSpartan {
-
-namespace {
-
-std::optional<QString> resolveStoredId(const QHash<QString, DeviceRecord>& devices,
-                                     const QString& uniqueId)
-{
-    if (devices.contains(uniqueId)) {
-        return uniqueId;
-    }
-
-    const int sep = uniqueId.lastIndexOf(QLatin1Char('_'));
-    if (sep <= 0) {
-        return std::nullopt;
-    }
-
-    const QString tail = uniqueId.mid(sep + 1);
-    const bool linuxBlockSuffix = tail.startsWith(QLatin1String("sd"))
-                                  || tail.startsWith(QLatin1String("mmcblk"))
-                                  || tail.startsWith(QLatin1String("nvme"));
-    const bool windowsDriveSuffix = (tail.size() == 1 && tail.at(0).isLetter());
-
-    if (linuxBlockSuffix || windowsDriveSuffix) {
-        const QString legacy = uniqueId.left(sep);
-        if (devices.contains(legacy)) {
-            return legacy;
-        }
-    }
-
-    return std::nullopt;
-}
-
-} // namespace
 
 DatabaseManager::DatabaseManager(QObject* parent)
     : QObject(parent)
@@ -156,13 +125,13 @@ QString DatabaseManager::databasePath() const
 bool DatabaseManager::hasDevice(const QString& uniqueId) const
 {
     QReadLocker locker(&m_lock);
-    return resolveStoredId(m_devices, uniqueId).has_value();
+    return DeviceIdUtil::resolveStoredId(m_devices, uniqueId).has_value();
 }
 
 std::optional<DeviceRecord> DatabaseManager::getDevice(const QString& uniqueId) const
 {
     QReadLocker locker(&m_lock);
-    const std::optional<QString> storedId = resolveStoredId(m_devices, uniqueId);
+    const std::optional<QString> storedId = DeviceIdUtil::resolveStoredId(m_devices, uniqueId);
     if (!storedId) {
         return std::nullopt;
     }
@@ -333,7 +302,7 @@ bool DatabaseManager::updateHash(const QString& uniqueId, const QString& hash,
     {
         QWriteLocker locker(&m_lock);
 
-        const std::optional<QString> resolved = resolveStoredId(m_devices, uniqueId);
+        const std::optional<QString> resolved = DeviceIdUtil::resolveStoredId(m_devices, uniqueId);
         if (!resolved) {
             return false;
         }
@@ -368,7 +337,7 @@ std::optional<QString> DatabaseManager::getHash(const QString& uniqueId) const
 {
     QReadLocker locker(&m_lock);
 
-    const std::optional<QString> storedId = resolveStoredId(m_devices, uniqueId);
+    const std::optional<QString> storedId = DeviceIdUtil::resolveStoredId(m_devices, uniqueId);
     if (!storedId) {
         return std::nullopt;
     }
@@ -385,7 +354,7 @@ bool DatabaseManager::verifyHash(const QString& uniqueId, const QString& hash) c
 {
     QReadLocker locker(&m_lock);
 
-    const std::optional<QString> storedId = resolveStoredId(m_devices, uniqueId);
+    const std::optional<QString> storedId = DeviceIdUtil::resolveStoredId(m_devices, uniqueId);
     if (!storedId) {
         return false;
     }
@@ -394,7 +363,10 @@ bool DatabaseManager::verifyHash(const QString& uniqueId, const QString& hash) c
     const bool matches = (rec.hash.compare(hash, Qt::CaseInsensitive) == 0);
 
     if (!matches && !rec.hash.isEmpty()) {
-        const_cast<DatabaseManager*>(this)->emit hashMismatch(*storedId, rec.hash, hash);
+        const QString id = *storedId;
+        const QString expected = rec.hash;
+        locker.unlock();
+        const_cast<DatabaseManager*>(this)->reportHashMismatch(id, expected, hash);
     }
 
     return matches;
@@ -404,9 +376,9 @@ bool DatabaseManager::verifyHash(const DeviceInfo& device, const QString& hash) 
 {
     QReadLocker locker(&m_lock);
 
-    std::optional<QString> storedId = resolveStoredId(m_devices, device.uniqueId());
+    std::optional<QString> storedId = DeviceIdUtil::resolveStoredId(m_devices, device.uniqueId());
     if (!storedId) {
-        storedId = resolveStoredId(m_devices, device.partitionUniqueId());
+        storedId = DeviceIdUtil::resolveStoredId(m_devices, device.partitionUniqueId());
     }
     if (!storedId) {
         return false;
@@ -416,10 +388,19 @@ bool DatabaseManager::verifyHash(const DeviceInfo& device, const QString& hash) 
     const bool matches = (rec.hash.compare(hash, Qt::CaseInsensitive) == 0);
 
     if (!matches && !rec.hash.isEmpty()) {
-        const_cast<DatabaseManager*>(this)->emit hashMismatch(*storedId, rec.hash, hash);
+        const QString id = *storedId;
+        const QString expected = rec.hash;
+        locker.unlock();
+        const_cast<DatabaseManager*>(this)->reportHashMismatch(id, expected, hash);
     }
 
     return matches;
+}
+
+void DatabaseManager::reportHashMismatch(const QString& uniqueId, const QString& expected,
+                                         const QString& actual)
+{
+    emit hashMismatch(uniqueId, expected, actual);
 }
 
 bool DatabaseManager::setTrustLevel(const QString& uniqueId, int level)
@@ -471,7 +452,7 @@ bool DatabaseManager::updateLastSeen(const QString& uniqueId)
     DeviceRecord rec;
     {
         QWriteLocker locker(&m_lock);
-        const std::optional<QString> storedId = resolveStoredId(m_devices, uniqueId);
+        const std::optional<QString> storedId = DeviceIdUtil::resolveStoredId(m_devices, uniqueId);
         if (!storedId) {
             return false;
         }
@@ -758,7 +739,7 @@ bool DatabaseManager::updateWatchManifest(const QString& uniqueId, const WatchMa
     QString storedId;
     {
         QWriteLocker locker(&m_lock);
-        const std::optional<QString> resolved = resolveStoredId(m_devices, uniqueId);
+        const std::optional<QString> resolved = DeviceIdUtil::resolveStoredId(m_devices, uniqueId);
         if (!resolved) {
             return false;
         }
@@ -787,7 +768,7 @@ bool DatabaseManager::setVerificationProfile(const QString& uniqueId, Verificati
     QString storedId;
     {
         QWriteLocker locker(&m_lock);
-        const std::optional<QString> resolved = resolveStoredId(m_devices, uniqueId);
+        const std::optional<QString> resolved = DeviceIdUtil::resolveStoredId(m_devices, uniqueId);
         if (!resolved) {
             return false;
         }

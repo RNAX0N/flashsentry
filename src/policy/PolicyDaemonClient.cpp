@@ -1,5 +1,6 @@
 #include "policy/PolicyDaemonClient.h"
 #include "policy/PolicyPaths.h"
+#include "policy/PolicySocketAuth.h"
 
 #include <QLocalSocket>
 #include <QJsonArray>
@@ -15,6 +16,19 @@ PolicyDaemonClient::PolicyDaemonClient(QString socketPath)
 
 QJsonObject PolicyDaemonClient::request(const QJsonObject& req, QString* error) const
 {
+    QJsonObject authenticated = req;
+    const QString op = req.value(QStringLiteral("op")).toString();
+    if (op != QLatin1String("ping")) {
+        const QString token = PolicySocketAuth::readTokenFile(PolicyPaths::tokenPath());
+        if (token.isEmpty()) {
+            if (error) {
+                *error = QStringLiteral("Policy auth token unavailable");
+            }
+            return {};
+        }
+        authenticated.insert(QStringLiteral("auth"), token);
+    }
+
     QLocalSocket socket;
     socket.connectToServer(m_socketPath);
     if (!socket.waitForConnected(3000)) {
@@ -24,7 +38,7 @@ QJsonObject PolicyDaemonClient::request(const QJsonObject& req, QString* error) 
         return {};
     }
 
-    const QByteArray line = QJsonDocument(req).toJson(QJsonDocument::Compact) + '\n';
+    const QByteArray line = QJsonDocument(authenticated).toJson(QJsonDocument::Compact) + '\n';
     socket.write(line);
     socket.flush();
     if (!socket.waitForBytesWritten(3000)) {

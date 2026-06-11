@@ -4,6 +4,7 @@
  */
 
 #include "policy/PolicyPaths.h"
+#include "policy/PolicySocketAuth.h"
 #include "policy/PolicyStoreEngine.h"
 #include "policy/PolicyAudit.h"
 
@@ -33,6 +34,11 @@ public:
         connect(&m_server, &QLocalServer::newConnection, this, &PolicyDaemonServer::onNewConnection);
     }
 
+    ~PolicyDaemonServer() override
+    {
+        QFile::remove(PolicyPaths::tokenPath());
+    }
+
     bool listen(QString* error)
     {
         QLocalServer::removeServer(PolicyPaths::socketPath());
@@ -42,6 +48,12 @@ public:
             }
             return false;
         }
+
+        m_authToken = PolicySocketAuth::generateToken();
+        if (!PolicySocketAuth::writeTokenFile(PolicyPaths::tokenPath(), m_authToken, error)) {
+            m_server.close();
+            return false;
+        }
         return true;
     }
 
@@ -49,6 +61,19 @@ private slots:
     void onNewConnection()
     {
         while (QLocalSocket* socket = m_server.nextPendingConnection()) {
+            if (!PolicySocketAuth::peerMatchesServerUser(socket->socketDescriptor())) {
+                socket->write(
+                    QJsonDocument(QJsonObject{{QStringLiteral("ok"), false},
+                                              {QStringLiteral("error"),
+                                               QStringLiteral("unauthorized peer")}})
+                        .toJson(QJsonDocument::Compact));
+                socket->write("\n");
+                socket->flush();
+                socket->disconnectFromServer();
+                socket->deleteLater();
+                continue;
+            }
+
             connect(socket, &QLocalSocket::readyRead, this, [this, socket]() {
                 const QByteArray line = socket->readAll().trimmed();
                 QJsonObject resp;
@@ -72,9 +97,24 @@ private slots:
     }
 
 private:
+    QJsonObject unauthorized() const
+    {
+        return {{QStringLiteral("ok"), false},
+                {QStringLiteral("error"), QStringLiteral("unauthorized")}};
+    }
+
+    bool requiresAuth(const QString& op) const
+    {
+        return op != QLatin1String("ping");
+    }
+
     QJsonObject dispatch(const QJsonObject& req)
     {
         const QString op = req[QStringLiteral("op")].toString();
+        if (requiresAuth(op) && !PolicySocketAuth::requestAuthorized(req, m_authToken)) {
+            return unauthorized();
+        }
+
         const QString actor = req.value(QStringLiteral("actor")).toString(QStringLiteral("policyd"));
 
         if (op == QLatin1String("ping")) {
@@ -191,6 +231,7 @@ private:
 
     QLocalServer m_server;
     PolicyStoreEngine m_engine;
+    QString m_authToken;
 };
 
 int main(int argc, char* argv[])

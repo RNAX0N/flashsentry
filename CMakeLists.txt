@@ -109,6 +109,7 @@ set(SOURCES
     src/IsoVerifierWidget.cpp
     src/DatabaseManager.cpp
     src/policy/PolicyPaths.cpp
+    src/policy/PolicySocketAuth.cpp
     src/policy/PolicyBlobCodec.cpp
     src/policy/PolicyAudit.cpp
     src/policy/PolicyStoreEngine.cpp
@@ -262,6 +263,7 @@ add_executable(flashspartan-policyd
     src/flashspartan-policyd.cpp
     src/AppPaths.cpp
     src/policy/PolicyPaths.cpp
+    src/policy/PolicySocketAuth.cpp
     src/policy/PolicyBlobCodec.cpp
     src/policy/PolicyAudit.cpp
     src/policy/PolicyStoreEngine.cpp

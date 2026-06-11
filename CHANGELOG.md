@@ -4,6 +4,19 @@ All notable changes to FlashSpartan are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **ISO verification** — images with no publisher checksum (computed SHA-256 only) are now reported as **INCONCLUSIVE** instead of **PASS** in the UI, CLI exit codes, mount blocking, and reports.
+- **Policy daemon** — local socket IPC now requires a session auth token and same-user peer credentials; mutating ops are rejected without a valid token.
+- **Device whitelist** — new trusted devices are stored with partition-aware `canonicalUniqueId()` IDs.
+- **Manifest jobs** — cancellation sets an atomic flag so completed work is ignored after cancel.
+- **Device monitor** — suppress duplicate `deviceConnected` events when udev replays an existing partition.
+
+### Changed
+
+- **DatabaseManager** — removed unused legacy JSON read/write helpers; integrity checks run at startup for hash-based profiles.
+- **Version metadata** — README and PKGBUILD aligned with `VERSION` (1.5.4).
+
 ## [1.5.2] - 2026-06-02
 
 ### Added

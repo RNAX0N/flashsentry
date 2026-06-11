@@ -75,7 +75,7 @@ private:
     void updatePageVisibility();
     void scrollReportToRow(int row);
     void applyChromeStyles();
-    void styleResultRow(int row, bool passed);
+    void styleResultRow(int row, bool passed, bool inconclusive = false);
 
     IsoVerifierWorker* m_worker = nullptr;
     QStackedWidget* m_pageStack = nullptr;

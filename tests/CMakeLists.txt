@@ -13,6 +13,7 @@ add_test(NAME test_types COMMAND test_types)
 set(FLASHSPARTAN_POLICY_SOURCES
     ${CMAKE_SOURCE_DIR}/src/AppPaths.cpp
     ${CMAKE_SOURCE_DIR}/src/policy/PolicyPaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicySocketAuth.cpp
     ${CMAKE_SOURCE_DIR}/src/policy/PolicyBlobCodec.cpp
     ${CMAKE_SOURCE_DIR}/src/policy/PolicyAudit.cpp
     ${CMAKE_SOURCE_DIR}/src/policy/PolicyStoreEngine.cpp
@@ -33,6 +34,27 @@ target_include_directories(test_database_manager PRIVATE ${CMAKE_SOURCE_DIR}/inc
 target_include_directories(test_database_manager PRIVATE ${OPENSSL_INCLUDE_DIRS})
 target_link_libraries(test_database_manager PRIVATE Qt6::Test Qt6::Core Qt6::Network ${OPENSSL_LIBRARIES})
 add_test(NAME test_database_manager COMMAND test_database_manager)
+
+add_executable(test_policy_auth
+    test_policy_auth.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicySocketAuth.cpp
+)
+target_include_directories(test_policy_auth PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_policy_auth PRIVATE Qt6::Test Qt6::Core)
+add_test(NAME test_policy_auth COMMAND test_policy_auth)
+
+add_executable(test_policy_daemon test_policy_daemon.cpp
+    ${CMAKE_SOURCE_DIR}/src/AppPaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicyPaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/policy/PolicySocketAuth.cpp
+)
+target_include_directories(test_policy_daemon PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_policy_daemon PRIVATE Qt6::Test Qt6::Core Qt6::Network)
+add_dependencies(test_policy_daemon flashspartan-policyd)
+add_test(NAME test_policy_daemon COMMAND test_policy_daemon)
+set_tests_properties(test_policy_daemon PROPERTIES
+    ENVIRONMENT "FLASHSPARTAN_POLICYD_TEST_BIN=$<TARGET_FILE:flashspartan-policyd>"
+)
 
 add_executable(test_merkle test_merkle.cpp ${CMAKE_SOURCE_DIR}/src/MerkleTree.cpp)
 target_include_directories(test_merkle PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})

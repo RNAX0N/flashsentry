@@ -420,7 +420,10 @@ QString buildReport(const IsoVerifyResult& r)
         if (!r.pgpSummary.isEmpty()) lines << r.pgpSummary;
     }
     if (!r.checksumUrl.isEmpty()) lines << QStringLiteral("Checksums: %1").arg(r.checksumUrl);
-    lines << QStringLiteral("Result: %1").arg(r.passed() ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+    const QString resultLabel = r.inconclusive() ? QStringLiteral("INCONCLUSIVE")
+                               : r.passed()      ? QStringLiteral("PASS")
+                                                 : QStringLiteral("FAIL");
+    lines << QStringLiteral("Result: %1").arg(resultLabel);
     if (!r.errorMessage.isEmpty()) lines << QStringLiteral("Note: %1").arg(r.errorMessage);
     return lines.join(QLatin1Char('\n'));
 }
@@ -711,7 +714,7 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
 
     if (r.expectedSha256.isEmpty()) {
         r.source = IsoVerifySource::ComputedOnly;
-        r.hashMatches = true;
+        r.hashMatches = false;
         r.reportSummary = QStringLiteral(
             "Computed SHA-256 only — unknown publisher, offline, or no checksum available. "
             "Add a .sha256 sidecar or update the catalog.");

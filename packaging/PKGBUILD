@@ -7,7 +7,7 @@
 #   cd packaging && FLASHSPARTAN_RELEASE=1 makepkg -si
 #
 pkgname=flashspartan
-pkgver=1.4.2
+pkgver=1.5.4
 pkgrel=7
 pkgdesc="USB and ISO security monitor - verify Linux ISOs, watch folders, optional full-disk hash"
 arch=('x86_64' 'aarch64')

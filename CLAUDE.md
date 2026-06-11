@@ -99,14 +99,19 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md) for algorithms.
 ### DatabaseManager
 - `canonicalUniqueId()` → `DeviceInfo::partitionUniqueId()`
 - `updateWatchManifest()`, `setVerificationProfile()`
-- JSON at `~/.config/flashspartan/devices.json`, atomic write, mode 600
+- In-memory cache; persistence via `PolicyGateway` → signed `policy.store` (HMAC key `policy.key`)
+- Legacy `devices.json` migrated to `devices.json.migrated` on first policy load
 
 ### MainWindow
 - `m_appModeStack`: USB splitter vs `IsoVerifierWidget`
 - `startDeviceVerification()` routes by `VerificationProfile`
 - `applyAppModule()` switches stacked UI
 
-## Database Format (devices.json)
+## Policy store (authoritative)
+
+Signed blob at `~/.config/FlashSpartan/policy.store` (see `src/policy/`). JSON export/import in Settings is for backup only.
+
+Device record shape (in policy snapshot / export JSON):
 
 ```json
 {

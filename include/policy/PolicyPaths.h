@@ -14,6 +14,7 @@ public:
     static QString legacyDevicesJsonPath();
     static QString legacyBlockedJsonPath();
     static QString socketPath();
+    static QString tokenPath();
 };
 
 } // namespace FlashSpartan::Policy

@@ -319,9 +319,6 @@ HashResult HashWorker::executeHash(std::shared_ptr<JobState> state)
         if (checkpoint.isValid()) {
             options.resumeFromBytes = checkpoint.bytesCompleted;
         }
-    } else if (state->config.scanMode == HashScanMode::Full) {
-        cpPtr = &checkpoint;
-        options.checkpointOut = cpPtr;
     }
 
     if (state->totalBytes.load() == 0) {

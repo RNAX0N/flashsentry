@@ -5,11 +5,13 @@
 #include <QtConcurrent>
 #include <QFutureWatcher>
 #include <QMutexLocker>
+#include <atomic>
 
 namespace FlashSpartan {
 
 struct ManifestWorker::JobState {
     Job config;
+    std::atomic<bool> cancelled{false};
     std::unique_ptr<QFutureWatcher<ManifestVerifyResult>> verifyWatcher;
     std::unique_ptr<QFutureWatcher<WatchManifest>> buildWatcher;
 };
@@ -44,6 +46,11 @@ QString ManifestWorker::startVerify(const QString& deviceNode, const QString& mo
                         return;
                     }
                     st = it.value();
+                }
+                if (st->cancelled.load()) {
+                    QMutexLocker lock(&m_mutex);
+                    m_jobs.remove(jobId);
+                    return;
                 }
                 ManifestVerifyResult result = st->verifyWatcher->result();
                 result.deviceNode = st->config.deviceNode;
@@ -115,6 +122,11 @@ QString ManifestWorker::startBuildBaseline(const QString& deviceNode, const QStr
                     }
                     st = it.value();
                 }
+                if (st->cancelled.load()) {
+                    QMutexLocker lock(&m_mutex);
+                    m_jobs.remove(jobId);
+                    return;
+                }
                 const WatchManifest built = st->buildWatcher->result();
                 {
                     QMutexLocker lock(&m_mutex);
@@ -139,13 +151,20 @@ QString ManifestWorker::startBuildBaseline(const QString& deviceNode, const QStr
 bool ManifestWorker::cancelJob(const QString& jobId)
 {
     QMutexLocker lock(&m_mutex);
-    return m_jobs.remove(jobId);
+    auto it = m_jobs.find(jobId);
+    if (it == m_jobs.end()) {
+        return false;
+    }
+    it.value()->cancelled.store(true);
+    return true;
 }
 
 void ManifestWorker::cancelAll()
 {
     QMutexLocker lock(&m_mutex);
-    m_jobs.clear();
+    for (const auto& state : m_jobs) {
+        state->cancelled.store(true);
+    }
 }
 
 } // namespace FlashSpartan

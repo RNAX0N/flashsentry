@@ -93,6 +93,11 @@ bool DatabaseManager::initialize(const QString& path)
         syncFromPolicyGateway();
     }
 
+    const QStringList issues = validateIntegrity();
+    for (const QString& issue : issues) {
+        qWarning() << "DatabaseManager: integrity:" << issue;
+    }
+
     emit databaseLoaded(m_devices.size());
     return true;
 }
@@ -665,8 +670,13 @@ QStringList DatabaseManager::validateIntegrity() const
         if (record.uniqueId.isEmpty()) {
             issues.append("Found device with empty unique ID");
         }
-        if (record.hash.isEmpty() && record.trustLevel > 0) {
-            issues.append(QString("Trusted device %1 has no hash").arg(record.uniqueId));
+        if (record.trustLevel > 0 && record.uniqueId.isEmpty() == false) {
+            const bool needsHash = record.verificationProfile == VerificationProfile::FullPartition
+                                   || record.verificationProfile == VerificationProfile::Hybrid;
+            if (needsHash && record.hash.isEmpty()) {
+                issues.append(QStringLiteral("Trusted device %1 uses full-partition verification but has no hash")
+                                  .arg(record.uniqueId));
+            }
         }
         if (!record.firstSeen.isValid()) {
             issues.append(QString("Device %1 has invalid first_seen date").arg(record.uniqueId));
@@ -702,123 +712,6 @@ void DatabaseManager::compact()
     QWriteLocker locker(&m_lock);
     syncFromPolicyGateway();
     m_modified = false;
-}
-
-bool DatabaseManager::loadFromFile()
-{
-    QFile file(m_databasePath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        qWarning() << "DatabaseManager: Failed to open" << m_databasePath;
-        return false;
-    }
-    
-    QByteArray data = file.readAll();
-    file.close();
-    
-    if (data.isEmpty()) {
-        // Empty file is valid
-        return true;
-    }
-    
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
-    
-    if (error.error != QJsonParseError::NoError) {
-        qWarning() << "DatabaseManager: JSON parse error:" << error.errorString();
-        return false;
-    }
-    
-    QJsonObject root = doc.object();
-    
-    // Version check
-    QString version = root["version"].toString();
-    if (!version.isEmpty() && version != DB_VERSION) {
-        qInfo() << "DatabaseManager: Migrating from version" << version << "to" << DB_VERSION;
-        // Future: add migration logic here
-    }
-    
-    // Load devices
-    QJsonArray devicesArray = root["devices"].toArray();
-    
-    for (const auto& item : devicesArray) {
-        DeviceRecord record = DeviceRecord::fromJson(item.toObject());
-        if (!record.uniqueId.isEmpty()) {
-            m_devices.insert(record.uniqueId, record);
-        }
-    }
-    
-    qInfo() << "DatabaseManager: Loaded" << m_devices.size() << "devices from" << m_databasePath;
-    return true;
-}
-
-bool DatabaseManager::writeToFile()
-{
-    // Build JSON document
-    QJsonObject root;
-    root["version"] = DB_VERSION;
-    root["last_modified"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-    root["device_count"] = static_cast<int>(m_devices.size());
-    
-    QJsonArray devicesArray;
-    for (const auto& record : m_devices) {
-        devicesArray.append(record.toJson());
-    }
-    root["devices"] = devicesArray;
-    
-    QJsonDocument doc(root);
-    QByteArray data = doc.toJson(QJsonDocument::Indented);
-    
-    // Write to temporary file first for atomic update
-    QString tempPath = m_databasePath + ".tmp";
-    QFile tempFile(tempPath);
-    
-    if (!tempFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        qWarning() << "DatabaseManager: Failed to open temp file for writing";
-        emit databaseError("Failed to write database");
-        return false;
-    }
-    
-    qint64 written = tempFile.write(data);
-    tempFile.flush();
-    tempFile.close();
-    
-    if (written != data.size()) {
-        QFile::remove(tempPath);
-        emit databaseError("Failed to write complete database");
-        return false;
-    }
-    
-    // Atomic rename
-    if (QFile::exists(m_databasePath)) {
-        QFile::remove(m_databasePath);
-    }
-    
-    if (!QFile::rename(tempPath, m_databasePath)) {
-        emit databaseError("Failed to finalize database write");
-        return false;
-    }
-    
-    // Set secure permissions (owner read/write only)
-    QFile::setPermissions(m_databasePath, 
-        QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    
-    qInfo() << "DatabaseManager: Saved" << m_devices.size() << "devices to" << m_databasePath;
-    return true;
-}
-
-bool DatabaseManager::ensureDirectory()
-{
-    QFileInfo fi(m_databasePath);
-    QDir dir = fi.absoluteDir();
-    
-    if (!dir.exists()) {
-        if (!dir.mkpath(".")) {
-            qWarning() << "DatabaseManager: Failed to create directory" << dir.path();
-            return false;
-        }
-    }
-    
-    return true;
 }
 
 QString DatabaseManager::defaultDatabasePath()

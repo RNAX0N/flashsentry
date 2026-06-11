@@ -1556,7 +1556,7 @@ void MainWindow::handleNewDevicePartition(const DeviceInfo& device)
     }
 
     DeviceRecord record;
-    record.uniqueId = device.uniqueId();
+    record.uniqueId = m_database->canonicalUniqueId(device);
     record.firstSeen = QDateTime::currentDateTime();
     record.lastSeen = record.firstSeen;
     record.trustLevel = m_settings.defaultTrustLevel;
@@ -1609,7 +1609,7 @@ void MainWindow::whitelistDrivePartitions(const DeviceInfo& device)
         }
 
         DeviceRecord record;
-        record.uniqueId = part.uniqueId();
+        record.uniqueId = m_database->canonicalUniqueId(part);
         record.firstSeen = QDateTime::currentDateTime();
         record.lastSeen = record.firstSeen;
         record.trustLevel = m_settings.defaultTrustLevel;

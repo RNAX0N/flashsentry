@@ -461,13 +461,17 @@ void DeviceMonitor::processUdevEvent(struct udev_device* dev)
     
     if (action == "add") {
         DeviceInfo info = extractDeviceInfo(dev);
-        
+
+        bool isNew = false;
         {
             QMutexLocker locker(&m_devicesMutex);
+            isNew = !m_devices.contains(info.deviceNode);
             m_devices.insert(info.deviceNode, info);
         }
-        
-        emit deviceConnected(info);
+
+        if (isNew) {
+            emit deviceConnected(info);
+        }
         
     } else if (action == "remove") {
         {

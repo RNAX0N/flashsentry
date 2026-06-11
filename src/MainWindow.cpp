@@ -23,6 +23,7 @@
 #include "ReportsPage.h"
 #include "AboutPage.h"
 #include "policy/PolicyPaths.h"
+#include "DeviceWhitelistService.h"
 
 #include <algorithm>
 
@@ -1555,13 +1556,8 @@ void MainWindow::handleNewDevicePartition(const DeviceInfo& device)
         }
     }
 
-    DeviceRecord record;
-    record.uniqueId = m_database->canonicalUniqueId(device);
-    record.firstSeen = QDateTime::currentDateTime();
-    record.lastSeen = record.firstSeen;
-    record.trustLevel = m_settings.defaultTrustLevel;
-    record.lastKnownInfo = device;
-
+    const DeviceRecord record =
+        DeviceWhitelistService::makeRecord(device, *m_database, m_settings.defaultTrustLevel);
     m_database->addDevice(record);
     logMessage(QString("Device whitelisted: %1").arg(device.displayName()));
 
@@ -1608,13 +1604,8 @@ void MainWindow::whitelistDrivePartitions(const DeviceInfo& device)
             continue;
         }
 
-        DeviceRecord record;
-        record.uniqueId = m_database->canonicalUniqueId(part);
-        record.firstSeen = QDateTime::currentDateTime();
-        record.lastSeen = record.firstSeen;
-        record.trustLevel = m_settings.defaultTrustLevel;
-        record.lastKnownInfo = part;
-
+        const DeviceRecord record =
+            DeviceWhitelistService::makeRecord(part, *m_database, m_settings.defaultTrustLevel);
         m_database->addDevice(record);
 
         DeviceCard* card = getDeviceCard(part.deviceNode);
@@ -3497,6 +3488,7 @@ bool MainWindow::showNewDriveDialog(const DeviceInfo& device)
         .arg(device.serial.isEmpty() ? "N/A" : device.serial)
         .arg(partitionCount)
         .arg(partitionNodes.join(", "));
+    message += DeviceWhitelistService::weakIdentityNoticeHtml(device);
 
     return showStyledRichQuestion(this, QStringLiteral("New Drive Detected"), message)
            == QMessageBox::Yes;
@@ -3517,7 +3509,8 @@ bool MainWindow::showNewDeviceDialog(const DeviceInfo& device)
         .arg(device.serial.isEmpty() ? "N/A" : device.serial)
         .arg(device.sizeBytes > 0 ? QString("%1 GB").arg(device.sizeBytes / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1) : "Unknown")
         .arg(device.fsType.isEmpty() ? "Unknown" : device.fsType);
-    
+    message += DeviceWhitelistService::weakIdentityNoticeHtml(device);
+
     return showStyledRichQuestion(this, QStringLiteral("New Device Detected"), message)
            == QMessageBox::Yes;
 }

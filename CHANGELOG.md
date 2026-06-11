@@ -17,6 +17,12 @@ All notable changes to FlashSpartan are documented in this file.
 - **DatabaseManager** — removed unused legacy JSON read/write helpers; integrity checks run at startup for hash-based profiles.
 - **Version metadata** — README and PKGBUILD aligned with `VERSION` (1.5.4).
 
+### Added
+
+- **Weak USB identity** — warnings in trust dialogs and device cards when no serial is reported; documented in USER_GUIDE.
+- **DeviceWhitelistService** — shared helper for building whitelist records (incremental MainWindow refactor).
+- **Tests** — `test_device_whitelist_service`, `test_manifest_worker`, `test_hash_worker`.
+
 ## [1.5.2] - 2026-06-02
 
 ### Added

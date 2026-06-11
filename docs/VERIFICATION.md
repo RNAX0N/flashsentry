@@ -134,6 +134,8 @@ Example: `ABC123_SanDisk_Ultra_sdb1`
 
 Legacy records without partition suffix may still resolve via `legacyUniqueId()` fallback where implemented.
 
+When `serial` is empty, `uniqueId()` becomes `{vendor}_{model}` — two physically different sticks with the same USB descriptors can collide. The UI warns at trust time and on the device card (`N/A (no serial)`). Prefer labeling drives in policy notes when this applies.
+
 ## Database record fields (relevant)
 
 ```json

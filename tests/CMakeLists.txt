@@ -56,6 +56,42 @@ set_tests_properties(test_policy_daemon PROPERTIES
     ENVIRONMENT "FLASHSPARTAN_POLICYD_TEST_BIN=$<TARGET_FILE:flashspartan-policyd>"
 )
 
+add_executable(test_device_whitelist_service
+    test_device_whitelist_service.cpp
+    ${CMAKE_SOURCE_DIR}/src/DeviceWhitelistService.cpp
+    ${CMAKE_SOURCE_DIR}/src/DatabaseManager.cpp
+    ${CMAKE_SOURCE_DIR}/include/DatabaseManager.h
+    ${FLASHSPARTAN_POLICY_SOURCES}
+)
+target_include_directories(test_device_whitelist_service PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(test_device_whitelist_service PRIVATE ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_device_whitelist_service PRIVATE Qt6::Test Qt6::Core Qt6::Network ${OPENSSL_LIBRARIES})
+add_test(NAME test_device_whitelist_service COMMAND test_device_whitelist_service)
+
+add_executable(test_manifest_worker
+    test_manifest_worker.cpp
+    ${CMAKE_SOURCE_DIR}/src/ManifestWorker.cpp
+    ${CMAKE_SOURCE_DIR}/include/ManifestWorker.h
+    ${CMAKE_SOURCE_DIR}/src/ManifestService.cpp
+    ${CMAKE_SOURCE_DIR}/src/MerkleTree.cpp
+)
+target_include_directories(test_manifest_worker PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_manifest_worker PRIVATE Qt6::Test Qt6::Core Qt6::Concurrent ${OPENSSL_LIBRARIES})
+add_test(NAME test_manifest_worker COMMAND test_manifest_worker)
+
+add_executable(test_hash_worker
+    test_hash_worker.cpp
+    ${CMAKE_SOURCE_DIR}/src/HashWorker.cpp
+    ${CMAKE_SOURCE_DIR}/include/HashWorker.h
+    ${CMAKE_SOURCE_DIR}/src/AppPaths.cpp
+    ${CMAKE_SOURCE_DIR}/src/HashCheckpoint.cpp
+    ${CMAKE_SOURCE_DIR}/src/RawDeviceHash.cpp
+    ${CMAKE_SOURCE_DIR}/src/RawDeviceHashAdvanced.cpp
+)
+target_include_directories(test_hash_worker PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_hash_worker PRIVATE Qt6::Test Qt6::Core Qt6::Concurrent ${OPENSSL_LIBRARIES})
+add_test(NAME test_hash_worker COMMAND test_hash_worker)
+
 add_executable(test_merkle test_merkle.cpp ${CMAKE_SOURCE_DIR}/src/MerkleTree.cpp)
 target_include_directories(test_merkle PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
 target_link_libraries(test_merkle PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})

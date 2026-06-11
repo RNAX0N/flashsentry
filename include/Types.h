@@ -52,6 +52,18 @@ struct DeviceInfo {
         return QString("%1_%2").arg(uniqueId(), part);
     }
 
+    /** True when the stick has no USB serial (identity falls back to vendor/model). */
+    bool hasWeakIdentity() const { return serial.isEmpty(); }
+
+    QString weakIdentitySummary() const {
+        if (!hasWeakIdentity()) {
+            return {};
+        }
+        return QStringLiteral(
+            "No USB serial number — identical unlabeled drives may share the same trust entry. "
+            "Label drives in the allow list or prefer sticks that report a serial.");
+    }
+
     QJsonObject toJson() const {
         QJsonObject obj;
         obj["device_node"] = deviceNode;

@@ -108,6 +108,7 @@ set(SOURCES
     src/EventDetailDialog.cpp
     src/IsoVerifierWidget.cpp
     src/DatabaseManager.cpp
+    src/DeviceWhitelistService.cpp
     src/policy/PolicyPaths.cpp
     src/policy/PolicySocketAuth.cpp
     src/policy/PolicyBlobCodec.cpp

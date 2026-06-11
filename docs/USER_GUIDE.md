@@ -122,6 +122,23 @@ Use this when you care about **certain files** changing, not the entire drive.
 
 ---
 
+## Device identity and drives without a serial
+
+FlashSpartan identifies USB sticks using **serial + vendor + model + partition** when the kernel exposes a USB serial. Many cheap or refurbished sticks report **no serial**; FlashSpartan then falls back to `vendor_model` only.
+
+| Situation | What happens |
+|-----------|----------------|
+| Stick reports a serial | Stable per-device identity (`SERIAL_Vendor_Model_sdb1`) |
+| No serial | Weaker identity — two identical unlabeled sticks may look like the same device |
+| Trust prompt | Shows an **Identity note** when serial is missing |
+| Device card | Serial column shows **N/A (no serial)** with a tooltip |
+
+**Tips:** Use the **Notes** field on the allow/block list for human labels; prefer sticks that report a serial in sensitive environments; after swapping hardware, rebuild watch-folder baselines if identity was weak.
+
+Technical detail: [docs/VERIFICATION.md](VERIFICATION.md#device-identity).
+
+---
+
 ## Workflow 3: Full partition hash (advanced)
 
 Use when you need a fingerprint of **every byte** on the partition.

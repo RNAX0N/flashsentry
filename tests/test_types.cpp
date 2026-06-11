@@ -13,6 +13,7 @@ private slots:
     void isoVerifyPassedRequiresTrustedComparison();
     void isoVerifyComputedOnlyIsInconclusive();
     void isoVerifyLayoutNoteIsInformational();
+    void deviceWeakIdentityWhenSerialMissing();
 };
 
 void TestTypes::partitionUniqueIdIncludesPartition()
@@ -70,6 +71,23 @@ void TestTypes::isoVerifyLayoutNoteIsInformational()
     r.source = IsoVerifySource::Unknown;
     QVERIFY(!r.inconclusive());
     QVERIFY(r.passed());
+}
+
+void TestTypes::deviceWeakIdentityWhenSerialMissing()
+{
+    DeviceInfo weak;
+    weak.vendor = QStringLiteral("Generic");
+    weak.model = QStringLiteral("Flash");
+    weak.deviceNode = QStringLiteral("/dev/sdb1");
+    QVERIFY(weak.hasWeakIdentity());
+    QCOMPARE(weak.uniqueId(), QStringLiteral("Generic_Flash"));
+    QCOMPARE(weak.partitionUniqueId(), QStringLiteral("Generic_Flash_sdb1"));
+    QVERIFY(!weak.weakIdentitySummary().isEmpty());
+
+    DeviceInfo strong = weak;
+    strong.serial = QStringLiteral("SER1");
+    QVERIFY(!strong.hasWeakIdentity());
+    QCOMPARE(strong.uniqueId(), QStringLiteral("SER1_Generic_Flash"));
 }
 
 void TestTypes::deviceRecordJsonRoundTrip()

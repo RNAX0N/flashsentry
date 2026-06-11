@@ -4,6 +4,10 @@ All notable changes to FlashSpartan are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **ISO verification** — images with no publisher checksum (computed SHA-256 only) are now reported as **INCONCLUSIVE** instead of **PASS** in the UI, CLI exit codes, mount blocking, and reports.
+
 ## [1.5.2] - 2026-06-02
 
 ### Added

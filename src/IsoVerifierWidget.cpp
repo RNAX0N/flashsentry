@@ -483,12 +483,14 @@ void IsoVerifierWidget::updateSummaryStrip(int passed, int total, int needsSidec
     m_summaryStrip->setVisible(true);
 }
 
-void IsoVerifierWidget::styleResultRow(int row, bool passed)
+void IsoVerifierWidget::styleResultRow(int row, bool passed, bool inconclusive)
 {
     if (!m_table) {
         return;
     }
-    const QColor bg = passed ? FSColor(Verified).lighter(190) : FSColor(Modified).lighter(195);
+    const QColor bg = inconclusive ? FSColor(Warning).lighter(190)
+                      : passed       ? FSColor(Verified).lighter(190)
+                                     : FSColor(Modified).lighter(195);
     for (int col = 0; col < m_table->columnCount(); ++col) {
         if (QTableWidgetItem* item = m_table->item(row, col)) {
             item->setBackground(bg);
@@ -700,7 +702,10 @@ void IsoVerifierWidget::setResults(const QList<IsoVerifyResult>& results)
         m_table->setItem(i, 4, new QTableWidgetItem(fp));
 
         const bool pass = r.passed();
-        QString status = pass ? QStringLiteral("PASS") : QStringLiteral("FAIL");
+        const bool inconclusive = r.inconclusive();
+        QString status = inconclusive ? QStringLiteral("INCONCLUSIVE")
+                       : pass         ? QStringLiteral("PASS")
+                                      : QStringLiteral("FAIL");
         if (!r.errorMessage.isEmpty()) {
             status += QLatin1String(": ") + r.errorMessage.left(60);
         }
@@ -708,7 +713,7 @@ void IsoVerifierWidget::setResults(const QList<IsoVerifyResult>& results)
         statusItem->setFont(FSFont(Label));
         m_table->setItem(i, 5, statusItem);
 
-        styleResultRow(i, pass);
+        styleResultRow(i, pass, inconclusive);
         appendReport(r.reportSummary);
         if (!r.reportSummary.isEmpty()) {
             appendReport(QString());

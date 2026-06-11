@@ -10,6 +10,9 @@ private slots:
     void partitionUniqueIdIncludesPartition();
     void legacyUniqueIdOmitsPartition();
     void deviceRecordJsonRoundTrip();
+    void isoVerifyPassedRequiresTrustedComparison();
+    void isoVerifyComputedOnlyIsInconclusive();
+    void isoVerifyLayoutNoteIsInformational();
 };
 
 void TestTypes::partitionUniqueIdIncludesPartition()
@@ -33,6 +36,40 @@ void TestTypes::legacyUniqueIdOmitsPartition()
     info.deviceNode = "/dev/sdb1";
 
     QCOMPARE(info.legacyUniqueId(), QString("ABC123_SanDisk_Ultra"));
+}
+
+void TestTypes::isoVerifyPassedRequiresTrustedComparison()
+{
+    IsoVerifyResult r;
+    r.success = true;
+    r.isoPath = QStringLiteral("/tmp/debian.iso");
+    r.hashChecked = true;
+    r.expectedSha256 = QStringLiteral("ab");
+    r.hashMatches = true;
+    QVERIFY(r.passed());
+    QVERIFY(!r.inconclusive());
+}
+
+void TestTypes::isoVerifyComputedOnlyIsInconclusive()
+{
+    IsoVerifyResult r;
+    r.success = true;
+    r.isoPath = QStringLiteral("/tmp/unknown.iso");
+    r.hashChecked = true;
+    r.computedSha256 = QStringLiteral("deadbeef");
+    r.source = IsoVerifySource::ComputedOnly;
+    QVERIFY(r.inconclusive());
+    QVERIFY(!r.passed());
+}
+
+void TestTypes::isoVerifyLayoutNoteIsInformational()
+{
+    IsoVerifyResult r;
+    r.success = true;
+    r.layoutNote = QStringLiteral("Live USB layout detected");
+    r.source = IsoVerifySource::Unknown;
+    QVERIFY(!r.inconclusive());
+    QVERIFY(r.passed());
 }
 
 void TestTypes::deviceRecordJsonRoundTrip()

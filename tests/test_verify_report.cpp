@@ -29,6 +29,7 @@ void TestVerifyReport::summaryCountsSidecarNeeded()
     needs.success = true;
     needs.hashChecked = true;
     needs.isoPath = QStringLiteral("/y.iso");
+    needs.source = IsoVerifySource::ComputedOnly;
 
     const QString s = IsoVerifyReport::summaryLine({fail, needs});
     QVERIFY(s.contains(QStringLiteral("1/2")));

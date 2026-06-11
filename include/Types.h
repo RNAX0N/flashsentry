@@ -517,8 +517,17 @@ struct IsoVerifyResult {
     QString errorMessage;
     uint64_t durationMs = 0;
 
+    /** Hash computed but no publisher checksum was available to compare against. */
+    bool inconclusive() const {
+        if (!success) return false;
+        if (isoPath.isEmpty()) return false;
+        return source == IsoVerifySource::ComputedOnly
+               || (hashChecked && expectedSha256.isEmpty());
+    }
+
     bool passed() const {
         if (!success) return false;
+        if (inconclusive()) return false;
         if (hashChecked && !expectedSha256.isEmpty() && !hashMatches) return false;
         if (pgpChecked && !pgpValid) return false;
         if (pgpChecked && !fingerprintTrusted) return false;

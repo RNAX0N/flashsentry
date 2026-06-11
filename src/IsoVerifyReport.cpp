@@ -17,9 +17,7 @@ IsoVerifyReport::SummaryCounts IsoVerifyReport::countSummary(const QList<IsoVeri
     SummaryCounts counts;
     counts.total = results.size();
     for (const IsoVerifyResult& r : results) {
-        const bool computedOnly =
-            r.hashChecked && r.expectedSha256.isEmpty() && !r.isoPath.isEmpty();
-        if (computedOnly) {
+        if (r.inconclusive()) {
             ++counts.needsSidecar;
         } else if (r.passed()) {
             ++counts.passed;
@@ -53,15 +51,16 @@ QString IsoVerifyReport::buildPlainText(const QList<IsoVerifyResult>& results)
 
 QString IsoVerifyReport::buildCsv(const QList<IsoVerifyResult>& results)
 {
-    QString out = QStringLiteral("file,publisher,passed,hash_ok,pgp_valid,error\n");
+    QString out = QStringLiteral("file,publisher,passed,inconclusive,hash_ok,pgp_valid,error\n");
     for (const IsoVerifyResult& r : results) {
         const QString file = r.isoPath.isEmpty() ? r.layoutNote : QFileInfo(r.isoPath).fileName();
         const QString publisher =
             r.publisherName + QLatin1Char(' ') + r.releaseLabel;
-        QString line = QStringLiteral("\"%1\",\"%2\",%3,%4,%5,\"%6\"\n")
+        QString line = QStringLiteral("\"%1\",\"%2\",%3,%4,%5,%6,\"%7\"\n")
                            .arg(csvEscape(file),
                                 csvEscape(publisher),
                                 r.passed() ? QStringLiteral("yes") : QStringLiteral("no"),
+                                r.inconclusive() ? QStringLiteral("yes") : QStringLiteral("no"),
                                 r.hashMatches ? QStringLiteral("yes") : QStringLiteral("no"),
                                 r.pgpValid ? QStringLiteral("yes") : QStringLiteral("no"),
                                 csvEscape(r.errorMessage));
@@ -80,6 +79,7 @@ static QJsonObject isoResultToJson(const IsoVerifyResult& r)
     obj.insert(QStringLiteral("publisher"), r.publisherName);
     obj.insert(QStringLiteral("release"), r.releaseLabel);
     obj.insert(QStringLiteral("passed"), r.passed());
+    obj.insert(QStringLiteral("inconclusive"), r.inconclusive());
     obj.insert(QStringLiteral("success"), r.success);
     obj.insert(QStringLiteral("hash_checked"), r.hashChecked);
     obj.insert(QStringLiteral("hash_matches"), r.hashMatches);
@@ -124,7 +124,8 @@ QString IsoVerifyReport::buildHtml(const QList<IsoVerifyResult>& results)
     QString html = QStringLiteral(
         "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>FlashSpartan report</title>"
         "<style>body{font-family:sans-serif}table{border-collapse:collapse;width:100%}"
-        "td,th{border:1px solid #ccc;padding:6px}tr.fail{background:#fdd}</style></head><body>");
+        "td,th{border:1px solid #ccc;padding:6px}tr.fail{background:#fdd}"
+        "tr.inconclusive{background:#ffd}</style></head><body>");
     html += QStringLiteral("<h1>FlashSpartan verification</h1><p>%1</p><table><tr>"
                            "<th>File</th><th>Publisher</th><th>SHA-256</th><th>PGP</th><th>Status</th></tr>")
                 .arg(summaryLine(results).toHtmlEscaped());
@@ -140,14 +141,19 @@ QString IsoVerifyReport::buildHtml(const QList<IsoVerifyResult>& results)
         if (r.pgpChecked) {
             pgp = r.pgpValid ? QStringLiteral("valid") : QStringLiteral("FAIL");
         }
-        const QString rowClass = r.passed() ? QString() : QStringLiteral(" class=\"fail\"");
+        const QString statusLabel = r.inconclusive() ? QStringLiteral("INCONCLUSIVE")
+                                    : r.passed()      ? QStringLiteral("PASS")
+                                                      : QStringLiteral("FAIL");
+        const QString rowClass = r.inconclusive() ? QStringLiteral(" class=\"inconclusive\"")
+                                 : r.passed()     ? QString()
+                                                  : QStringLiteral(" class=\"fail\"");
         html += QStringLiteral("<tr%1><td>%2</td><td>%3</td><td>%4</td><td>%5</td><td>%6</td></tr>")
                     .arg(rowClass,
                          file.toHtmlEscaped(),
                          (r.publisherName + QLatin1Char(' ') + r.releaseLabel).toHtmlEscaped(),
                          hashCol.toHtmlEscaped(),
                          pgp.toHtmlEscaped(),
-                         (r.passed() ? QStringLiteral("PASS") : QStringLiteral("FAIL")).toHtmlEscaped());
+                         statusLabel.toHtmlEscaped());
     }
     html += QStringLiteral("</table></body></html>");
     return html;

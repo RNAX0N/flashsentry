@@ -14,11 +14,10 @@
 namespace FlashSpartan {
 
 /**
- * @brief DatabaseManager - Thread-safe persistent storage for device records
- * 
- * Manages the whitelist database with atomic read/write operations.
- * Uses JSON for human-readable storage with automatic backups.
- * All public methods are thread-safe.
+ * @brief DatabaseManager - Thread-safe in-memory cache of trusted device records
+ *
+ * Persistence is handled by the signed policy store (`policy.store`) via
+ * PolicyGateway / flashspartan-policyd. All public methods are thread-safe.
  */
 class DatabaseManager : public QObject {
     Q_OBJECT
@@ -45,7 +44,7 @@ public:
 
     /**
      * @brief Initialize the database
-     * @param path Path to the database file (JSON)
+     * @param path Optional policy config directory override
      * @return true if successful
      */
     bool initialize(const QString& path = QString());
@@ -73,6 +72,7 @@ public:
     bool hasDevice(const DeviceInfo& device) const;
     QString canonicalUniqueId(const DeviceInfo& device) const;
     bool updateWatchManifest(const QString& uniqueId, const WatchManifest& manifest);
+    bool updateIsoBaselines(const QString& uniqueId, const QList<IsoImageBaseline>& baselines);
     bool setVerificationProfile(const QString& uniqueId, VerificationProfile profile);
 
     /**
@@ -312,20 +312,6 @@ signals:
                       const QString& actual);
 
 private:
-    /**
-     * @brief Load database from file
-     */
-    bool loadFromFile();
-
-    /**
-     * @brief Write database to file
-     */
-    bool writeToFile();
-
-    /**
-     * @brief Ensure the database directory exists
-     */
-    bool ensureDirectory();
 
     /**
      * @brief Get default database path
@@ -341,6 +327,8 @@ private:
     bool persistDevice(const DeviceRecord& record, const QString& reason);
     bool persistRecordById(const QString& uniqueId, const QString& reason);
     QString policyActor() const;
+    void reportHashMismatch(const QString& uniqueId, const QString& expected,
+                            const QString& actual);
 
     // Database file path
     QString m_databasePath;

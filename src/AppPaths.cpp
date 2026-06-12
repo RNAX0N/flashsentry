@@ -44,6 +44,8 @@ void AppPaths::migrateFromLegacyConfigIfNeeded()
     copyIfMissing(QStringLiteral("verify-history.json"));
     copyIfMissing(QStringLiteral("hash-checkpoints.json"));
     copyIfMissing(QStringLiteral("blocked-drives.json"));
+    copyIfMissing(QStringLiteral("audit.log"));
+    copyIfMissing(QStringLiteral("user-iso-hashes.json"));
 
     const QString legacyDevices = legacy + QStringLiteral("/flashsentry/devices.json");
     const QString newDevicesDir = current + QStringLiteral("/flashspartan");

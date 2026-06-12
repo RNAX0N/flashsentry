@@ -29,6 +29,9 @@ private slots:
     void getDeviceReturnsLegacyRecord();
     void updateLastSeenOnLegacyId();
     void importMergeAndReplace();
+    void addDeviceStoresCanonicalId();
+    void validateIntegrityFlagsHashProfileWithoutHash();
+    void updateIsoBaselinesRoundTrip();
 };
 
 void TestDatabaseManager::partitionAwareLookupAndMigration()
@@ -187,6 +190,94 @@ void TestDatabaseManager::importMergeAndReplace()
     QCOMPARE(db.importFromFile(importPath, false), 1);
     QCOMPARE(db.deviceCount(), 1);
     QVERIFY(db.hasDevice("device_b/sdb1"));
+}
+
+void TestDatabaseManager::addDeviceStoresCanonicalId()
+{
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+    installIsolatedPolicy(tempDir.path());
+
+    DatabaseManager db;
+    QVERIFY(db.initialize());
+
+    DeviceInfo info;
+    info.serial = "SER010";
+    info.vendor = "Vendor";
+    info.model = "Model";
+    info.deviceNode = "/dev/sde3";
+
+    DeviceRecord record;
+    record.uniqueId = db.canonicalUniqueId(info);
+    record.firstSeen = QDateTime::currentDateTimeUtc();
+    record.lastSeen = record.firstSeen;
+    record.lastKnownInfo = info;
+    QVERIFY(db.addDevice(record));
+
+    const auto stored = db.getDevice(db.canonicalUniqueId(info));
+    QVERIFY(stored.has_value());
+    QCOMPARE(stored->uniqueId, info.partitionUniqueId());
+}
+
+void TestDatabaseManager::validateIntegrityFlagsHashProfileWithoutHash()
+{
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+    installIsolatedPolicy(tempDir.path());
+
+    DatabaseManager db;
+    QVERIFY(db.initialize());
+
+    DeviceRecord record;
+    record.uniqueId = QStringLiteral("SER011_Vendor_Model_sdf1");
+    record.trustLevel = 1;
+    record.verificationProfile = VerificationProfile::FullPartition;
+    record.firstSeen = QDateTime::currentDateTimeUtc();
+    record.lastSeen = record.firstSeen;
+    QVERIFY(db.addDevice(record));
+
+    const QStringList issues = db.validateIntegrity();
+    QVERIFY(!issues.isEmpty());
+    QVERIFY(issues.first().contains(QStringLiteral("full-partition")));
+}
+
+void TestDatabaseManager::updateIsoBaselinesRoundTrip()
+{
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+    installIsolatedPolicy(tempDir.path());
+
+    DatabaseManager db;
+    QVERIFY(db.initialize());
+
+    DeviceInfo info;
+    info.serial = QStringLiteral("SER012");
+    info.vendor = QStringLiteral("Vendor");
+    info.model = QStringLiteral("Model");
+    info.deviceNode = QStringLiteral("/dev/sdf1");
+
+    DeviceRecord record;
+    record.uniqueId = db.canonicalUniqueId(info);
+    record.trustLevel = 1;
+    record.firstSeen = QDateTime::currentDateTimeUtc();
+    record.lastSeen = record.firstSeen;
+    record.lastKnownInfo = info;
+    QVERIFY(db.addDevice(record));
+
+    IsoImageBaseline baseline;
+    baseline.relativePath = QStringLiteral("debian-12.iso");
+    baseline.sha256 = QStringLiteral("abc123");
+    baseline.quickFingerprint = QStringLiteral("def456");
+    baseline.sizeBytes = 1024;
+    baseline.recordedAt = QDateTime::currentDateTimeUtc();
+    baseline.publisherVerified = true;
+    QVERIFY(db.updateIsoBaselines(record.uniqueId, {baseline}));
+
+    const auto stored = db.getDevice(record.uniqueId);
+    QVERIFY(stored.has_value());
+    QCOMPARE(stored->isoBaselines.size(), 1);
+    QCOMPARE(stored->isoBaselines.first().relativePath, baseline.relativePath);
+    QCOMPARE(stored->isoBaselines.first().sha256, baseline.sha256);
 }
 
 QTEST_MAIN(TestDatabaseManager)

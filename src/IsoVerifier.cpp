@@ -7,6 +7,9 @@
 #include "IsoChecksum.h"
 #include "IsoHttpClient.h"
 #include "IsoVerifyCache.h"
+#include "IsoVerifyUi.h"
+#include "IsoQuickFingerprint.h"
+#include "IsoBaselineService.h"
 
 #include <openssl/evp.h>
 
@@ -420,8 +423,26 @@ QString buildReport(const IsoVerifyResult& r)
         if (!r.pgpSummary.isEmpty()) lines << r.pgpSummary;
     }
     if (!r.checksumUrl.isEmpty()) lines << QStringLiteral("Checksums: %1").arg(r.checksumUrl);
-    lines << QStringLiteral("Result: %1").arg(r.passed() ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
-    if (!r.errorMessage.isEmpty()) lines << QStringLiteral("Note: %1").arg(r.errorMessage);
+    if (r.baselineChecked) {
+        lines << QStringLiteral("On this USB stick: %1")
+                     .arg(r.baselineMatches ? QStringLiteral("unchanged since last visit")
+                                            : QStringLiteral("CHANGED since last visit"));
+        if (!r.storedBaselineSha256.isEmpty()) {
+            lines << QStringLiteral("Recorded SHA-256: %1").arg(r.storedBaselineSha256);
+        }
+    }
+    lines << QStringLiteral("Status: %1").arg(IsoVerifyUi::outcomeLabel(r));
+    const QString explanation = IsoVerifyUi::outcomeExplanation(r);
+    if (!explanation.isEmpty()) {
+        lines << QStringLiteral("What this means: %1").arg(explanation);
+    }
+    const QString hint = IsoVerifyUi::nextStepHint(r);
+    if (!hint.isEmpty()) {
+        lines << QStringLiteral("What you can do: %1").arg(hint);
+    }
+    if (!r.errorMessage.isEmpty() && explanation != r.errorMessage) {
+        lines << QStringLiteral("Details: %1").arg(r.errorMessage);
+    }
     return lines.join(QLatin1Char('\n'));
 }
 
@@ -563,6 +584,31 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
         return r;
     }
 
+    const QString relativePath = IsoBaselineService::relativeImagePath(mountPoint, isoPath);
+    if (g_verifyOptions.quickFingerprintFirst
+        && g_verifyOptions.stickBaselines.contains(relativePath)) {
+        const IsoImageBaseline& baseline = g_verifyOptions.stickBaselines.value(relativePath);
+        if (!baseline.quickFingerprint.isEmpty()) {
+            QString quickErr;
+            const QString quickFp = IsoQuickFingerprint::compute(isoPath, &quickErr);
+            if (!quickFp.isEmpty() && quickFp != baseline.quickFingerprint) {
+                r.success = true;
+                r.hashChecked = true;
+                r.quickFingerprintMismatch = true;
+                r.baselineChecked = true;
+                r.baselineMatches = false;
+                r.storedBaselineSha256 = baseline.sha256;
+                r.errorMessage = QStringLiteral(
+                    "Quick fingerprint mismatch — this file may have changed since the last visit on "
+                    "this stick.");
+                r.durationMs = static_cast<uint64_t>(timer.elapsed());
+                r.reportSummary = buildReport(r);
+                AuditLog::appendIsoVerify(r);
+                return r;
+            }
+        }
+    }
+
     QString hashErr;
     r.computedSha256 = computeFileSha256(isoPath, g_verifyOptions, &hashErr);
     if (r.computedSha256.isEmpty()) {
@@ -570,6 +616,14 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
         return r;
     }
     r.hashChecked = true;
+
+    if (g_verifyOptions.stickBaselines.contains(relativePath)) {
+        const IsoImageBaseline& baseline = g_verifyOptions.stickBaselines.value(relativePath);
+        r.baselineChecked = true;
+        r.storedBaselineSha256 = baseline.sha256;
+        r.baselineMatches =
+            normalizeHash(r.computedSha256) == normalizeHash(baseline.sha256);
+    }
 
     const QFileInfo isoFi(isoPath);
     const QString isoName = isoFi.fileName();
@@ -711,7 +765,7 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
 
     if (r.expectedSha256.isEmpty()) {
         r.source = IsoVerifySource::ComputedOnly;
-        r.hashMatches = true;
+        r.hashMatches = false;
         r.reportSummary = QStringLiteral(
             "Computed SHA-256 only — unknown publisher, offline, or no checksum available. "
             "Add a .sha256 sidecar or update the catalog.");
@@ -826,11 +880,16 @@ void IsoVerifier::setVerifyOptions(const IsoVerifyOptions& options)
 bool IsoVerifier::mountScanHasFailures(const QList<IsoVerifyResult>& results)
 {
     for (const IsoVerifyResult& r : results) {
-        if (!r.isoPath.isEmpty() && !r.passed()) {
+        if (!r.isoPath.isEmpty() && !r.passed() && !r.inconclusive()) {
             return true;
         }
     }
     return false;
+}
+
+QString IsoVerifier::formatResultReport(const IsoVerifyResult& result)
+{
+    return buildReport(result);
 }
 
 QList<IsoVerifyResult> IsoVerifier::verifyDirectory(const QString& directory)

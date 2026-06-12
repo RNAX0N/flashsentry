@@ -24,6 +24,7 @@ private slots:
     void offlineSidecarPass();
     void offlineSidecarMismatchFails();
     void userTofuHashPass();
+    void computedOnlyIsInconclusive();
 };
 
 static QString fixturesRoot()
@@ -100,6 +101,26 @@ void TestIsoVerifyIntegration::offlineSidecarMismatchFails()
     QVERIFY(r.hashChecked);
     QVERIFY(!r.hashMatches);
     QVERIFY(!r.passed());
+}
+
+void TestIsoVerifyIntegration::computedOnlyIsInconclusive()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString isoPath = dir.filePath(QStringLiteral("unsupported-custom-image.iso"));
+    QFile iso(isoPath);
+    QVERIFY(iso.open(QIODevice::WriteOnly));
+    iso.write("no-sidecar-no-catalog");
+    iso.close();
+
+    const IsoVerifyResult r = IsoVerifier::verifyIsoAutomated(isoPath);
+    QVERIFY(r.success);
+    QVERIFY(r.hashChecked);
+    QCOMPARE(r.source, IsoVerifySource::ComputedOnly);
+    QVERIFY(r.inconclusive());
+    QVERIFY(!r.passed());
+    QVERIFY(r.expectedSha256.isEmpty());
+    QVERIFY(!r.hashMatches);
 }
 
 void TestIsoVerifyIntegration::userTofuHashPass()

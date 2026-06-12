@@ -13,6 +13,7 @@
 #include <QVariantMap>
 #endif
 
+#include "MountTypes.h"
 #include "Types.h"
 
 namespace FlashSpartan {
@@ -26,33 +27,10 @@ class MountManager : public QObject {
     Q_OBJECT
 
 public:
-    struct MountResult {
-        QString deviceNode;
-        QString mountPoint;
-        bool success = false;
-        QString errorMessage;
-    };
-
-    struct UnmountResult {
-        QString deviceNode;
-        bool success = false;
-        QString errorMessage;
-        bool forcedUnmount = false;
-    };
-
-    struct MountOptions {
-        QString filesystem;
-        bool readOnly = false;
-        bool noExec = true;
-        bool noSuid = true;
-        bool sync = false;
-        QStringList extraOptions;
-    };
-
-    struct UnmountOptions {
-        bool force = false;
-        bool lazy = false;
-    };
+    using MountResult = FlashSpartan::MountResult;
+    using UnmountResult = FlashSpartan::UnmountResult;
+    using MountOptions = FlashSpartan::MountOptions;
+    using UnmountOptions = FlashSpartan::UnmountOptions;
 
     explicit MountManager(QObject* parent = nullptr);
     ~MountManager() override;
@@ -104,9 +82,6 @@ private:
     std::unique_ptr<QDBusInterface> createFilesystemInterface(const QString& deviceNode) const;
     std::unique_ptr<QDBusInterface> createDriveInterface(const QString& driveObjectPath) const;
 
-    QVariantMap mountOptionsToVariant(const MountOptions& options) const;
-    QVariantMap unmountOptionsToVariant(const UnmountOptions& options) const;
-
     QString extractErrorMessage(const QDBusError& error) const;
 
     std::unique_ptr<QDBusInterface> m_udisksInterface;
@@ -130,6 +105,3 @@ private:
 };
 
 } // namespace FlashSpartan
-
-Q_DECLARE_METATYPE(FlashSpartan::MountManager::MountResult)
-Q_DECLARE_METATYPE(FlashSpartan::MountManager::UnmountResult)

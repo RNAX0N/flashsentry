@@ -16,6 +16,8 @@ public:
     };
 
     static SummaryCounts countSummary(const QList<IsoVerifyResult>& results);
+    /** Definite verification failures (excludes inconclusive / not-verified). */
+    static int countFailed(const SummaryCounts& counts);
     static QString buildPlainText(const QList<IsoVerifyResult>& results);
     static QString buildCsv(const QList<IsoVerifyResult>& results);
     static QString buildHtml(const QList<IsoVerifyResult>& results);

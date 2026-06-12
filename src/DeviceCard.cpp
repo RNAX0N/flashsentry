@@ -277,6 +277,14 @@ void DeviceCard::setDevice(const DeviceInfo& device)
     updateDisplay();
 }
 
+QString DeviceCard::deviceId() const
+{
+    if (!m_record.uniqueId.isEmpty()) {
+        return m_record.uniqueId;
+    }
+    return m_device.partitionUniqueId();
+}
+
 void DeviceCard::setDeviceRecord(const DeviceRecord& record)
 {
     m_record = record;
@@ -336,7 +344,7 @@ void DeviceCard::setIsoVerifySummary(const QString& summary)
         m_isoSummaryLabel->setVisible(false);
         return;
     }
-    m_isoSummaryLabel->setText(QStringLiteral("Images: %1").arg(summary));
+    m_isoSummaryLabel->setText(QStringLiteral("Image check: %1").arg(summary));
     m_isoSummaryLabel->setStyleSheet(QString("color: %1;")
                                          .arg(FSStyle.colorCss(StyleManager::ColorRole::TextSecondary)));
     m_isoSummaryLabel->setVisible(true);
@@ -588,7 +596,13 @@ void DeviceCard::updateDisplay()
     m_sizeLabel->setText(formatSize(m_device.sizeBytes));
     m_fsTypeLabel->setText(m_device.fsType.isEmpty() ? "Unknown" : m_device.fsType.toUpper());
     m_mountPointLabel->setText(m_device.mountPoint.isEmpty() ? "Not mounted" : m_device.mountPoint);
-    m_serialLabel->setText(m_device.serial.isEmpty() ? "N/A" : m_device.serial);
+    if (m_device.hasWeakIdentity()) {
+        m_serialLabel->setText(QStringLiteral("N/A (no serial)"));
+        m_serialLabel->setToolTip(m_device.weakIdentitySummary());
+    } else {
+        m_serialLabel->setText(m_device.serial);
+        m_serialLabel->setToolTip({});
+    }
     
     const char* deviceIcon = ":/icons/usb-drive.svg";
     if (m_status == VerificationStatus::Modified) {

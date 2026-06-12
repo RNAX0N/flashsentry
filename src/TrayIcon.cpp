@@ -1,4 +1,5 @@
 #include "TrayIcon.h"
+#include "IsoVerifyUi.h"
 #include "StyleManager.h"
 
 #include <QApplication>
@@ -202,17 +203,14 @@ void TrayIcon::notifyIsoVerifySummary(const QString& deviceName, int passed, int
         return;
     }
 
-    QString message = QStringLiteral("%1: %2/%3 image(s) passed").arg(deviceName).arg(passed).arg(total);
-    if (needsSidecar > 0) {
-        message += QStringLiteral("\n%1 need a .sha256 sidecar or catalog update").arg(needsSidecar);
-    }
+    const QString message = IsoVerifyUi::trayMessage(deviceName, passed, total, needsSidecar);
 
     QSystemTrayIcon::MessageIcon icon = QSystemTrayIcon::Information;
     if (passed < total) {
         icon = needsSidecar > 0 ? QSystemTrayIcon::Warning : QSystemTrayIcon::Critical;
     }
 
-    showNotification(QStringLiteral("ISO verification"), message, icon);
+    showNotification(IsoVerifyUi::trayTitle(), message, icon);
 }
 
 void TrayIcon::notifyBadUsbAnomaly(const BadUsbAnomalyResult& anomaly)

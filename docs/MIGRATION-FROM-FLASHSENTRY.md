@@ -9,7 +9,7 @@ The git repository is still hosted at [github.com/RNAX0N/flashsentry](https://gi
 On first start after upgrading, FlashSpartan attempts to:
 
 1. **QSettings** — copy keys from `flashsentry` / `FlashSentry` to `flashspartan` / `FlashSpartan`.
-2. **Config directory** — copy missing files from `~/.config/FlashSentry/` into `~/.config/FlashSpartan/` (timeline, verify history, hash checkpoints, blocked drives list, legacy `devices.json`).
+2. **Config directory** — copy missing files from `~/.config/FlashSentry/` into `~/.config/FlashSpartan/` (timeline, verify history, hash checkpoints, blocked drives list, ISO audit log, user-trusted hashes, legacy `devices.json`).
 3. **Policy store** — import encrypted policy from legacy JSON under `~/.config/FlashSentry/flashsentry/devices.json` and `blocked-drives.json` when the new policy store does not exist yet.
 
 Original FlashSentry files are left in place (not deleted).

@@ -23,6 +23,9 @@
 #include "ReportsPage.h"
 #include "AboutPage.h"
 #include "policy/PolicyPaths.h"
+#include "DeviceWhitelistService.h"
+#include "DeviceDriveUtil.h"
+#include "DeviceTrustCoordinator.h"
 
 #include <algorithm>
 
@@ -1080,6 +1083,11 @@ void MainWindow::loadSettings()
         m_qsettings->value("iso/blockMountOnFailure", false).toBool();
     m_settings.isoVerifyDecompressed = m_qsettings->value("iso/verifyDecompressed", false).toBool();
     m_settings.isoPreferOfflineSidecars = m_qsettings->value("iso/preferOfflineSidecars", false).toBool();
+    m_settings.isoStoreStickBaselines = m_qsettings->value("iso/storeStickBaselines", true).toBool();
+    m_settings.isoCompareStickBaselines =
+        m_qsettings->value("iso/compareStickBaselines", true).toBool();
+    m_settings.isoQuickFingerprintCheck =
+        m_qsettings->value("iso/quickFingerprintCheck", true).toBool();
     m_settings.isoVerifyParallel = m_qsettings->value("iso/verifyParallel", 2).toInt();
     m_settings.showFirstRunWizard = m_qsettings->value("general/showFirstRunWizard", true).toBool();
     m_settings.badUsbEnabled = m_qsettings->value("badusb/enabled", true).toBool();
@@ -1208,6 +1216,9 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("iso/blockMountOnFailure", m_settings.blockMountOnIsoVerifyFailure);
     m_qsettings->setValue("iso/verifyDecompressed", m_settings.isoVerifyDecompressed);
     m_qsettings->setValue("iso/preferOfflineSidecars", m_settings.isoPreferOfflineSidecars);
+    m_qsettings->setValue("iso/storeStickBaselines", m_settings.isoStoreStickBaselines);
+    m_qsettings->setValue("iso/compareStickBaselines", m_settings.isoCompareStickBaselines);
+    m_qsettings->setValue("iso/quickFingerprintCheck", m_settings.isoQuickFingerprintCheck);
     m_qsettings->setValue("iso/verifyParallel", m_settings.isoVerifyParallel);
     m_qsettings->setValue("general/showFirstRunWizard", m_settings.showFirstRunWizard);
     m_qsettings->setValue("general/settingsProfile", m_settings.settingsProfile);
@@ -1433,6 +1444,16 @@ void MainWindow::onDeviceDisconnected(const QString& deviceNode)
             break;
         }
     }
+
+    for (auto it = m_manifestJobDevices.begin(); it != m_manifestJobDevices.end();) {
+        if (it.value() == deviceNode) {
+            m_manifestWorker->cancelJob(it.key());
+            it = m_manifestJobDevices.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    m_manifestWorker->cancelJobsForDevice(deviceNode);
     
     removeDeviceCard(deviceNode);
     m_pendingHashActions.remove(deviceNode);
@@ -1504,40 +1525,37 @@ void MainWindow::handleNewDevice(const DeviceInfo& device)
         card->setVerificationStatus(VerificationStatus::NewDevice);
     }
 
-    if (m_settings.promptPerPartition) {
-        handleNewDevicePartition(device);
-        return;
-    }
+    const bool drivePromptActive =
+        m_drivePromptInProgress.contains(DeviceDriveUtil::driveKey(device));
+    const auto plan = DeviceTrustCoordinator::planNewDevice(
+        device, m_settings.promptPerPartition, m_settings.requireConfirmationForNew,
+        drivePromptActive, m_deviceMonitor->connectedDevices(), *m_database);
 
-    const QString drive = driveKey(device);
-    if (isDriveBlocked(device)) {
+    switch (plan.action) {
+    case DeviceTrustCoordinator::NewDeviceAction::DriveBlocked:
         logMessage(QString("Drive blocked: %1").arg(device.displayName()), LogLevel::Warning);
         return;
-    }
-
-    if (isDriveKnown(device)) {
+    case DeviceTrustCoordinator::NewDeviceAction::SkipDuplicatePrompt:
+        return;
+    case DeviceTrustCoordinator::NewDeviceAction::WhitelistPartition:
+    case DeviceTrustCoordinator::NewDeviceAction::PromptPartition:
         handleNewDevicePartition(device);
         return;
-    }
-
-    if (m_drivePromptInProgress.contains(drive)) {
-        return;
-    }
-
-    if (!m_settings.requireConfirmationForNew) {
+    case DeviceTrustCoordinator::NewDeviceAction::WhitelistDrive:
         whitelistDrivePartitions(device);
         return;
+    case DeviceTrustCoordinator::NewDeviceAction::PromptDrive: {
+        m_drivePromptInProgress.insert(plan.driveKey);
+        const bool allowed = showNewDriveDialog(device);
+        m_drivePromptInProgress.remove(plan.driveKey);
+        if (allowed) {
+            whitelistDrivePartitions(device);
+        } else {
+            blockDriveForDevice(device);
+            logMessage(QString("Drive blocked: %1").arg(device.displayName()), LogLevel::Warning);
+        }
+        return;
     }
-
-    m_drivePromptInProgress.insert(drive);
-    const bool allowed = showNewDriveDialog(device);
-    m_drivePromptInProgress.remove(drive);
-
-    if (allowed) {
-        whitelistDrivePartitions(device);
-    } else {
-        blockDriveForDevice(device);
-        logMessage(QString("Drive blocked: %1").arg(device.displayName()), LogLevel::Warning);
     }
 }
 
@@ -1555,13 +1573,8 @@ void MainWindow::handleNewDevicePartition(const DeviceInfo& device)
         }
     }
 
-    DeviceRecord record;
-    record.uniqueId = device.uniqueId();
-    record.firstSeen = QDateTime::currentDateTime();
-    record.lastSeen = record.firstSeen;
-    record.trustLevel = m_settings.defaultTrustLevel;
-    record.lastKnownInfo = device;
-
+    const DeviceRecord record =
+        DeviceWhitelistService::makeRecord(device, *m_database, m_settings.defaultTrustLevel);
     m_database->addDevice(record);
     logMessage(QString("Device whitelisted: %1").arg(device.displayName()));
 
@@ -1573,52 +1586,22 @@ void MainWindow::handleNewDevicePartition(const DeviceInfo& device)
 
 QString MainWindow::driveKey(const DeviceInfo& device) const
 {
-    if (!device.parentDevice.isEmpty()) {
-        return device.parentDevice;
-    }
-#ifdef Q_OS_WIN
-    return QDir::toNativeSeparators(device.deviceNode).trimmed().toUpper();
-#else
-    return device.deviceNode.section(QLatin1Char('/'), -1);
-#endif
+    return DeviceDriveUtil::driveKey(device);
 }
 
 bool MainWindow::isDriveKnown(const DeviceInfo& device) const
 {
-    const QString drive = driveKey(device);
-    for (const DeviceInfo& part : m_deviceMonitor->connectedDevices()) {
-        if (driveKey(part) != drive) {
-            continue;
-        }
-        if (m_database->hasDevice(part)) {
-            return true;
-        }
-    }
-    return false;
+    return DeviceDriveUtil::isDriveKnown(device, m_deviceMonitor->connectedDevices(), *m_database);
 }
 
 void MainWindow::whitelistDrivePartitions(const DeviceInfo& device)
 {
     const QString drive = driveKey(device);
-    for (const DeviceInfo& part : m_deviceMonitor->connectedDevices()) {
-        if (driveKey(part) != drive) {
-            continue;
-        }
-        if (m_database->hasDevice(part)) {
-            continue;
-        }
+    const auto result = DeviceTrustCoordinator::whitelistDrivePartitions(
+        drive, m_deviceMonitor->connectedDevices(), *m_database, m_settings.defaultTrustLevel);
 
-        DeviceRecord record;
-        record.uniqueId = part.uniqueId();
-        record.firstSeen = QDateTime::currentDateTime();
-        record.lastSeen = record.firstSeen;
-        record.trustLevel = m_settings.defaultTrustLevel;
-        record.lastKnownInfo = part;
-
-        m_database->addDevice(record);
-
-        DeviceCard* card = getDeviceCard(part.deviceNode);
-        if (card) {
+    for (const QString& deviceNode : result.whitelistedDeviceNodes) {
+        if (DeviceCard* card = getDeviceCard(deviceNode)) {
             card->setVerificationStatus(VerificationStatus::Pending);
         }
     }
@@ -1918,6 +1901,7 @@ void MainWindow::triggerIsoVerificationOnMount(const MountManager::MountResult& 
         label = info->displayName();
     }
     logMessage(QStringLiteral("Auto ISO verification on %1 at %2").arg(label, result.mountPoint));
+    applyIsoVerifyStickContext(result.deviceNode);
     m_isoWidget->verifyMountPoint(result.mountPoint, result.deviceNode, label);
     if (m_settings.appModule == AppModule::IsoVerifier) {
         showAndRaise();
@@ -2585,9 +2569,7 @@ bool MainWindow::isRecordCountedAsAllowed(const DeviceRecord& record) const
 
 bool MainWindow::isDriveBlocked(const DeviceInfo& device) const
 {
-    const QString key = driveKey(device);
-    const QString uid = m_database->canonicalUniqueId(device);
-    return BlockedDriveStore::instance().isBlocked(key, uid);
+    return DeviceDriveUtil::isDriveBlocked(device, *m_database);
 }
 
 void MainWindow::blockDriveForDevice(const DeviceInfo& device, const QString& label)
@@ -3472,17 +3454,8 @@ void MainWindow::updateSidebarStats()
 
 bool MainWindow::showNewDriveDialog(const DeviceInfo& device)
 {
-    const QString drive = driveKey(device);
-    int partitionCount = 0;
-    QStringList partitionNodes;
-
-    for (const DeviceInfo& part : m_deviceMonitor->connectedDevices()) {
-        if (driveKey(part) != drive) {
-            continue;
-        }
-        ++partitionCount;
-        partitionNodes.append(part.deviceNode);
-    }
+    const auto summary =
+        DeviceDriveUtil::summarizeDrive(device, m_deviceMonitor->connectedDevices());
 
     QString message = QString(
         "<b>Unknown USB drive detected:</b><br><br>"
@@ -3492,11 +3465,12 @@ bool MainWindow::showNewDriveDialog(const DeviceInfo& device)
         "<b>Partitions detected:</b> %4<br>"
         "<b>Partition nodes:</b> %5<br><br>"
         "Add this <b>entire drive</b> to the whitelist and hash all partitions?")
-        .arg(drive)
+        .arg(summary.driveKey)
         .arg(device.deviceNode)
         .arg(device.serial.isEmpty() ? "N/A" : device.serial)
-        .arg(partitionCount)
-        .arg(partitionNodes.join(", "));
+        .arg(summary.partitionCount)
+        .arg(summary.partitionNodes.join(", "));
+    message += DeviceWhitelistService::weakIdentityNoticeHtml(device);
 
     return showStyledRichQuestion(this, QStringLiteral("New Drive Detected"), message)
            == QMessageBox::Yes;
@@ -3517,7 +3491,8 @@ bool MainWindow::showNewDeviceDialog(const DeviceInfo& device)
         .arg(device.serial.isEmpty() ? "N/A" : device.serial)
         .arg(device.sizeBytes > 0 ? QString("%1 GB").arg(device.sizeBytes / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1) : "Unknown")
         .arg(device.fsType.isEmpty() ? "Unknown" : device.fsType);
-    
+    message += DeviceWhitelistService::weakIdentityNoticeHtml(device);
+
     return showStyledRichQuestion(this, QStringLiteral("New Device Detected"), message)
            == QMessageBox::Yes;
 }

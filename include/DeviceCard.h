@@ -67,7 +67,7 @@ public:
     /**
      * @brief Get device unique ID
      */
-    QString deviceId() const { return m_device.uniqueId(); }
+    QString deviceId() const;
 
     /**
      * @brief Get device node path

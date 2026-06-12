@@ -16,6 +16,11 @@ void IsoVerifierWorker::cancel()
     m_cancelledFlag = true;
 }
 
+bool IsoVerifierWorker::isBusy() const
+{
+    return m_activeJob.isRunning();
+}
+
 void IsoVerifierWorker::verifyMountPoint(const QString& mountPoint, const QString& deviceNode)
 {
     m_cancelled = false;

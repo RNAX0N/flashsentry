@@ -53,4 +53,13 @@ QString PolicyPaths::socketPath()
     return runtime + QStringLiteral("/flashspartan-policy.sock");
 }
 
+QString PolicyPaths::tokenPath()
+{
+    QString runtime = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    if (runtime.isEmpty()) {
+        runtime = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    }
+    return runtime + QStringLiteral("/flashspartan-policy.token");
+}
+
 } // namespace FlashSpartan::Policy

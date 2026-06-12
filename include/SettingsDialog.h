@@ -193,6 +193,9 @@ private:
     QCheckBox* m_blockMountOnIsoFailCheck = nullptr;
     QCheckBox* m_isoVerifyDecompressedCheck = nullptr;
     QCheckBox* m_isoPreferOfflineCheck = nullptr;
+    QCheckBox* m_isoStoreStickBaselinesCheck = nullptr;
+    QCheckBox* m_isoCompareStickBaselinesCheck = nullptr;
+    QCheckBox* m_isoQuickFingerprintCheck = nullptr;
     QSpinBox* m_isoParallelSpin = nullptr;
     QCheckBox* m_badUsbEnabledCheck = nullptr;
     QCheckBox* m_badUsbAlertNewKeyboardCheck = nullptr;

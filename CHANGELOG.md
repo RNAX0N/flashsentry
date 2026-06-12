@@ -4,6 +4,40 @@ All notable changes to FlashSpartan are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **ISO verification** — images with no publisher checksum (computed SHA-256 only) are now reported as **INCONCLUSIVE** instead of **PASS** in the UI, CLI exit codes, mount blocking, and reports.
+- **Policy daemon** — local socket IPC now requires a session auth token and same-user peer credentials; mutating ops are rejected without a valid token.
+- **Device whitelist** — new trusted devices are stored with partition-aware `canonicalUniqueId()` IDs.
+- **Manifest jobs** — cancellation sets an atomic flag so completed work is ignored after cancel.
+- **Device monitor** — suppress duplicate `deviceConnected` events when udev replays an existing partition.
+
+### Changed
+
+- **ISO verification UX** — plain-language status labels (Verified / Failed / Not verified), result legend, column tooltips, next-step hints, and friendlier summaries in the tab, tray, device cards, and exported reports.
+- **ISO auto-verify on scan** — the settings toggle now triggers verification when a scan folder is chosen or set (was persisted but unwired).
+- **Mount block on ISO failure** — “not verified” (no publisher checksum) no longer counts as a failure for block-mount or device-card tampered status.
+- **Legacy migration** — copies `audit.log` and `user-iso-hashes.json` from FlashSentry config when missing.
+- **DatabaseManager** — removed unused legacy JSON read/write helpers; integrity checks run at startup for hash-based profiles.
+- **Version metadata** — README and PKGBUILD aligned with `VERSION` (1.5.4).
+
+### Added
+
+- **Per-stick ISO baselines** — remember image SHA-256 per whitelisted USB device; compare on reinsert with optional quick fingerprint pre-check (`IsoBaselineService`, `IsoQuickFingerprint`).
+- **UDisks2 integration test** — `test_udisks2_integration` probes system D-Bus when available (skips otherwise).
+- **Main-window ISO flow tests** — `test_main_window_iso_flow` and `test_iso_baseline_service` cover coordinator logic without GUI automation.
+- **PKGBUILD checksum helper** — `packaging/update-release-checksums.sh --apply` patches `sha256sums` in place.
+- **Weak USB identity** — warnings in trust dialogs and device cards when no serial is reported; documented in USER_GUIDE.
+- **DeviceWhitelistService** — shared helper for building whitelist records (incremental MainWindow refactor).
+- **Tests** — `test_device_whitelist_service`, `test_manifest_worker`, `test_hash_worker`.
+- **Device trust flow** — `DeviceDriveUtil`, `DeviceTrustCoordinator`, and `MountOptionsUtil` extracted from MainWindow/MountManager; additional unit tests.
+- **Packaging** — `packaging/sync-pkgver.sh` keeps PKGBUILD `pkgver` aligned with `VERSION`; `update-release-checksums.sh` for release tarball `sha256sums`.
+- **Device verification** — `DeviceVerificationPlanner` extracted from MainWindow; manifest jobs cancelled on USB disconnect.
+- **Device IDs** — `DeviceIdUtil` shared lookup; device cards report canonical stored ID when known.
+- **Mount errors** — `MountDBusUtil` for user-facing UDisks messages (unit tested).
+- **DatabaseManager** — `reportHashMismatch()` replaces direct `const_cast` emit from `verifyHash()`.
+- **Build** — MSVC Release `/W4`; GCC Release `-Wall -Wextra`.
+
 ## [1.5.2] - 2026-06-02
 
 ### Added

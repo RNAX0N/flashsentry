@@ -43,7 +43,7 @@ cd packaging
 ./build-package.sh -si
 ```
 
-This rsyncs the repository into `src/flashspartan-1.4.2` and builds there. Package version stays **`1.4.2`** (no git hash in the pacman `pkgver`).
+This rsyncs the repository into `src/flashspartan-<pkgver>` and builds there. Package version matches **`VERSION`** in the repo root (no git hash in the pacman `pkgver`).
 
 ## Release tarball install (maintainers)
 
@@ -58,9 +58,9 @@ FLASHSPARTAN_RELEASE=1 makepkg -si
 
 | File | Role |
 |------|------|
-| `VERSION` | Release number (e.g. `1.4.2`) |
+| `VERSION` | Release number (e.g. `1.5.4`) |
 | `CMakeLists.txt` | Reads `VERSION` for `flashspartan --version` |
-| `packaging/PKGBUILD` | `pkgver=1.4.2` for local builds (static; no `pkgver()` suffix) |
+| `packaging/PKGBUILD` | `pkgver` should match `VERSION` for local builds (static; no `pkgver()` suffix) |
 | `CHANGELOG.md` | Release notes |
 
 ## After install

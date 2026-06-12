@@ -1,4 +1,3 @@
-**UNDER DEVELOPMENT. SOME PARTS OF THE PROGRAM MAY NOT WORK PROPERLY RIGHT NOW OR EXHIBIT ODD BEHAVIOR**
 # FlashSpartan
 
 <p align="center">
@@ -26,7 +25,7 @@ FlashSpartan monitors USB storage, maintains a cryptographic whitelist of truste
 - **Linux (Arch, primary):** libudev device events, UDisks2 mounts, polkit, optional `flashspartan-policyd` and raw-disk hashing.
 - **Windows 10/11:** USB storage volumes (including fixed-disk USB sticks), security keys/HID, and other USB attachments; ISO verify; watch manifests; policy store; optional USBPcap for packet capture. See [docs/WINDOWS.md](docs/WINDOWS.md).
 
-**Current version:** 1.5.2 (see [CHANGELOG.md](CHANGELOG.md))
+**Current version:** 1.5.4 (see [CHANGELOG.md](CHANGELOG.md))
 
 ## Features
 
@@ -35,6 +34,7 @@ FlashSpartan monitors USB storage, maintains a cryptographic whitelist of truste
 | Feature | What it does |
 |--------|----------------|
 | **Automatic ISO verification** | Finds `.iso` files on mounted USB volumes, downloads official checksums/signatures, verifies hashes and OpenPGP where configured |
+| **Per-stick image baselines** | Remembers each image hash per trusted USB device; detects changes on reinsert with optional quick fingerprint pre-check |
 | **Watch-folder verification** | You choose paths on a drive; FlashSpartan builds a Merkle baseline and alerts when watched files change — without reading every sector |
 | **Left-nav shell** | Dedicated pages for USB monitoring, device history, allow/block lists, alerts, reports, ISO verify, BadUSB, settings, and about |
 

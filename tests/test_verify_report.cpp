@@ -14,6 +14,7 @@ private slots:
     void csvContainsHeader();
     void countSummaryMatchesSummaryLine();
     void jsonContainsSummaryAndResults();
+    void countFailedExcludesInconclusive();
 };
 
 void TestVerifyReport::summaryCountsSidecarNeeded()
@@ -29,10 +30,11 @@ void TestVerifyReport::summaryCountsSidecarNeeded()
     needs.success = true;
     needs.hashChecked = true;
     needs.isoPath = QStringLiteral("/y.iso");
+    needs.source = IsoVerifySource::ComputedOnly;
 
     const QString s = IsoVerifyReport::summaryLine({fail, needs});
-    QVERIFY(s.contains(QStringLiteral("1/2")));
-    QVERIFY(s.contains(QStringLiteral("sidecar")));
+    QVERIFY(s.contains(QStringLiteral("1 of 2")));
+    QVERIFY(s.contains(QStringLiteral("could not be verified")));
 }
 
 void TestVerifyReport::csvContainsHeader()
@@ -55,7 +57,7 @@ void TestVerifyReport::countSummaryMatchesSummaryLine()
     QCOMPARE(counts.passed, 1);
     QCOMPARE(counts.total, 1);
     QCOMPARE(counts.needsSidecar, 0);
-    QVERIFY(IsoVerifyReport::summaryLine(results).contains(QStringLiteral("1/1")));
+    QVERIFY(IsoVerifyReport::summaryLine(results).contains(QStringLiteral("1 image verified")));
 }
 
 void TestVerifyReport::jsonContainsSummaryAndResults()
@@ -78,6 +80,27 @@ void TestVerifyReport::jsonContainsSummaryAndResults()
     QCOMPARE(items.size(), 1);
     QCOMPARE(items.at(0).toObject().value(QStringLiteral("file")).toString(),
              QStringLiteral("test.iso"));
+}
+
+void TestVerifyReport::countFailedExcludesInconclusive()
+{
+    IsoVerifyResult ok;
+    ok.success = true;
+    ok.hashChecked = true;
+    ok.hashMatches = true;
+    ok.expectedSha256 = QStringLiteral("ab");
+    ok.isoPath = QStringLiteral("/a.iso");
+
+    IsoVerifyResult inconclusive;
+    inconclusive.success = true;
+    inconclusive.hashChecked = true;
+    inconclusive.isoPath = QStringLiteral("/b.iso");
+    inconclusive.source = IsoVerifySource::ComputedOnly;
+
+    const auto counts = IsoVerifyReport::countSummary({ok, inconclusive});
+    QCOMPARE(counts.passed, 1);
+    QCOMPARE(counts.needsSidecar, 1);
+    QCOMPARE(IsoVerifyReport::countFailed(counts), 0);
 }
 
 QTEST_MAIN(TestVerifyReport)

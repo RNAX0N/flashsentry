@@ -24,6 +24,8 @@ public:
 
     void cancel();
 
+    bool isBusy() const;
+
 signals:
     void verificationStarted(const QString& mountPoint, const QString& deviceNode);
     void verificationProgress(const QString& message);

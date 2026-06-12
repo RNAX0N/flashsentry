@@ -58,21 +58,43 @@ Open **Settings → Verification → Mode**.
    - **Activity log** (USB mode), or
    - **ISO Verify** table and report (ISO mode / **Full report** button)
 
-### What “PASS” means
+### What the status labels mean
 
-- Your file’s hash matches the publisher’s published hash, **and**
-- The checksum file’s signature is valid, **and**
+| Status | Meaning |
+|--------|---------|
+| **Verified** | The file matches the publisher checksum (and signature when checked) |
+| **Failed** | Checksum mismatch, invalid signature, or untrusted signing key |
+| **Not verified** | FlashSpartan computed a hash but had no publisher checksum to compare — add a `.sha256` file or use **More → Trust hash** |
+
+**Verified** requires all of the following when applicable:
+
+- Your file’s hash matches the publisher’s published hash
+- The checksum file’s signature is valid
 - The signing key fingerprint matches FlashSpartan’s trusted list for that distro
 
 ### What if verification fails?
 
-| Message | Likely cause |
+| What you see | Likely cause |
+|--------------|----------------|
+| Checksum **Mismatch** | Corrupt download, wrong file, or incomplete copy |
+| Signature **Invalid** | Missing `gpg`, bad signature file, or tampered checksums |
+| Signing key **Unknown** | Key not in FlashSpartan’s list (report upstream or update catalog) |
+| **Not verified** | Unsupported filename or missing checksum file — add `.sha256` / `.asc` next to the image |
+| No images found | Stick was written with `dd` as a live image — see below |
+
+### Stick baselines (remember images on this USB)
+
+When a stick is in your **allow list** (trusted/whitelisted), FlashSpartan can **remember each image hash per USB device** (default: on). On later plug-ins it compares files to that recorded hash — even when no publisher checksum is available. Trust the device first if you want stick baselines saved.
+
+| Setting | What it does |
 |---------|----------------|
-| Hash mismatch | Corrupt download, wrong file, or incomplete copy |
-| PGP failed | Missing `gpg`, bad signature file, or tampered checksums |
-| Untrusted fingerprint | Key not in FlashSpartan’s list (report upstream) |
-| Unknown publisher | Unsupported filename; add `.sha256` / `.asc` sidecars manually |
-| No ISO found | Stick was written with `dd` as a live image — see below |
+| **Remember image hashes per USB stick** | After verification, store SHA-256 (+ quick fingerprint) in `devices.json` for each image path |
+| **Compare to last recorded hash on reinsert** | Fail if the file changed since the last visit on **this** stick |
+| **Quick fingerprint pre-check** | Hash file ends first when a baseline exists; full read still runs when the quick check passes |
+
+This answers “is the Debian ISO on **my** Ventoy stick still the same file I copied?” separately from “does it match Debian’s published checksum?”
+
+**Work USB** profile turns stick baselines off (watch folders only). **Multi-image USB** and **Default** leave them on.
 
 ### Offline / sidecar files
 
@@ -119,6 +141,23 @@ Use this when you care about **certain files** changing, not the entire drive.
 - Keep groups small and meaningful (faster, clearer alerts).
 - Rebuild baseline after **you** intentionally update files.
 - Use **Hybrid** profile only if you also want a full partition hash afterward.
+
+---
+
+## Device identity and drives without a serial
+
+FlashSpartan identifies USB sticks using **serial + vendor + model + partition** when the kernel exposes a USB serial. Many cheap or refurbished sticks report **no serial**; FlashSpartan then falls back to `vendor_model` only.
+
+| Situation | What happens |
+|-----------|----------------|
+| Stick reports a serial | Stable per-device identity (`SERIAL_Vendor_Model_sdb1`) |
+| No serial | Weaker identity — two identical unlabeled sticks may look like the same device |
+| Trust prompt | Shows an **Identity note** when serial is missing |
+| Device card | Serial column shows **N/A (no serial)** with a tooltip |
+
+**Tips:** Use the **Notes** field on the allow/block list for human labels; prefer sticks that report a serial in sensitive environments; after swapping hardware, rebuild watch-folder baselines if identity was weak.
+
+Technical detail: [docs/VERIFICATION.md](VERIFICATION.md#device-identity).
 
 ---
 

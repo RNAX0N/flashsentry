@@ -99,14 +99,28 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md) for algorithms.
 ### DatabaseManager
 - `canonicalUniqueId()` → `DeviceInfo::partitionUniqueId()`
 - `updateWatchManifest()`, `setVerificationProfile()`
-- JSON at `~/.config/flashspartan/devices.json`, atomic write, mode 600
+- In-memory cache; persistence via `PolicyGateway` → signed `policy.store` (HMAC key `policy.key`)
+- Legacy `devices.json` migrated to `devices.json.migrated` on first policy load
 
 ### MainWindow
 - `m_appModeStack`: USB splitter vs `IsoVerifierWidget`
 - `startDeviceVerification()` routes by `VerificationProfile`
 - `applyAppModule()` switches stacked UI
+- USB trust UI delegates drive grouping to `DeviceDriveUtil` / `DeviceTrustCoordinator`
 
-## Database Format (devices.json)
+### Device trust helpers
+- `DeviceDriveUtil` — `driveKey()`, partition grouping, block-list lookup
+- `DeviceTrustCoordinator` — new-device flow plans and drive-wide whitelist mutations
+- `DeviceWhitelistService` — builds `DeviceRecord` with canonical IDs
+- `DeviceIdUtil` — partition-aware ID resolution / legacy fallback
+- `DeviceVerificationPlanner` — manifest vs full-hash vs mount-first routing
+- `MountOptionsUtil` / `MountDBusUtil` — UDisks mount maps and error text
+
+## Policy store (authoritative)
+
+Signed blob at `~/.config/FlashSpartan/policy.store` (see `src/policy/`). JSON export/import in Settings is for backup only.
+
+Device record shape (in policy snapshot / export JSON):
 
 ```json
 {
@@ -129,6 +143,15 @@ See [docs/VERIFICATION.md](docs/VERIFICATION.md) for algorithms.
         "manifest_root": "def..."
       },
       "trust_level": 1,
+      "iso_baselines": [
+        {
+          "relative_path": "debian-12.iso",
+          "sha256": "abc...",
+          "quick_fingerprint": "def...",
+          "size_bytes": 1234567890,
+          "publisher_verified": true
+        }
+      ],
       "device_info": { }
     }
   ]
@@ -146,6 +169,9 @@ File: `~/.config/FlashSpartan/FlashSpartan.conf`
 | `security/autoHashOnConnect` | `false` | Full partition |
 | `iso/autoVerifyOnUsbMount` | `true` | ISO automation |
 | `iso/autoVerify` | `true` | After folder scan |
+| `iso/storeStickBaselines` | `true` | Per-device image SHA-256 memory |
+| `iso/compareStickBaselines` | `true` | Compare on reinsert |
+| `iso/quickFingerprintCheck` | `true` | Sparse pre-check before full hash |
 | `hashing/algorithm` | SHA256 | Full partition only |
 
 Types: `include/Types.h` (`AppSettings`, `VerificationProfile`, `WatchManifest`, `IsoVerifyResult`).

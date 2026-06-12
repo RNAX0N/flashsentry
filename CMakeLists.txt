@@ -24,10 +24,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(MSVC)
-    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG /W4")
     set(CMAKE_CXX_FLAGS_DEBUG "/Zi /Od /W4")
 else()
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -Wall -Wextra")
     set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra -Wpedantic")
 endif()
 
@@ -76,6 +76,9 @@ set(SOURCES
     src/IsoChecksum.cpp
     src/IsoVerifyCache.cpp
     src/IsoVerifyReport.cpp
+    src/IsoVerifyUi.cpp
+    src/IsoQuickFingerprint.cpp
+    src/IsoBaselineService.cpp
     src/AuditLog.cpp
     src/BadUsbBaselineStore.cpp
     src/BadUsbAnalyzer.cpp
@@ -108,7 +111,15 @@ set(SOURCES
     src/EventDetailDialog.cpp
     src/IsoVerifierWidget.cpp
     src/DatabaseManager.cpp
+    src/DeviceWhitelistService.cpp
+    src/DeviceDriveUtil.cpp
+    src/DeviceTrustCoordinator.cpp
+    src/MountOptionsUtil.cpp
+    src/MountDBusUtil.cpp
+    src/DeviceIdUtil.cpp
+    src/DeviceVerificationPlanner.cpp
     src/policy/PolicyPaths.cpp
+    src/policy/PolicySocketAuth.cpp
     src/policy/PolicyBlobCodec.cpp
     src/policy/PolicyAudit.cpp
     src/policy/PolicyStoreEngine.cpp
@@ -159,6 +170,9 @@ set(HEADERS
     include/IsoVerifyOptions.h
     include/IsoVerifyCache.h
     include/IsoVerifyReport.h
+    include/IsoVerifyUi.h
+    include/IsoQuickFingerprint.h
+    include/IsoBaselineService.h
     include/AuditLog.h
     include/BadUsbBaselineStore.h
     include/BadUsbAnalyzer.h
@@ -262,6 +276,7 @@ add_executable(flashspartan-policyd
     src/flashspartan-policyd.cpp
     src/AppPaths.cpp
     src/policy/PolicyPaths.cpp
+    src/policy/PolicySocketAuth.cpp
     src/policy/PolicyBlobCodec.cpp
     src/policy/PolicyAudit.cpp
     src/policy/PolicyStoreEngine.cpp

@@ -17,6 +17,9 @@ IsoVerifyUi::Outcome IsoVerifyUi::outcome(const IsoVerifyResult& result)
 
 QString IsoVerifyUi::outcomeLabel(const IsoVerifyResult& result)
 {
+    if (result.baselineChecked && !result.baselineMatches) {
+        return QStringLiteral("Changed on stick");
+    }
     switch (outcome(result)) {
     case Outcome::Verified:
         return QStringLiteral("Verified");
@@ -196,6 +199,8 @@ QString IsoVerifyUi::legendHtml()
         " (and signature when checked).<br>"
         "<span style='color:#c62828'>● Failed</span> — checksum mismatch, bad signature, or untrusted signing "
         "key.<br>"
+        "<span style='color:#b71c1c'>● Changed on stick</span> — file no longer matches the hash recorded on this "
+        "USB device during a prior visit.<br>"
         "<span style='color:#e65100'>● Not verified</span> — hash was computed but no publisher checksum was "
         "available; add a <code>.sha256</code> sidecar or use <b>More → Trust hash</b>.");
 }

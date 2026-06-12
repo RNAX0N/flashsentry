@@ -90,6 +90,11 @@ static QJsonObject isoResultToJson(const IsoVerifyResult& r)
     obj.insert(QStringLiteral("fingerprint_trusted"), r.fingerprintTrusted);
     obj.insert(QStringLiteral("signing_key_fingerprint"), r.signingKeyFingerprint);
     obj.insert(QStringLiteral("source"), static_cast<int>(r.source));
+    obj.insert(QStringLiteral("baseline_checked"), r.baselineChecked);
+    obj.insert(QStringLiteral("baseline_matches"), r.baselineMatches);
+    if (!r.storedBaselineSha256.isEmpty()) {
+        obj.insert(QStringLiteral("stored_baseline_sha256"), r.storedBaselineSha256);
+    }
     if (!r.errorMessage.isEmpty()) {
         obj.insert(QStringLiteral("error"), r.errorMessage);
     }

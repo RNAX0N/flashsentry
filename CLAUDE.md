@@ -169,6 +169,9 @@ File: `~/.config/FlashSpartan/FlashSpartan.conf`
 | `security/autoHashOnConnect` | `false` | Full partition |
 | `iso/autoVerifyOnUsbMount` | `true` | ISO automation |
 | `iso/autoVerify` | `true` | After folder scan |
+| `iso/storeStickBaselines` | `true` | Per-device image SHA-256 memory |
+| `iso/compareStickBaselines` | `true` | Compare on reinsert |
+| `iso/quickFingerprintCheck` | `true` | Sparse pre-check before full hash |
 | `hashing/algorithm` | SHA256 | Full partition only |
 
 Types: `include/Types.h` (`AppSettings`, `VerificationProfile`, `WatchManifest`, `IsoVerifyResult`).

@@ -34,6 +34,7 @@ FlashSpartan monitors USB storage, maintains a cryptographic whitelist of truste
 | Feature | What it does |
 |--------|----------------|
 | **Automatic ISO verification** | Finds `.iso` files on mounted USB volumes, downloads official checksums/signatures, verifies hashes and OpenPGP where configured |
+| **Per-stick image baselines** | Remembers each image hash per trusted USB device; detects changes on reinsert with optional quick fingerprint pre-check |
 | **Watch-folder verification** | You choose paths on a drive; FlashSpartan builds a Merkle baseline and alerts when watched files change — without reading every sector |
 | **Left-nav shell** | Dedicated pages for USB monitoring, device history, allow/block lists, alerts, reports, ISO verify, BadUSB, settings, and about |
 

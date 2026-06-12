@@ -84,7 +84,7 @@ Open **Settings → Verification → Mode**.
 
 ### Stick baselines (remember images on this USB)
 
-When a stick is in your whitelist, FlashSpartan can **remember each image hash per USB device** (default: on). On later plug-ins it compares files to that recorded hash — even when no publisher checksum is available.
+When a stick is in your **allow list** (trusted/whitelisted), FlashSpartan can **remember each image hash per USB device** (default: on). On later plug-ins it compares files to that recorded hash — even when no publisher checksum is available. Trust the device first if you want stick baselines saved.
 
 | Setting | What it does |
 |---------|----------------|

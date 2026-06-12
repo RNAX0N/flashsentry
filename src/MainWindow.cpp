@@ -1083,6 +1083,11 @@ void MainWindow::loadSettings()
         m_qsettings->value("iso/blockMountOnFailure", false).toBool();
     m_settings.isoVerifyDecompressed = m_qsettings->value("iso/verifyDecompressed", false).toBool();
     m_settings.isoPreferOfflineSidecars = m_qsettings->value("iso/preferOfflineSidecars", false).toBool();
+    m_settings.isoStoreStickBaselines = m_qsettings->value("iso/storeStickBaselines", true).toBool();
+    m_settings.isoCompareStickBaselines =
+        m_qsettings->value("iso/compareStickBaselines", true).toBool();
+    m_settings.isoQuickFingerprintCheck =
+        m_qsettings->value("iso/quickFingerprintCheck", true).toBool();
     m_settings.isoVerifyParallel = m_qsettings->value("iso/verifyParallel", 2).toInt();
     m_settings.showFirstRunWizard = m_qsettings->value("general/showFirstRunWizard", true).toBool();
     m_settings.badUsbEnabled = m_qsettings->value("badusb/enabled", true).toBool();
@@ -1211,6 +1216,9 @@ void MainWindow::saveSettings()
     m_qsettings->setValue("iso/blockMountOnFailure", m_settings.blockMountOnIsoVerifyFailure);
     m_qsettings->setValue("iso/verifyDecompressed", m_settings.isoVerifyDecompressed);
     m_qsettings->setValue("iso/preferOfflineSidecars", m_settings.isoPreferOfflineSidecars);
+    m_qsettings->setValue("iso/storeStickBaselines", m_settings.isoStoreStickBaselines);
+    m_qsettings->setValue("iso/compareStickBaselines", m_settings.isoCompareStickBaselines);
+    m_qsettings->setValue("iso/quickFingerprintCheck", m_settings.isoQuickFingerprintCheck);
     m_qsettings->setValue("iso/verifyParallel", m_settings.isoVerifyParallel);
     m_qsettings->setValue("general/showFirstRunWizard", m_settings.showFirstRunWizard);
     m_qsettings->setValue("general/settingsProfile", m_settings.settingsProfile);
@@ -1893,6 +1901,7 @@ void MainWindow::triggerIsoVerificationOnMount(const MountManager::MountResult& 
         label = info->displayName();
     }
     logMessage(QStringLiteral("Auto ISO verification on %1 at %2").arg(label, result.mountPoint));
+    applyIsoVerifyStickContext(result.deviceNode);
     m_isoWidget->verifyMountPoint(result.mountPoint, result.deviceNode, label);
     if (m_settings.appModule == AppModule::IsoVerifier) {
         showAndRaise();

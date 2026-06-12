@@ -143,6 +143,15 @@ Device record shape (in policy snapshot / export JSON):
         "manifest_root": "def..."
       },
       "trust_level": 1,
+      "iso_baselines": [
+        {
+          "relative_path": "debian-12.iso",
+          "sha256": "abc...",
+          "quick_fingerprint": "def...",
+          "size_bytes": 1234567890,
+          "publisher_verified": true
+        }
+      ],
       "device_info": { }
     }
   ]

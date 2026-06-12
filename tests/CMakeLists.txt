@@ -222,6 +222,8 @@ add_executable(test_iso_scan_rules
     ${CMAKE_SOURCE_DIR}/src/IsoVerifyCache.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoVerifyReport.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoVerifyUi.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoBaselineService.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoQuickFingerprint.cpp
     ${CMAKE_SOURCE_DIR}/src/AuditLog.cpp
 )
 target_include_directories(test_iso_scan_rules PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
@@ -243,6 +245,50 @@ target_include_directories(test_verify_report PRIVATE ${CMAKE_SOURCE_DIR}/includ
 target_link_libraries(test_verify_report PRIVATE Qt6::Test Qt6::Core)
 add_test(NAME test_verify_report COMMAND test_verify_report)
 
+add_executable(test_iso_baseline_service
+    test_iso_baseline_service.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoBaselineService.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoQuickFingerprint.cpp
+)
+target_include_directories(test_iso_baseline_service PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_iso_baseline_service PRIVATE Qt6::Test Qt6::Core ${OPENSSL_LIBRARIES})
+add_test(NAME test_iso_baseline_service COMMAND test_iso_baseline_service)
+
+add_executable(test_main_window_iso_flow
+    test_main_window_iso_flow.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoBaselineService.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoQuickFingerprint.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifyReport.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifyUi.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifier.cpp
+    ${ISO_CATALOG_SOURCES}
+    ${CMAKE_SOURCE_DIR}/src/IsoCatalogManifest.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoHttpClient.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoChecksum.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoVerifyCache.cpp
+    ${CMAKE_SOURCE_DIR}/src/AuditLog.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoScanRules.cpp
+)
+target_include_directories(test_main_window_iso_flow PRIVATE ${CMAKE_SOURCE_DIR}/include ${OPENSSL_INCLUDE_DIRS})
+target_link_libraries(test_main_window_iso_flow PRIVATE
+    Qt6::Test Qt6::Core Qt6::Concurrent Qt6::Network ${OPENSSL_LIBRARIES})
+target_compile_definitions(test_main_window_iso_flow PRIVATE FLASHSPARTAN_VERSION="${PROJECT_VERSION}")
+target_sources(test_main_window_iso_flow PRIVATE ${CMAKE_SOURCE_DIR}/resources/resources.qrc)
+add_test(NAME test_main_window_iso_flow COMMAND test_main_window_iso_flow)
+
+if(NOT WIN32)
+add_executable(test_udisks2_integration
+    test_udisks2_integration.cpp
+    ${CMAKE_SOURCE_DIR}/src/MountManager.cpp
+    ${CMAKE_SOURCE_DIR}/include/MountManager.h
+    ${CMAKE_SOURCE_DIR}/src/MountDBusUtil.cpp
+    ${CMAKE_SOURCE_DIR}/src/MountOptionsUtil.cpp
+)
+target_include_directories(test_udisks2_integration PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(test_udisks2_integration PRIVATE Qt6::Test Qt6::Core Qt6::DBus)
+add_test(NAME test_udisks2_integration COMMAND test_udisks2_integration)
+endif()
+
 set(ISO_VERIFY_TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/IsoScanRules.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoVerifier.cpp
@@ -253,6 +299,8 @@ set(ISO_VERIFY_TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/IsoVerifyCache.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoVerifyReport.cpp
     ${CMAKE_SOURCE_DIR}/src/IsoVerifyUi.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoBaselineService.cpp
+    ${CMAKE_SOURCE_DIR}/src/IsoQuickFingerprint.cpp
     ${CMAKE_SOURCE_DIR}/src/AuditLog.cpp
 )
 add_executable(test_iso_verify_integration

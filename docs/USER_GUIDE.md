@@ -82,6 +82,20 @@ Open **Settings → Verification → Mode**.
 | **Not verified** | Unsupported filename or missing checksum file — add `.sha256` / `.asc` next to the image |
 | No images found | Stick was written with `dd` as a live image — see below |
 
+### Stick baselines (remember images on this USB)
+
+When a stick is in your whitelist, FlashSpartan can **remember each image hash per USB device** (default: on). On later plug-ins it compares files to that recorded hash — even when no publisher checksum is available.
+
+| Setting | What it does |
+|---------|----------------|
+| **Remember image hashes per USB stick** | After verification, store SHA-256 (+ quick fingerprint) in `devices.json` for each image path |
+| **Compare to last recorded hash on reinsert** | Fail if the file changed since the last visit on **this** stick |
+| **Quick fingerprint pre-check** | Hash file ends first when a baseline exists; full read still runs when the quick check passes |
+
+This answers “is the Debian ISO on **my** Ventoy stick still the same file I copied?” separately from “does it match Debian’s published checksum?”
+
+**Work USB** profile turns stick baselines off (watch folders only). **Multi-image USB** and **Default** leave them on.
+
 ### Offline / sidecar files
 
 If you already downloaded checksums, you can place them next to the ISO on the stick:

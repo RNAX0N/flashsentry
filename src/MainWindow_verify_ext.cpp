@@ -6,6 +6,7 @@
 #include "IsoVerifySettingsLoader.h"
 #include "IsoCatalogManifest.h"
 #include "IsoScanRules.h"
+#include "IsoBaselineService.h"
 #include "SettingsProfiles.h"
 #include "VerifyHistory.h"
 #include <QMessageBox>
@@ -290,14 +291,29 @@ void MainWindow::acceptManifestBaseline(const DeviceInfo& device, const WatchMan
 
 void MainWindow::applyIsoVerifyOptions()
 {
+    applyIsoVerifyStickContext();
+    if (m_isoWidget) {
+        m_isoWidget->setAutoVerifyOnScan(m_settings.isoAutoVerifyOnScan);
+    }
+}
+
+void MainWindow::applyIsoVerifyStickContext(const QString& deviceNode)
+{
     IsoVerifyOptions opt = IsoVerifySettingsLoader::load();
     opt.maxParallel = qMax(1, m_settings.isoVerifyParallel);
     opt.verifyDecompressed = m_settings.isoVerifyDecompressed;
     opt.preferOfflineSidecars = m_settings.isoPreferOfflineSidecars;
-    IsoVerifier::setVerifyOptions(opt);
-    if (m_isoWidget) {
-        m_isoWidget->setAutoVerifyOnScan(m_settings.isoAutoVerifyOnScan);
+    opt.quickFingerprintFirst = m_settings.isoQuickFingerprintCheck;
+    opt.stickBaselines.clear();
+    if (m_settings.isoCompareStickBaselines && m_database && !deviceNode.isEmpty()) {
+        if (auto info = m_deviceMonitor->getDevice(deviceNode)) {
+            if (auto record = m_database->getDevice(*info)) {
+                opt.stickBaselines =
+                    IsoBaselineService::baselinesByRelativePath(record->isoBaselines);
+            }
+        }
     }
+    IsoVerifier::setVerifyOptions(opt);
 }
 
 void MainWindow::maybeTriggerIsoVerifyForMountedDevice(const DeviceInfo& device)
@@ -368,11 +384,42 @@ void MainWindow::warnIfCatalogIntegrityFailed()
 void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
                                              const QList<IsoVerifyResult>& results)
 {
-    const IsoVerifyReport::SummaryCounts counts = IsoVerifyReport::countSummary(results);
+    QList<IsoVerifyResult> processed = results;
+    QString mountPoint;
+    QList<IsoImageBaseline> existingBaselines;
+    if (auto info = m_deviceMonitor->getDevice(deviceNode)) {
+        mountPoint = info->mountPoint;
+    }
+    if (m_database && !deviceNode.isEmpty()) {
+        if (auto info = m_deviceMonitor->getDevice(deviceNode)) {
+            if (auto record = m_database->getDevice(*info)) {
+                existingBaselines = record->isoBaselines;
+            }
+        }
+    }
+
+    const IsoBaselineService::ProcessingOutcome baselineOutcome = IsoBaselineService::process(
+        mountPoint, processed, existingBaselines, m_settings.isoCompareStickBaselines,
+        m_settings.isoStoreStickBaselines && m_database && !deviceNode.isEmpty());
+    processed = baselineOutcome.results;
+    for (IsoVerifyResult& result : processed) {
+        result.reportSummary = IsoVerifier::formatResultReport(result);
+    }
+    if (m_isoWidget) {
+        m_isoWidget->displayResults(processed);
+    }
+    if (baselineOutcome.baselinesChanged && m_database && !deviceNode.isEmpty()) {
+        if (auto info = m_deviceMonitor->getDevice(deviceNode)) {
+            m_database->updateIsoBaselines(m_database->canonicalUniqueId(*info),
+                                           baselineOutcome.updatedBaselines);
+        }
+    }
+
+    const IsoVerifyReport::SummaryCounts counts = IsoVerifyReport::countSummary(processed);
     const int passed = counts.passed;
     const int needsSidecar = counts.needsSidecar;
     const int failed = IsoVerifyReport::countFailed(counts);
-    const QString summary = IsoVerifyReport::summaryLine(results);
+    const QString summary = IsoVerifyReport::summaryLine(processed);
     LogLevel logLevel = LogLevel::Info;
     if (failed > 0) {
         logLevel = LogLevel::Security;
@@ -386,7 +433,7 @@ void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
     if (m_settings.showNotifications && m_trayIcon) {
         auto info = m_deviceMonitor->getDevice(deviceNode);
         const QString name = info ? info->displayName() : deviceNode;
-        m_trayIcon->notifyIsoVerifySummary(name, passed, results.size(), needsSidecar);
+        m_trayIcon->notifyIsoVerifySummary(name, passed, processed.size(), needsSidecar);
     }
 
     {
@@ -415,12 +462,12 @@ void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
         card->setIsoVerifySummary(summary);
         if (passed == counts.total && counts.total > 0) {
             card->setVerificationStatus(VerificationStatus::Verified);
-        } else if (IsoVerifier::mountScanHasFailures(results)) {
+        } else if (IsoVerifier::mountScanHasFailures(processed)) {
             card->setVerificationStatus(VerificationStatus::Modified);
         }
     }
 
-    if (m_settings.blockMountOnIsoVerifyFailure && IsoVerifier::mountScanHasFailures(results)) {
+    if (m_settings.blockMountOnIsoVerifyFailure && IsoVerifier::mountScanHasFailures(processed)) {
         logMessage(QStringLiteral("Mount blocked: ISO/image verification failed on %1").arg(deviceNode),
                    LogLevel::Security);
         m_pendingHashActions.remove(deviceNode);

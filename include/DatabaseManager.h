@@ -72,6 +72,7 @@ public:
     bool hasDevice(const DeviceInfo& device) const;
     QString canonicalUniqueId(const DeviceInfo& device) const;
     bool updateWatchManifest(const QString& uniqueId, const WatchManifest& manifest);
+    bool updateIsoBaselines(const QString& uniqueId, const QList<IsoImageBaseline>& baselines);
     bool setVerificationProfile(const QString& uniqueId, VerificationProfile profile);
 
     /**

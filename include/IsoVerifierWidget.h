@@ -37,6 +37,7 @@ public:
 
     void refreshCatalogStatus();
     void setActiveProfile(const QString& profileId);
+    void displayResults(const QList<IsoVerifyResult>& results);
 
     /** Switch to results view; re-run or show last report for this mount. */
     void focusDevice(const QString& deviceNode, const QString& mountPoint,

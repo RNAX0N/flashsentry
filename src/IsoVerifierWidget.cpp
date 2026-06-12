@@ -378,6 +378,11 @@ void IsoVerifierWidget::refreshCatalogStatus()
     updateCatalogIntegrityBanner();
 }
 
+void IsoVerifierWidget::displayResults(const QList<IsoVerifyResult>& results)
+{
+    setResults(results);
+}
+
 void IsoVerifierWidget::setAutoVerifyOnScan(bool enabled)
 {
     if (m_autoVerifyOnScan != enabled) {

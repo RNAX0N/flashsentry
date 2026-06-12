@@ -8,6 +8,8 @@
 #include "IsoHttpClient.h"
 #include "IsoVerifyCache.h"
 #include "IsoVerifyUi.h"
+#include "IsoQuickFingerprint.h"
+#include "IsoBaselineService.h"
 
 #include <openssl/evp.h>
 
@@ -421,6 +423,14 @@ QString buildReport(const IsoVerifyResult& r)
         if (!r.pgpSummary.isEmpty()) lines << r.pgpSummary;
     }
     if (!r.checksumUrl.isEmpty()) lines << QStringLiteral("Checksums: %1").arg(r.checksumUrl);
+    if (r.baselineChecked) {
+        lines << QStringLiteral("On this USB stick: %1")
+                     .arg(r.baselineMatches ? QStringLiteral("unchanged since last visit")
+                                            : QStringLiteral("CHANGED since last visit"));
+        if (!r.storedBaselineSha256.isEmpty()) {
+            lines << QStringLiteral("Recorded SHA-256: %1").arg(r.storedBaselineSha256);
+        }
+    }
     lines << QStringLiteral("Status: %1").arg(IsoVerifyUi::outcomeLabel(r));
     const QString explanation = IsoVerifyUi::outcomeExplanation(r);
     if (!explanation.isEmpty()) {
@@ -574,6 +584,31 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
         return r;
     }
 
+    const QString relativePath = IsoBaselineService::relativeImagePath(mountPoint, isoPath);
+    if (g_verifyOptions.quickFingerprintFirst
+        && g_verifyOptions.stickBaselines.contains(relativePath)) {
+        const IsoImageBaseline& baseline = g_verifyOptions.stickBaselines.value(relativePath);
+        if (!baseline.quickFingerprint.isEmpty()) {
+            QString quickErr;
+            const QString quickFp = IsoQuickFingerprint::compute(isoPath, &quickErr);
+            if (!quickFp.isEmpty() && quickFp != baseline.quickFingerprint) {
+                r.success = true;
+                r.hashChecked = true;
+                r.quickFingerprintMismatch = true;
+                r.baselineChecked = true;
+                r.baselineMatches = false;
+                r.storedBaselineSha256 = baseline.sha256;
+                r.errorMessage = QStringLiteral(
+                    "Quick fingerprint mismatch — this file may have changed since the last visit on "
+                    "this stick.");
+                r.durationMs = static_cast<uint64_t>(timer.elapsed());
+                r.reportSummary = buildReport(r);
+                AuditLog::appendIsoVerify(r);
+                return r;
+            }
+        }
+    }
+
     QString hashErr;
     r.computedSha256 = computeFileSha256(isoPath, g_verifyOptions, &hashErr);
     if (r.computedSha256.isEmpty()) {
@@ -581,6 +616,14 @@ IsoVerifyResult IsoVerifier::verifyIsoAutomated(const QString& isoPath, const QS
         return r;
     }
     r.hashChecked = true;
+
+    if (g_verifyOptions.stickBaselines.contains(relativePath)) {
+        const IsoImageBaseline& baseline = g_verifyOptions.stickBaselines.value(relativePath);
+        r.baselineChecked = true;
+        r.storedBaselineSha256 = baseline.sha256;
+        r.baselineMatches =
+            normalizeHash(r.computedSha256) == normalizeHash(baseline.sha256);
+    }
 
     const QFileInfo isoFi(isoPath);
     const QString isoName = isoFi.fileName();
@@ -842,6 +885,11 @@ bool IsoVerifier::mountScanHasFailures(const QList<IsoVerifyResult>& results)
         }
     }
     return false;
+}
+
+QString IsoVerifier::formatResultReport(const IsoVerifyResult& result)
+{
+    return buildReport(result);
 }
 
 QList<IsoVerifyResult> IsoVerifier::verifyDirectory(const QString& directory)

@@ -33,6 +33,14 @@ QString IsoVerifyUi::outcomeExplanation(const IsoVerifyResult& result)
     if (!result.success && !result.errorMessage.isEmpty()) {
         return result.errorMessage;
     }
+    if (result.baselineChecked) {
+        if (!result.baselineMatches) {
+            return QStringLiteral(
+                "This file no longer matches the hash recorded the last time this USB stick was verified.");
+        }
+        return QStringLiteral("This file matches the hash recorded on this USB stick during a prior visit.");
+    }
+
     switch (outcome(result)) {
     case Outcome::Verified:
         if (result.pgpChecked) {
@@ -68,6 +76,10 @@ QString IsoVerifyUi::nextStepHint(const IsoVerifyResult& result)
     case Outcome::Verified:
         return {};
     case Outcome::Failed:
+        if (result.baselineChecked && !result.baselineMatches) {
+            return QStringLiteral(
+                "If you replaced the image intentionally, verify again to update the stick baseline.");
+        }
         if (result.hashChecked && !result.hashMatches) {
             return QStringLiteral("Re-download the image from the publisher and copy it again.");
         }

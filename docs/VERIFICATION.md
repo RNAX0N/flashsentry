@@ -113,6 +113,21 @@ Some publishers (e.g. **Manjaro**, **elementary OS**, **EndeavourOS**) ship `{is
 
 Place images on the **data** area of the stick, not inside boot-loader config directories.
 
+### Per-stick image baselines
+
+For whitelisted devices, FlashSpartan stores `iso_baselines` in each device record:
+
+| Field | Purpose |
+|-------|---------|
+| `relative_path` | Image path relative to mount point (e.g. `debian-12.iso`) |
+| `sha256` | Full-file hash from the last successful verification |
+| `quick_fingerprint` | SHA-256 of file size + first 1 MiB + last 1 MiB |
+| `publisher_verified` | Whether publisher/sidecar verification passed when recorded |
+
+On reinsert, `IsoBaselineService` compares computed hashes to stored values. `IsoQuickFingerprint` can reject obvious changes before a full read when **Quick fingerprint pre-check** is enabled (`iso/quickFingerprintCheck`).
+
+Publisher verification and stick baselines are independent: a custom image can be **not verified** against a distro catalog while still **unchanged on this stick**.
+
 ### Bootable stick without `.iso`
 
 `scanMountPoint()` sets `looksLikeDdIsoStick` when:

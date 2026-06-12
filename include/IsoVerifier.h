@@ -48,6 +48,7 @@ public:
 
     /** True when any image has a definite failure (checksum/signature); not-verified is excluded. */
     static bool mountScanHasFailures(const QList<IsoVerifyResult>& results);
+    static QString formatResultReport(const IsoVerifyResult& result);
 };
 
 } // namespace FlashSpartan

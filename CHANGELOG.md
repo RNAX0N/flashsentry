@@ -23,6 +23,10 @@ All notable changes to FlashSpartan are documented in this file.
 
 ### Added
 
+- **Per-stick ISO baselines** — remember image SHA-256 per whitelisted USB device; compare on reinsert with optional quick fingerprint pre-check (`IsoBaselineService`, `IsoQuickFingerprint`).
+- **UDisks2 integration test** — `test_udisks2_integration` probes system D-Bus when available (skips otherwise).
+- **Main-window ISO flow tests** — `test_main_window_iso_flow` and `test_iso_baseline_service` cover coordinator logic without GUI automation.
+- **PKGBUILD checksum helper** — `packaging/update-release-checksums.sh --apply` patches `sha256sums` in place.
 - **Weak USB identity** — warnings in trust dialogs and device cards when no serial is reported; documented in USER_GUIDE.
 - **DeviceWhitelistService** — shared helper for building whitelist records (incremental MainWindow refactor).
 - **Tests** — `test_device_whitelist_service`, `test_manifest_worker`, `test_hash_worker`.

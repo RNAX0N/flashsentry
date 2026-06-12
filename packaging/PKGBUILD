@@ -4,7 +4,7 @@
 #   cd packaging && ./build-package.sh -si
 #
 # Install from a release tag (requires v${pkgver} on GitHub):
-#   ./update-release-checksums.sh   # paste sha256sums into this file
+#   ./update-release-checksums.sh --apply
 #   cd packaging && FLASHSPARTAN_RELEASE=1 makepkg -si
 #
 pkgname=flashspartan

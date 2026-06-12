@@ -79,6 +79,12 @@ void SettingsDialog::loadSettings(const AppSettings& settings)
         m_isoVerifyDecompressedCheck->setChecked(settings.isoVerifyDecompressed);
     if (m_isoPreferOfflineCheck)
         m_isoPreferOfflineCheck->setChecked(settings.isoPreferOfflineSidecars);
+    if (m_isoStoreStickBaselinesCheck)
+        m_isoStoreStickBaselinesCheck->setChecked(settings.isoStoreStickBaselines);
+    if (m_isoCompareStickBaselinesCheck)
+        m_isoCompareStickBaselinesCheck->setChecked(settings.isoCompareStickBaselines);
+    if (m_isoQuickFingerprintCheck)
+        m_isoQuickFingerprintCheck->setChecked(settings.isoQuickFingerprintCheck);
     if (m_isoParallelSpin)
         m_isoParallelSpin->setValue(settings.isoVerifyParallel);
     if (m_settingsProfileCombo) {
@@ -184,6 +190,12 @@ AppSettings SettingsDialog::getSettings() const
         settings.isoVerifyDecompressed = m_isoVerifyDecompressedCheck->isChecked();
     if (m_isoPreferOfflineCheck)
         settings.isoPreferOfflineSidecars = m_isoPreferOfflineCheck->isChecked();
+    if (m_isoStoreStickBaselinesCheck)
+        settings.isoStoreStickBaselines = m_isoStoreStickBaselinesCheck->isChecked();
+    if (m_isoCompareStickBaselinesCheck)
+        settings.isoCompareStickBaselines = m_isoCompareStickBaselinesCheck->isChecked();
+    if (m_isoQuickFingerprintCheck)
+        settings.isoQuickFingerprintCheck = m_isoQuickFingerprintCheck->isChecked();
     if (m_isoParallelSpin)
         settings.isoVerifyParallel = m_isoParallelSpin->value();
     if (m_settingsProfileCombo) {
@@ -457,6 +469,24 @@ QWidget* SettingsDialog::createVerificationTab()
         QStringLiteral("Prefer local .sha256 checksum files before downloading from the publisher"));
     connect(m_isoPreferOfflineCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
     isoForm->addRow(QStringLiteral(""), m_isoPreferOfflineCheck);
+    m_isoStoreStickBaselinesCheck = new QCheckBox(
+        QStringLiteral("Remember image hashes per USB stick after verification"));
+    m_isoStoreStickBaselinesCheck->setToolTip(
+        QStringLiteral("Stores a SHA-256 fingerprint for each image file on whitelisted sticks so later "
+                       "visits can detect tampering or accidental changes."));
+    connect(m_isoStoreStickBaselinesCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_isoStoreStickBaselinesCheck);
+    m_isoCompareStickBaselinesCheck = new QCheckBox(
+        QStringLiteral("Compare images to the last recorded hash on reinsert"));
+    connect(m_isoCompareStickBaselinesCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_isoCompareStickBaselinesCheck);
+    m_isoQuickFingerprintCheck = new QCheckBox(
+        QStringLiteral("Quick fingerprint pre-check when a stick baseline exists"));
+    m_isoQuickFingerprintCheck->setToolTip(
+        QStringLiteral("Hashes the first and last megabyte plus file size before the full read when a "
+                       "prior baseline exists — fails fast if the file changed."));
+    connect(m_isoQuickFingerprintCheck, &QCheckBox::toggled, this, &SettingsDialog::onSettingChanged);
+    isoForm->addRow(QStringLiteral(""), m_isoQuickFingerprintCheck);
     layout->addWidget(isoGroup);
 
     QGroupBox* badUsbGroup = new QGroupBox(QStringLiteral("BadUSB behavior monitoring"));

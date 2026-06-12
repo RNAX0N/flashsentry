@@ -733,6 +733,35 @@ std::optional<DeviceRecord> DatabaseManager::getDevice(const DeviceInfo& device)
 
 
 
+bool DatabaseManager::updateIsoBaselines(const QString& uniqueId,
+                                         const QList<IsoImageBaseline>& baselines)
+{
+    DeviceRecord rec;
+    QString storedId;
+    {
+        QWriteLocker locker(&m_lock);
+        const std::optional<QString> resolved = DeviceIdUtil::resolveStoredId(m_devices, uniqueId);
+        if (!resolved) {
+            return false;
+        }
+        storedId = *resolved;
+        m_devices[storedId].isoBaselines = baselines;
+        rec = m_devices.value(storedId);
+    }
+
+    if (!persistDevice(rec, QStringLiteral("iso_baselines"))) {
+        return false;
+    }
+
+    {
+        QWriteLocker locker(&m_lock);
+        syncFromPolicyGateway();
+        m_modified = false;
+    }
+    emit deviceUpdated(storedId);
+    return true;
+}
+
 bool DatabaseManager::updateWatchManifest(const QString& uniqueId, const WatchManifest& manifest)
 {
     DeviceRecord rec;

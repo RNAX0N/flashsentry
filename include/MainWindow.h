@@ -341,6 +341,7 @@ private:
     void mountDespiteModification(const DeviceInfo& device);
 
     void applyIsoVerifyOptions();
+    void applyIsoVerifyStickContext(const QString& deviceNode = {});
     void warnIfCatalogIntegrityFailed();
     void maybeTriggerIsoVerifyForMountedDevice(const DeviceInfo& device);
     void clearIsoVerifyDedupForDevice(const DeviceInfo& device);

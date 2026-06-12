@@ -529,21 +529,68 @@ struct IsoVerifyResult {
     QString errorMessage;
     uint64_t durationMs = 0;
 
+    /** Per-stick baseline from a prior visit on this USB device. */
+    bool baselineChecked = false;
+    bool baselineMatches = false;
+    QString storedBaselineSha256;
+    bool quickFingerprintMismatch = false;
+
     /** Hash computed but no publisher checksum was available to compare against. */
     bool inconclusive() const {
         if (!success) return false;
         if (isoPath.isEmpty()) return false;
+        if (baselineChecked && !baselineMatches) {
+            return false;
+        }
         return source == IsoVerifySource::ComputedOnly
                || (hashChecked && expectedSha256.isEmpty());
     }
 
     bool passed() const {
         if (!success) return false;
+        if (baselineChecked && !baselineMatches) {
+            return false;
+        }
         if (inconclusive()) return false;
         if (hashChecked && !expectedSha256.isEmpty() && !hashMatches) return false;
         if (pgpChecked && !pgpValid) return false;
         if (pgpChecked && !fingerprintTrusted) return false;
         return true;
+    }
+};
+
+/** SHA-256 fingerprint of an image file recorded on a specific whitelisted USB stick. */
+struct IsoImageBaseline {
+    QString relativePath;
+    QString sha256;
+    QString quickFingerprint;
+    qint64 sizeBytes = 0;
+    QDateTime recordedAt;
+    bool publisherVerified = false;
+
+    QJsonObject toJson() const {
+        QJsonObject obj;
+        obj.insert(QStringLiteral("relative_path"), relativePath);
+        obj.insert(QStringLiteral("sha256"), sha256);
+        if (!quickFingerprint.isEmpty()) {
+            obj.insert(QStringLiteral("quick_fingerprint"), quickFingerprint);
+        }
+        obj.insert(QStringLiteral("size_bytes"), sizeBytes);
+        obj.insert(QStringLiteral("recorded_at"), recordedAt.toString(Qt::ISODate));
+        obj.insert(QStringLiteral("publisher_verified"), publisherVerified);
+        return obj;
+    }
+
+    static IsoImageBaseline fromJson(const QJsonObject& obj) {
+        IsoImageBaseline baseline;
+        baseline.relativePath = obj.value(QStringLiteral("relative_path")).toString();
+        baseline.sha256 = obj.value(QStringLiteral("sha256")).toString();
+        baseline.quickFingerprint = obj.value(QStringLiteral("quick_fingerprint")).toString();
+        baseline.sizeBytes = obj.value(QStringLiteral("size_bytes")).toInteger();
+        baseline.recordedAt =
+            QDateTime::fromString(obj.value(QStringLiteral("recorded_at")).toString(), Qt::ISODate);
+        baseline.publisherVerified = obj.value(QStringLiteral("publisher_verified")).toBool();
+        return baseline;
     }
 };
 
@@ -564,6 +611,7 @@ struct DeviceRecord {
     VerificationProfile verificationProfile = VerificationProfile::WatchManifest;
     WatchManifest watchManifest;
     QString lastManifestRoot;
+    QList<IsoImageBaseline> isoBaselines;
 
     QJsonObject toJson() const {
         QJsonObject obj;
@@ -583,6 +631,11 @@ struct DeviceRecord {
         obj["verification_profile"] = verificationProfileToString(verificationProfile);
         obj["watch_manifest"] = watchManifest.toJson();
         obj["last_manifest_root"] = lastManifestRoot;
+        QJsonArray isoBaselineArray;
+        for (const IsoImageBaseline& baseline : isoBaselines) {
+            isoBaselineArray.append(baseline.toJson());
+        }
+        obj["iso_baselines"] = isoBaselineArray;
         return obj;
     }
 
@@ -605,6 +658,10 @@ struct DeviceRecord {
             obj["verification_profile"].toString());
         record.watchManifest = WatchManifest::fromJson(obj["watch_manifest"].toObject());
         record.lastManifestRoot = obj["last_manifest_root"].toString();
+        const QJsonArray isoBaselineArray = obj["iso_baselines"].toArray();
+        for (const QJsonValue& value : isoBaselineArray) {
+            record.isoBaselines.append(IsoImageBaseline::fromJson(value.toObject()));
+        }
         return record;
     }
 };
@@ -688,6 +745,12 @@ struct AppSettings {
     bool isoVerifyDecompressed = false;
     bool isoPreferOfflineSidecars = false;
     int isoVerifyParallel = 2;
+    /** Remember image SHA-256 per whitelisted USB stick after verification. */
+    bool isoStoreStickBaselines = true;
+    /** Compare images on reinsert to the last recorded hash for this stick. */
+    bool isoCompareStickBaselines = true;
+    /** When a stick baseline exists, hash file ends first to detect changes quickly. */
+    bool isoQuickFingerprintCheck = true;
     bool showFirstRunWizard = true;
     QString settingsProfile = QStringLiteral("default");
     bool badUsbEnabled = true;
@@ -744,6 +807,9 @@ struct AppSettings {
         obj["iso_verify_decompressed"] = isoVerifyDecompressed;
         obj["iso_prefer_offline_sidecars"] = isoPreferOfflineSidecars;
         obj["iso_verify_parallel"] = isoVerifyParallel;
+        obj["iso_store_stick_baselines"] = isoStoreStickBaselines;
+        obj["iso_compare_stick_baselines"] = isoCompareStickBaselines;
+        obj["iso_quick_fingerprint_check"] = isoQuickFingerprintCheck;
         obj["show_first_run_wizard"] = showFirstRunWizard;
         obj["settings_profile"] = settingsProfile;
         obj["badusb_enabled"] = badUsbEnabled;
@@ -798,6 +864,9 @@ struct AppSettings {
         settings.isoVerifyDecompressed = obj["iso_verify_decompressed"].toBool(false);
         settings.isoPreferOfflineSidecars = obj["iso_prefer_offline_sidecars"].toBool(false);
         settings.isoVerifyParallel = obj["iso_verify_parallel"].toInt(2);
+        settings.isoStoreStickBaselines = obj["iso_store_stick_baselines"].toBool(true);
+        settings.isoCompareStickBaselines = obj["iso_compare_stick_baselines"].toBool(true);
+        settings.isoQuickFingerprintCheck = obj["iso_quick_fingerprint_check"].toBool(true);
         settings.showFirstRunWizard = obj["show_first_run_wizard"].toBool(true);
         {
             QString profile = obj["settings_profile"].toString(QStringLiteral("default"));

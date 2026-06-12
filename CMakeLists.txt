@@ -77,6 +77,8 @@ set(SOURCES
     src/IsoVerifyCache.cpp
     src/IsoVerifyReport.cpp
     src/IsoVerifyUi.cpp
+    src/IsoQuickFingerprint.cpp
+    src/IsoBaselineService.cpp
     src/AuditLog.cpp
     src/BadUsbBaselineStore.cpp
     src/BadUsbAnalyzer.cpp
@@ -169,6 +171,8 @@ set(HEADERS
     include/IsoVerifyCache.h
     include/IsoVerifyReport.h
     include/IsoVerifyUi.h
+    include/IsoQuickFingerprint.h
+    include/IsoBaselineService.h
     include/AuditLog.h
     include/BadUsbBaselineStore.h
     include/BadUsbAnalyzer.h

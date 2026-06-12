@@ -69,6 +69,9 @@ void SettingsProfiles::applyProfile(const QString& profileId, AppSettings& setti
         settings.isoVerifyParallel = 2;
         settings.blockMountOnIsoVerifyFailure = false;
         settings.isoPreferOfflineSidecars = true;
+        settings.isoStoreStickBaselines = true;
+        settings.isoCompareStickBaselines = true;
+        settings.isoQuickFingerprintCheck = true;
         settings.blockModifiedDevices = false;
         return;
     }
@@ -77,6 +80,9 @@ void SettingsProfiles::applyProfile(const QString& profileId, AppSettings& setti
         settings.defaultVerificationProfile = VerificationProfile::WatchManifest;
         settings.isoAutoVerifyOnUsbMount = false;
         settings.isoAutoVerifyOnScan = false;
+        settings.isoStoreStickBaselines = false;
+        settings.isoCompareStickBaselines = false;
+        settings.isoQuickFingerprintCheck = false;
         settings.autoHashOnConnect = false;
         settings.requireConfirmationForModified = true;
         return;
@@ -95,8 +101,14 @@ void SettingsProfiles::applyProfile(const QString& profileId, AppSettings& setti
         settings.isoPreferOfflineSidecars = false;
         settings.isoVerifyParallel = 1;
         settings.maxConcurrentHashes = 1;
+        settings.isoStoreStickBaselines = true;
+        settings.isoCompareStickBaselines = true;
+        settings.isoQuickFingerprintCheck = true;
         return;
     }
+    settings.isoStoreStickBaselines = true;
+    settings.isoCompareStickBaselines = true;
+    settings.isoQuickFingerprintCheck = true;
 }
 
 } // namespace FlashSpartan

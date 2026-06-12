@@ -295,6 +295,9 @@ void MainWindow::applyIsoVerifyOptions()
     opt.verifyDecompressed = m_settings.isoVerifyDecompressed;
     opt.preferOfflineSidecars = m_settings.isoPreferOfflineSidecars;
     IsoVerifier::setVerifyOptions(opt);
+    if (m_isoWidget) {
+        m_isoWidget->setAutoVerifyOnScan(m_settings.isoAutoVerifyOnScan);
+    }
 }
 
 void MainWindow::maybeTriggerIsoVerifyForMountedDevice(const DeviceInfo& device)
@@ -368,10 +371,17 @@ void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
     const IsoVerifyReport::SummaryCounts counts = IsoVerifyReport::countSummary(results);
     const int passed = counts.passed;
     const int needsSidecar = counts.needsSidecar;
+    const int failed = IsoVerifyReport::countFailed(counts);
     const QString summary = IsoVerifyReport::summaryLine(results);
+    LogLevel logLevel = LogLevel::Info;
+    if (failed > 0) {
+        logLevel = LogLevel::Security;
+    } else if (needsSidecar > 0) {
+        logLevel = LogLevel::Warning;
+    }
     logMessage(QStringLiteral("ISO verify (%1): %2")
                    .arg(deviceNode.isEmpty() ? QStringLiteral("manual") : deviceNode, summary),
-               passed == results.size() ? LogLevel::Info : LogLevel::Security);
+               logLevel);
 
     if (m_settings.showNotifications && m_trayIcon) {
         auto info = m_deviceMonitor->getDevice(deviceNode);
@@ -386,9 +396,15 @@ void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
         he.deviceLabel = info ? info->displayName() : deviceNode;
         he.mountPoint = info ? info->mountPoint : QString();
         he.kind = VerifyHistoryKind::IsoScan;
-        he.status = (passed == results.size() && !results.isEmpty())
-                        ? QStringLiteral("pass")
-                        : (needsSidecar > 0 ? QStringLiteral("partial") : QStringLiteral("fail"));
+        if (passed == counts.total && counts.total > 0) {
+            he.status = QStringLiteral("pass");
+        } else if (failed > 0) {
+            he.status = QStringLiteral("fail");
+        } else if (needsSidecar > 0) {
+            he.status = QStringLiteral("partial");
+        } else {
+            he.status = QStringLiteral("fail");
+        }
         he.summary = summary;
         recordVerifyHistory(he);
     }
@@ -397,7 +413,7 @@ void MainWindow::handleIsoVerificationReport(const QString& deviceNode,
 
     if (DeviceCard* card = getDeviceCard(deviceNode)) {
         card->setIsoVerifySummary(summary);
-        if (passed == results.size() && !results.isEmpty()) {
+        if (passed == counts.total && counts.total > 0) {
             card->setVerificationStatus(VerificationStatus::Verified);
         } else if (IsoVerifier::mountScanHasFailures(results)) {
             card->setVerificationStatus(VerificationStatus::Modified);

@@ -16,6 +16,7 @@ private slots:
     void multibootLayoutDetection();
     void skipSmallEfiPartition();
     void profileIdMigration();
+    void mountScanFailuresExcludeInconclusive();
 };
 
 void TestIsoScanRules::reservedDirectories()
@@ -70,6 +71,24 @@ void TestIsoScanRules::skipSmallEfiPartition()
     QVERIFY(iso.open(QIODevice::WriteOnly));
     iso.write("x");
     QVERIFY(!IsoScanRules::shouldSkipAutoVerifyPartition(data.path(), 32 * 1024 * 1024, 1));
+}
+
+void TestIsoScanRules::mountScanFailuresExcludeInconclusive()
+{
+    IsoVerifyResult inconclusive;
+    inconclusive.success = true;
+    inconclusive.hashChecked = true;
+    inconclusive.isoPath = QStringLiteral("/mnt/usb/custom.iso");
+    inconclusive.source = IsoVerifySource::ComputedOnly;
+    QVERIFY(!IsoVerifier::mountScanHasFailures({inconclusive}));
+
+    IsoVerifyResult failed;
+    failed.success = true;
+    failed.hashChecked = true;
+    failed.hashMatches = false;
+    failed.expectedSha256 = QStringLiteral("deadbeef");
+    failed.isoPath = QStringLiteral("/mnt/usb/bad.iso");
+    QVERIFY(IsoVerifier::mountScanHasFailures({failed}));
 }
 
 QTEST_MAIN(TestIsoScanRules)

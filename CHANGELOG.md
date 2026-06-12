@@ -15,6 +15,9 @@ All notable changes to FlashSpartan are documented in this file.
 ### Changed
 
 - **ISO verification UX** — plain-language status labels (Verified / Failed / Not verified), result legend, column tooltips, next-step hints, and friendlier summaries in the tab, tray, device cards, and exported reports.
+- **ISO auto-verify on scan** — the settings toggle now triggers verification when a scan folder is chosen or set (was persisted but unwired).
+- **Mount block on ISO failure** — “not verified” (no publisher checksum) no longer counts as a failure for block-mount or device-card tampered status.
+- **Legacy migration** — copies `audit.log` and `user-iso-hashes.json` from FlashSentry config when missing.
 - **DatabaseManager** — removed unused legacy JSON read/write helpers; integrity checks run at startup for hash-based profiles.
 - **Version metadata** — README and PKGBUILD aligned with `VERSION` (1.5.4).
 

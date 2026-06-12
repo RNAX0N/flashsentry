@@ -837,7 +837,7 @@ void IsoVerifier::setVerifyOptions(const IsoVerifyOptions& options)
 bool IsoVerifier::mountScanHasFailures(const QList<IsoVerifyResult>& results)
 {
     for (const IsoVerifyResult& r : results) {
-        if (!r.isoPath.isEmpty() && !r.passed()) {
+        if (!r.isoPath.isEmpty() && !r.passed() && !r.inconclusive()) {
             return true;
         }
     }

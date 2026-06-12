@@ -31,6 +31,7 @@ public:
     ~IsoVerifierWidget() override;
 
     void setScanDirectory(const QString& path);
+    void setAutoVerifyOnScan(bool enabled);
     void verifyMountPoint(const QString& mountPoint, const QString& deviceNode,
                           const QString& deviceLabel = {});
 
@@ -77,8 +78,11 @@ private:
     void scrollReportToRow(int row);
     void applyChromeStyles();
     void styleResultRow(int row, bool passed, bool inconclusive = false);
+    void maybeAutoVerifyCurrentPath();
 
     IsoVerifierWorker* m_worker = nullptr;
+    bool m_autoVerifyOnScan = true;
+    QString m_lastAutoVerifiedPath;
     QStackedWidget* m_pageStack = nullptr;
     QLabel* m_catalogBanner = nullptr;
     QComboBox* m_profileCombo = nullptr;

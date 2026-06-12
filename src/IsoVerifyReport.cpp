@@ -13,6 +13,11 @@ static QString csvEscape(QString value)
     return value.replace(QLatin1Char('"'), QStringLiteral("\"\""));
 }
 
+int IsoVerifyReport::countFailed(const SummaryCounts& counts)
+{
+    return counts.total - counts.passed - counts.needsSidecar;
+}
+
 IsoVerifyReport::SummaryCounts IsoVerifyReport::countSummary(const QList<IsoVerifyResult>& results)
 {
     SummaryCounts counts;

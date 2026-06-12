@@ -378,13 +378,43 @@ void IsoVerifierWidget::refreshCatalogStatus()
     updateCatalogIntegrityBanner();
 }
 
+void IsoVerifierWidget::setAutoVerifyOnScan(bool enabled)
+{
+    if (m_autoVerifyOnScan != enabled) {
+        m_lastAutoVerifiedPath.clear();
+    }
+    m_autoVerifyOnScan = enabled;
+    if (enabled) {
+        maybeAutoVerifyCurrentPath();
+    }
+}
+
 void IsoVerifierWidget::setScanDirectory(const QString& path)
 {
     if (m_dirEdit) {
-        m_dirEdit->setText(path);
+        if (m_dirEdit->text() != path) {
+            m_lastAutoVerifiedPath.clear();
+            m_dirEdit->setText(path);
+        }
     }
     updateMultibootBadge();
     updatePageVisibility();
+    maybeAutoVerifyCurrentPath();
+}
+
+void IsoVerifierWidget::maybeAutoVerifyCurrentPath()
+{
+    if (!m_autoVerifyOnScan || !m_dirEdit || !m_worker || m_worker->isBusy()) {
+        return;
+    }
+    const QString scanPath = m_dirEdit->text().trimmed();
+    if (scanPath.isEmpty() || scanPath == m_lastAutoVerifiedPath) {
+        return;
+    }
+    m_lastAutoVerifiedPath = scanPath;
+    m_pageStack->setCurrentIndex(1);
+    m_summaryLabel->setText(QStringLiteral("Verifying images in %1…").arg(scanPath));
+    m_worker->verifyDirectory(scanPath, m_lastDeviceNode);
 }
 
 
@@ -430,9 +460,11 @@ void IsoVerifierWidget::onBrowse()
 {
     const QString dir = QFileDialog::getExistingDirectory(this, QStringLiteral("ISO folder or mount point"));
     if (!dir.isEmpty()) {
+        m_lastAutoVerifiedPath.clear();
         m_dirEdit->setText(dir);
         m_pageStack->setCurrentIndex(1);
         updatePageVisibility();
+        maybeAutoVerifyCurrentPath();
     }
 }
 

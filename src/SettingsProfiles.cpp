@@ -76,6 +76,7 @@ void SettingsProfiles::applyProfile(const QString& profileId, AppSettings& setti
         settings.appModule = AppModule::UsbMonitor;
         settings.defaultVerificationProfile = VerificationProfile::WatchManifest;
         settings.isoAutoVerifyOnUsbMount = false;
+        settings.isoAutoVerifyOnScan = false;
         settings.autoHashOnConnect = false;
         settings.requireConfirmationForModified = true;
         return;
